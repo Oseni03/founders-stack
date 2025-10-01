@@ -1,7 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { FileText, Plug, Settings, Settings2, User } from "lucide-react";
+import {
+	CheckSquare,
+	Code,
+	DollarSign,
+	FileText,
+	Plug,
+	Settings,
+	Settings2,
+	User,
+} from "lucide-react";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { TeamSwitcher } from "@/components/team-switcher";
@@ -21,6 +30,24 @@ const dashboardItems = [
 		label: "Overview",
 		icon: FileText,
 		url: "/dashboard",
+	},
+	{
+		id: "tasks",
+		label: "Tasks",
+		icon: CheckSquare,
+		url: "/dashboard/tasks",
+	},
+	{
+		id: "financials",
+		label: "Financials",
+		icon: DollarSign,
+		url: "/dashboard/financials",
+	},
+	{
+		id: "code",
+		label: "Code Activity",
+		icon: Code,
+		url: "/dashboard/code",
 	},
 	{
 		id: "integrations",
