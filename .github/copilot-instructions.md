@@ -84,15 +84,6 @@ npm run build      # Build + generate Prisma
 npx prisma generate # After schema changes
 ```
 
-### 6. Test Accounts
-
-All accounts use password: `password`
-
-- `admin@acme.test`: Admin role (Acme tenant)
-- `user@acme.test`: Member role (Acme tenant)
-- `admin@globex.test`: Admin role (Globex tenant)
-- `user@globex.test`: Member role (Globex tenant)
-
 ## Critical Files
 
 - `prisma/schema.prisma`: Database schema
