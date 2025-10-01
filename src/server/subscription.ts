@@ -16,8 +16,6 @@ export async function createFreeSubscription(organizationId: string) {
 			organizationId,
 			status: "active",
 			amount: 0,
-			maxUsers: freePlan.maxUsers,
-			maxNotes: freePlan.maxNotes,
 			currency: "USD",
 			recurringInterval: "yearly",
 			currentPeriodStart: now,

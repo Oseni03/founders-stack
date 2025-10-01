@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { FileText, Settings, Settings2, User } from "lucide-react";
+import { FileText, Plug, Settings, Settings2, User } from "lucide-react";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { TeamSwitcher } from "@/components/team-switcher";
@@ -17,10 +17,22 @@ import { usePathname } from "next/navigation";
 // This is sample data.
 const dashboardItems = [
 	{
-		id: "notes",
-		label: "Notes",
+		id: "overview",
+		label: "Overview",
 		icon: FileText,
 		url: "/dashboard",
+	},
+	{
+		id: "integrations",
+		label: "Integrations",
+		icon: Plug,
+		url: "/dashboard/integrations",
+	},
+	{
+		id: "analytics",
+		label: "Analytics",
+		icon: FileText,
+		url: "/dashboard/analytics",
 	},
 	{
 		id: "settings",

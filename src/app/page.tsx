@@ -25,27 +25,27 @@ const Page = () => {
 	const features = [
 		{
 			icon: <FileText className="w-6 h-6" />,
-			title: "Smart Note Management",
+			title: "Unified Dashboard",
 			description:
-				"Organize your team's knowledge with powerful search, tags, and collaborative editing.",
+				"Single view of all your SaaS tools - from Jira to Stripe, eliminate tab-switching forever.",
 		},
 		{
 			icon: <Users className="w-6 h-6" />,
-			title: "Multi-Tenant Architecture",
+			title: "Real-time Insights",
 			description:
-				"Secure isolation for multiple organizations with role-based access control.",
+				"Monitor key metrics, correlate data across tools, and get actionable insights.",
 		},
 		{
 			icon: <Shield className="w-6 h-6" />,
-			title: "Enterprise Security",
+			title: "Deep Integration",
 			description:
-				"Advanced security features with compliance-ready data protection.",
+				"Seamlessly connect your favorite tools with our robust integration framework.",
 		},
 		{
 			icon: <Zap className="w-6 h-6" />,
-			title: "Lightning Fast",
+			title: "Smart Automation",
 			description:
-				"Built for performance with instant search and real-time collaboration.",
+				"Automate cross-tool workflows and get alerts when metrics need attention.",
 		},
 	];
 
@@ -72,7 +72,9 @@ const Page = () => {
 						<div className="w-8 h-8 rounded-lg bg-gradient-to-r from-primary to-primary/80 flex items-center justify-center">
 							<FileText className="w-4 h-4 text-primary-foreground" />
 						</div>
-						<span className="text-xl font-bold">NotesApp</span>
+						<span className="text-xl font-bold">
+							Founder&apos;s Stack
+						</span>
 					</div>
 					{!!user ? (
 						<div className="flex items-center gap-4">

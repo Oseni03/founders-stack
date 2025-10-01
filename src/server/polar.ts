@@ -78,9 +78,6 @@ export async function handleSubscriptionUpdated(payload: any) {
 				customFieldData: payload.data.customFieldData
 					? JSON.stringify(payload.data.customFieldData)
 					: null,
-				// Set plan features based on product
-				maxUsers: plan.maxUsers,
-				maxNotes: plan.maxNotes,
 			},
 		});
 
@@ -263,8 +260,6 @@ export async function handleSubscriptionActive(payload: any) {
 				currentPeriodEnd:
 					safeParseDate(payload.data.currentPeriodEnd) || new Date(),
 				startedAt: safeParseDate(payload.data.startedAt) || new Date(),
-				maxNotes: plan.maxNotes,
-				maxUsers: plan.maxUsers,
 			},
 		});
 

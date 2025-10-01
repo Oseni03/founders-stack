@@ -35,19 +35,6 @@ export interface Organization {
 	// metadata?: any;
 }
 
-export interface Note {
-	id: string;
-	title: string;
-	content: string;
-	authorId: string;
-	tenantId: string;
-	tags: string[];
-	isPublic: boolean;
-	createdAt: Date;
-	updatedAt: Date;
-	author: User;
-}
-
 export interface InvitationData {
 	id: string;
 	email: string;

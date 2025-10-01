@@ -14,19 +14,19 @@ datasource db {
 }
 
 model User {
-  id            String       @id @default(cuid())
+  id            String        @id @default(cuid())
   name          String
   email         String
-  emailVerified Boolean      @default(false)
+  emailVerified Boolean       @default(false)
   image         String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @default(now()) @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @default(now()) @updatedAt
   sessions      Session[]
   accounts      Account[]
   members       Member[]
   invitations   Invitation[]
-  Notes         Note[]
-  Alert         Alert[]
+  integrations  Integration[]
+  alerts        Alert[]
 
   @@unique([email])
   @@map("user")
@@ -91,7 +91,6 @@ model Organization {
   polarCustomerId String?
   subscription    Subscription?
   members         Member[]
-  Notes           Note[]
   invitations     Invitation[]
 
   // Relations
@@ -132,21 +131,6 @@ model Invitation {
   @@map("invitation")
 }
 
-model Note {
-  id        String   @id @default(cuid())
-  title     String
-  content   String
-  authorId  String
-  tenantId  String
-  tags      String[]
-  isPublic  Boolean
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  author       User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-}
-
 model Subscription {
   id                          String    @id @default(cuid())
   createdAt                   DateTime  @default(now())
@@ -171,8 +155,6 @@ model Subscription {
   customerCancellationComment String?
   metadata                    String? // JSON string
   customFieldData             String? // JSON string
-  maxUsers                    Int       @default(3)
-  maxNotes                    Int       @default(50)
   organizationId              String    @unique
 
   // Relation to Organization model
@@ -265,7 +247,6 @@ enum AlertChannel {
 // The Account holds the OAuth tokens, this holds sync status and config
 model Integration {
   id             String              @id @default(cuid())
-  accountId      String              @unique // Links to BetterAuth Account
   category       IntegrationCategory
   status         IntegrationStatus   @default(pending)
   config         Json? // Tool-specific configuration
@@ -278,8 +259,11 @@ model Integration {
 
   // Multi-tenant field
   organizationId String
+  userId         String?
+  accountId      String  @unique // Links to BetterAuth Account
 
   // Relations
+  User           User?          @relation(fields: [userId], references: [id])
   organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   account        Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
   tasks          Task[]

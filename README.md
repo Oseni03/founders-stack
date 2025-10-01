@@ -1,10 +1,10 @@
-# NoteApp
+# Founder's Stack
 
-A multi-tenant SaaS notes application built with Next.js, demonstrating enterprise-grade multi-tenancy, authentication, and subscription management patterns.
+A unified dashboard for indie founders to monitor and manage their entire SaaS stack in one place. Built with Next.js, this platform aggregates data from tools like Jira, Slack, GitHub, and Stripe to provide real-time insights and reduce context-switching.
 
 ## Overview
 
-NoteApp is a production-ready multi-tenant application where multiple organizations (tenants) can securely manage their users and notes with complete data isolation. Built as a Next.js SaaS boilerplate with role-based access control and subscription feature gating.
+Founder's Stack addresses the fragmentation founders face when juggling multiple SaaS tools. It provides a centralized dashboard that integrates and normalizes data from various sources, enabling real-time monitoring and actionable insights. Built for indie hackers and early-stage startups.
 
 ---
 
@@ -12,10 +12,10 @@ NoteApp is a production-ready multi-tenant application where multiple organizati
 
 ### Core Functionality
 
-- **Multi-Tenancy** - Strict tenant isolation using shared schema with `organizationId` filtering
-- **Notes Management** - Full CRUD operations with tenant-aware access control
-- **Team Collaboration** - User invitations, role management, and permissions
-- **JWT Authentication** - Secure token-based authentication with role-based authorization
+- **Unified Dashboard** - Single view of metrics and data from all your tools
+- **Deep Integrations** - Connect with popular tools like Jira, GitHub, Stripe, and more
+- **Real-time Monitoring** - Live updates and alerts for critical metrics
+- **Cross-tool Analytics** - Correlate data across different platforms
 
 ### SaaS Features
 
