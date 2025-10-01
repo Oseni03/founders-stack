@@ -14,7 +14,7 @@ datasource db {
 }
 
 model User {
-  id            String       @id  @default(cuid())
+  id            String       @id @default(cuid())
   name          String
   email         String
   emailVerified Boolean      @default(false)
@@ -26,6 +26,7 @@ model User {
   members       Member[]
   invitations   Invitation[]
   Notes         Note[]
+  Alert         Alert[]
 
   @@unique([email])
   @@map("user")
@@ -63,6 +64,9 @@ model Account {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
+  // Link to Integration metadata
+  integration Integration?
+
   @@map("account")
 }
 
@@ -78,7 +82,7 @@ model Verification {
 }
 
 model Organization {
-  id              String        @id  @default(cuid())
+  id              String        @id @default(cuid())
   name            String
   slug            String?
   logo            String?
@@ -90,12 +94,20 @@ model Organization {
   Notes           Note[]
   invitations     Invitation[]
 
+  // Relations
+  integrations   Integration[]
+  tasks          Task[]
+  transactions   Transaction[]
+  metrics        Metric[]
+  codeActivities CodeActivity[]
+  alerts         Alert[]
+
   @@unique([slug])
   @@map("organization")
 }
 
 model Member {
-  id             String       @id  @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   userId         String
@@ -107,7 +119,7 @@ model Member {
 }
 
 model Invitation {
-  id             String       @id  @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   email          String
@@ -128,8 +140,8 @@ model Note {
   tenantId  String
   tags      String[]
   isPublic  Boolean
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   author       User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -159,12 +171,302 @@ model Subscription {
   customerCancellationComment String?
   metadata                    String? // JSON string
   customFieldData             String? // JSON string
-  maxUsers                    Int      @default(3)
-  maxNotes                    Int      @default(50)
+  maxUsers                    Int       @default(3)
+  maxNotes                    Int       @default(50)
   organizationId              String    @unique
 
   // Relation to Organization model
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("subscription")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  admin
+  member
+}
+
+enum IntegrationStatus {
+  active
+  inactive
+  error
+  pending
+}
+
+enum IntegrationCategory {
+  project_management
+  payment
+  analytics
+  version_control
+  communication
+  crm
+  other
+}
+
+enum TaskStatus {
+  todo
+  in_progress
+  review
+  done
+  blocked
+  cancelled
+}
+
+enum TaskPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum TransactionStatus {
+  pending
+  completed
+  failed
+  refunded
+  cancelled
+}
+
+enum CodeActivityType {
+  commit
+  pull_request
+  merge
+  branch_created
+  branch_deleted
+  tag_created
+  release
+}
+
+enum AlertType {
+  task_overdue
+  transaction_threshold
+  metric_threshold
+  code_activity
+  integration_error
+  custom
+}
+
+enum AlertChannel {
+  email
+  slack
+  webhook
+  in_app
+}
+
+// ============================================================================
+// INTEGRATION METADATA
+// ============================================================================
+
+// Integration extends Account with SaaS-specific metadata
+// The Account holds the OAuth tokens, this holds sync status and config
+model Integration {
+  id             String              @id @default(cuid())
+  accountId      String              @unique // Links to BetterAuth Account
+  category       IntegrationCategory
+  status         IntegrationStatus   @default(pending)
+  config         Json? // Tool-specific configuration
+  lastSyncAt     DateTime?
+  lastSyncStatus String?
+  errorMessage   String?
+  syncEnabled    Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  // Multi-tenant field
+  organizationId String
+
+  // Relations
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  account        Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tasks          Task[]
+  transactions   Transaction[]
+  metrics        Metric[]
+  codeActivities CodeActivity[]
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, category])
+  @@index([accountId])
+}
+
+// ============================================================================
+// DATA ENTITIES
+// ============================================================================
+
+model Task {
+  id          String       @id @default(cuid())
+  externalId  String // ID from source system (e.g., JIRA-123)
+  title       String
+  description String?      @db.Text
+  status      TaskStatus   @default(todo)
+  priority    TaskPriority @default(medium)
+  assignee    String? // Name or email of assignee
+  assigneeId  String? // External assignee ID
+  dueDate     DateTime?
+  completedAt DateTime?
+  sourceUrl   String? // Link to original task
+  metadata    Json? // Additional source-specific data
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Multi-tenant fields
+  organizationId String
+  integrationId  String
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration  Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, externalId])
+  @@index([organizationId])
+  @@index([integrationId])
+  @@index([organizationId, status])
+  @@index([organizationId, priority])
+  @@index([organizationId, dueDate])
+  @@index([assignee])
+}
+
+model Transaction {
+  id            String            @id @default(cuid())
+  externalId    String // ID from payment system
+  amount        Decimal           @db.Decimal(19, 4)
+  currency      String            @default("USD")
+  status        TransactionStatus @default(pending)
+  customerId    String?
+  customerName  String?
+  customerEmail String?
+  description   String?
+  sourceUrl     String?
+  metadata      Json?
+  processedAt   DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  // Multi-tenant fields
+  organizationId String
+  integrationId  String
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration  Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, externalId])
+  @@index([organizationId])
+  @@index([integrationId])
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
+  @@index([customerId])
+  @@index([customerEmail])
+}
+
+model Metric {
+  id        String   @id @default(cuid())
+  name      String // e.g., "response_time", "error_rate"
+  value     Decimal  @db.Decimal(19, 4)
+  unit      String? // e.g., "ms", "percent", "count"
+  category  String // e.g., "performance", "business", "custom"
+  timestamp DateTime
+  metadata  Json? // Additional context
+  createdAt DateTime @default(now())
+
+  // Multi-tenant fields
+  organizationId String
+  integrationId  String
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration  Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([integrationId])
+  @@index([organizationId, name])
+  @@index([organizationId, category])
+  @@index([organizationId, timestamp])
+  @@index([name, timestamp])
+}
+
+model CodeActivity {
+  id          String           @id @default(cuid())
+  externalId  String // Commit SHA, PR number, etc.
+  type        CodeActivityType
+  author      String
+  authorEmail String?
+  repository  String
+  branch      String?
+  message     String?          @db.Text
+  additions   Int?
+  deletions   Int?
+  sourceUrl   String?
+  metadata    Json?
+  occurredAt  DateTime // When the activity happened in the source
+  createdAt   DateTime         @default(now())
+
+  // Multi-tenant fields
+  organizationId String
+  integrationId  String
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration  Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, externalId])
+  @@index([organizationId])
+  @@index([integrationId])
+  @@index([organizationId, type])
+  @@index([organizationId, occurredAt])
+  @@index([author])
+  @@index([repository])
+}
+
+// ============================================================================
+// ALERTING SYSTEM
+// ============================================================================
+
+model Alert {
+  id              String         @id @default(cuid())
+  name            String
+  type            AlertType
+  description     String?
+  threshold       Decimal?       @db.Decimal(19, 4)
+  condition       Json // Complex condition rules
+  channels        AlertChannel[]
+  isActive        Boolean        @default(true)
+  lastTriggeredAt DateTime?
+  triggerCount    Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Multi-tenant fields
+  organizationId String
+  userId         String // User who created the alert
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs         AlertLog[]
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([organizationId, isActive])
+  @@index([organizationId, type])
+}
+
+model AlertLog {
+  id        String   @id @default(cuid())
+  alertId   String
+  triggered Boolean
+  message   String   @db.Text
+  data      Json?
+  createdAt DateTime @default(now())
+
+  // Relations
+  alert Alert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+
+  @@index([alertId])
+  @@index([alertId, createdAt])
+  @@index([triggered, createdAt])
 }
