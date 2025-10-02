@@ -251,6 +251,7 @@ model Integration {
   status         IntegrationStatus   @default(pending)
   config         Json? // Tool-specific configuration
   lastSyncAt     DateTime?
+  type           String
   lastSyncStatus String?
   errorMessage   String?
   syncEnabled    Boolean             @default(true)
