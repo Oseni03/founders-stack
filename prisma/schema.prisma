@@ -467,3 +467,31 @@ model CDMRecentSearches {
   @@unique([userId, query])
   @@index([userId, createdAt(sort: Desc)])
 }
+
+model UserPreferences {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @unique @db.Uuid
+
+  // Onboarding progress
+  onboardingCompleted Boolean @default(false)
+  onboardingProgress  Json?   @db.JsonB
+
+  // User settings
+  theme                String  @default("system") @db.VarChar(50)
+  notificationsEnabled Boolean @default(true)
+  emailNotifications   Boolean @default(true)
+  slackNotifications   Boolean @default(false)
+
+  // Dashboard preferences
+  defaultDashboardView String @default("overview") @db.VarChar(100)
+  dashboardLayout      Json?  @db.JsonB
+
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
+  // Relation to users table (if you have a User model)
+  // user       users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([onboardingCompleted])
+}
