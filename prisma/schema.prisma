@@ -454,3 +454,16 @@ model AlertLog {
   @@index([alertId, createdAt])
   @@index([triggered, createdAt])
 }
+
+model CDMRecentSearches {
+  id        String   @id @default(cuid())
+  userId    String
+  query     String   @db.Text
+  createdAt DateTime @default(now())
+
+  // Relation to users table (if you have a User model)
+  // user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, query])
+  @@index([userId, createdAt(sort: Desc)])
+}
