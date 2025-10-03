@@ -10,10 +10,9 @@ export async function GET(
 	try {
 		// OAuth flow - redirect to provider's authorization URL
 
-		const data = await auth.api.oAuth2LinkAccount({
+		const data = await auth.api.linkSocialAccount({
 			body: {
-				providerId,
-				callbackURL: `/dashboard/integrations/${providerId}`,
+				provider: providerId,
 			},
 			// This endpoint requires session cookies.
 			headers: await headers(),

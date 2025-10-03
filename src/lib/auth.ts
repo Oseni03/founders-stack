@@ -48,6 +48,28 @@ export const auth = betterAuth({
 			clientId: process.env.GOOGLE_CLIENT_ID as string,
 			clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
 		},
+		slack: {
+			clientId: process.env.SLACK_CLIENT_ID as string,
+			clientSecret: process.env.SLACK_CLIENT_SECRET as string,
+			scope: [
+				"chat:write",
+				"channels:history",
+				"channels:read",
+				"groups:history",
+				"im:history",
+				"identity.basic",
+				"reactions:write",
+				"files:read",
+				"users:read",
+				"team:read",
+				"groups:read",
+			],
+		},
+		github: {
+			clientId: process.env.GITHUB_CLIENT_ID as string,
+			clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+			scope: ["repo", "read:discussion", "project"],
+		},
 	},
 	database: prismaAdapter(prisma, {
 		provider: "postgresql", // or "mysql", "postgresql", ...etc
@@ -181,9 +203,9 @@ export const auth = betterAuth({
 				});
 			},
 		}),
-		genericOAuth({
-			config: OAuthProviders,
-		}),
+		// genericOAuth({
+		// 	config: OAuthProviders,
+		// }),
 	],
 });
 

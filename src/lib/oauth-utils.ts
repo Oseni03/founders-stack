@@ -23,6 +23,16 @@ export const OAuthProviders = [
 		],
 		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/slack`,
 	},
+	{
+		providerId: "github",
+		clientId: process.env.GITHUB_CLIENT_ID!,
+		clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+		authorizationUrl: "https://github.com/login/oauth/authorize",
+		tokenUrl: "https://github.com/login/oauth/access_token",
+		userInfoUrl: "https://api.github.com/user",
+		scopes: ["repo", "read:discussion", "project"],
+		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/github`,
+	},
 ];
 
 export const INTEGRATIONS = [
@@ -37,12 +47,25 @@ export const INTEGRATIONS = [
 		lastSyncAt: new Date(),
 		docsUrl: "https://api.slack.com/",
 	},
+	{
+		id: "github",
+		name: "GitHub",
+		description: "lorem",
+		category: "version_control" as IntegrationCategory,
+		logo: "/github-logo.png",
+		status: "inactive" as IntegrationStatus,
+		authType: "oauth",
+		lastSyncAt: new Date(),
+		docsUrl: "https://api.github.com/",
+	},
 ];
 
 export const getProviderLogo = (providerId: string) => {
 	switch (providerId) {
 		case "slack":
 			return "/slack-logo.png";
+		case "github":
+			return "/github-logo.png";
 		case "jira":
 			return "/jira-logo.png";
 		case "linear":
