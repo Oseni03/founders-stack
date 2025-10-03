@@ -1,29 +1,51 @@
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
 export async function GET(
 	request: Request,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
-	// OAuth flow - redirect to provider's authorization URL
-	const integrationId = params.id;
+	const { id: providerId } = await params;
+	try {
+		// OAuth flow - redirect to provider's authorization URL
 
-	// Mock OAuth redirect
-	const authUrl = `https://oauth.example.com/${integrationId}/authorize?client_id=xxx&redirect_uri=${encodeURIComponent(
-		`${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/${integrationId}/callback`
-	)}`;
+		const data = await auth.api.oAuth2LinkAccount({
+			body: {
+				providerId,
+				callbackURL: `/dashboard/integrations/${providerId}`,
+			},
+			// This endpoint requires session cookies.
+			headers: await headers(),
+		});
 
-	return NextResponse.redirect(authUrl);
+		return NextResponse.redirect(data.url);
+	} catch (error) {
+		console.error(`Failed to connect ${providerId}`, error);
+		return NextResponse.json(
+			{ error: `Failed to fetch conect ${providerId}` },
+			{ status: 500 }
+		);
+	}
 }
 
 export async function POST(
 	request: Request,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
-	// API key connection
-	const { apiKey } = await request.json();
+	const { id: providerId } = await params;
+	try {
+		// API key connection
+		const { apiKey } = await request.json();
 
-	// Mock - validate and store API key
-	console.log(`[v0] Connecting ${params.id} with API key`);
+		// Mock - validate and store API key
+		console.log(`Connecting ${providerId} with API key`);
 
-	return NextResponse.json({ success: true });
+		return NextResponse.json({ success: true });
+	} catch (error) {
+		return NextResponse.json(
+			{ error: `Failed to fetch conect ${providerId}` },
+			{ status: 500 }
+		);
+	}
 }

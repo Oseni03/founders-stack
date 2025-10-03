@@ -2,11 +2,13 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
+import { IntegrationStatus } from "@prisma/client";
 
 export async function GET(request: NextRequest) {
 	try {
 		const searchParams = request.nextUrl.searchParams;
 		const channelId = searchParams.get("channel");
+		const integrationId = searchParams.get("integration");
 
 		if (!channelId) {
 			return NextResponse.json(
@@ -28,7 +30,9 @@ export async function GET(request: NextRequest) {
 		const integration = await prisma.integration.findFirst({
 			where: {
 				organizationId: session.activeOrganizationId,
-				// type: "slack",
+				type: "slack",
+				id: integrationId!,
+				status: IntegrationStatus.active,
 			},
 			include: {
 				account: true,
@@ -97,7 +101,7 @@ export async function GET(request: NextRequest) {
 			})),
 		});
 	} catch (error) {
-		console.error("[v0] Failed to fetch Slack messages:", error);
+		console.error("Failed to fetch Slack messages:", error);
 		return NextResponse.json(
 			{ error: "Failed to fetch messages" },
 			{ status: 500 }

@@ -1,6 +1,11 @@
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
-import { customSession, organization, magicLink } from "better-auth/plugins";
+import {
+	customSession,
+	organization,
+	magicLink,
+	genericOAuth,
+} from "better-auth/plugins";
 import { admin, member } from "./auth/permissions";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma";
@@ -16,6 +21,8 @@ import { createFreeSubscription } from "@/server/subscription";
 import { sendEmail } from "./resend";
 import OrganizationInvitationEmail from "@/components/emails/organization-invitation-email";
 import MagicLinkEmail from "@/components/emails/magic-link-email";
+import { OAuthProviders } from "./oauth-utils";
+import { createIntegration } from "@/server/integrations";
 
 const polarClient = new Polar({
 	accessToken: process.env.POLAR_ACCESS_TOKEN!,
@@ -24,7 +31,7 @@ const polarClient = new Polar({
 });
 
 export const auth = betterAuth({
-	appName: "Multi-tenant SaaS Boilerplate",
+	appName: "Founders' stack",
 	baseURL: process.env.NEXT_PUBLIC_APP_URL,
 	session: {
 		cookieCache: {
@@ -87,6 +94,20 @@ export const auth = betterAuth({
 					};
 				},
 			},
+		},
+		account: {
+			create: {
+				after: async (account) => {
+					await createIntegration(account);
+				},
+			},
+		},
+	},
+	account: {
+		accountLinking: {
+			enabled: true,
+			allowDifferentEmails: true,
+			allowUnlinkingAll: false,
 		},
 	},
 	plugins: [
@@ -159,6 +180,9 @@ export const auth = betterAuth({
 					react: MagicLinkEmail({ email, magicLink: url }),
 				});
 			},
+		}),
+		genericOAuth({
+			config: OAuthProviders,
 		}),
 	],
 });

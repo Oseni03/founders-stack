@@ -21,6 +21,9 @@ import {
 	CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Integration, IntegrationStatus } from "@prisma/client";
+import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
+import { getIntegration } from "@/server/integrations";
 
 interface SlackChannel {
 	id: string;
@@ -40,6 +43,11 @@ interface SlackMessage {
 }
 
 export default function SlackIntegrationPage() {
+	const activeOrganization = useOrganizationStore(
+		(state) => state.activeOrganization
+	)!;
+	const [integration, setIntegration] = useState<Integration | null>(null);
+
 	const [isConnected, setIsConnected] = useState(false);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isSyncing, setIsSyncing] = useState(false);
@@ -49,14 +57,17 @@ export default function SlackIntegrationPage() {
 	const [workspaceName, setWorkspaceName] = useState("");
 
 	useEffect(() => {
-		const checkConnection = async () => {
+		const fetchIntegration = async () => {
 			try {
-				const response = await fetch("/api/integrations/slack/status");
-				const data = await response.json();
+				const data = await getIntegration(
+					activeOrganization.id,
+					"slack"
+				);
 
-				setIsConnected(data.connected);
-				if (data.connected) {
-					setWorkspaceName(data.workspace_name);
+				if (data) setIntegration(data);
+
+				setIsConnected(data?.status === IntegrationStatus.active);
+				if (data?.status === IntegrationStatus.active) {
 					loadChannels();
 				}
 			} catch (error) {
@@ -66,8 +77,8 @@ export default function SlackIntegrationPage() {
 			}
 		};
 
-		checkConnection();
-	}, []);
+		fetchIntegration();
+	}, [activeOrganization.id]);
 
 	useEffect(() => {
 		if (selectedChannel) {
@@ -77,7 +88,10 @@ export default function SlackIntegrationPage() {
 
 	const loadChannels = async () => {
 		try {
-			const response = await fetch("/api/integrations/slack/channels");
+			if (!integration) return;
+			const response = await fetch(
+				`/api/integrations/slack/channels?integration=${integration.id}`
+			);
 			const data = await response.json();
 			setChannels(data.channels || []);
 			if (data.channels?.length > 0) {
@@ -90,8 +104,9 @@ export default function SlackIntegrationPage() {
 
 	const loadMessages = async (channelId: string) => {
 		try {
+			if (!integration) return;
 			const response = await fetch(
-				`/api/integrations/slack/messages?channel=${channelId}`
+				`/api/integrations/slack/messages?channel=${channelId}&integration=${integration.id}`
 			);
 			const data = await response.json();
 			setMessages(data.messages || []);
@@ -100,19 +115,25 @@ export default function SlackIntegrationPage() {
 		}
 	};
 
-	const handleConnect = () => {
-		// Redirect to Slack OAuth
-		window.location.href = "/api/integrations/slack/auth";
+	const handleConnect = async () => {
+		try {
+			await fetch(`/api/integrations/slack/connect`);
+		} catch (error) {
+			console.error("Failed to connect slack:", error);
+		}
 	};
 
 	const handleDisconnect = async () => {
 		try {
+			if (!integration) return;
 			const response = await fetch("/api/integrations/slack/disconnect", {
 				method: "POST",
+				body: JSON.stringify({ integrationId: integration.id }),
 			});
 
 			if (response.ok) {
 				setIsConnected(false);
+				setIntegration(null);
 				setChannels([]);
 				setMessages([]);
 				toast.info("Disconnected from Slack", {
@@ -292,7 +313,9 @@ export default function SlackIntegrationPage() {
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold">5m</div>
+						<div className="text-2xl font-bold">
+							{integration?.lastSyncAt?.toString()}
+						</div>
 						<p className="text-xs text-muted-foreground">ago</p>
 					</CardContent>
 				</Card>
@@ -312,7 +335,7 @@ export default function SlackIntegrationPage() {
 					<CardContent>
 						<div className="space-y-2">
 							{channels.map((channel) => (
-								<button
+								<Button
 									key={channel.id}
 									onClick={() =>
 										setSelectedChannel(channel.id)
@@ -335,7 +358,7 @@ export default function SlackIntegrationPage() {
 											{channel.num_members}
 										</span>
 									</div>
-								</button>
+								</Button>
 							))}
 						</div>
 					</CardContent>

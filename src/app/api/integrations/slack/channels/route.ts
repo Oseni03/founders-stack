@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
+import { IntegrationStatus } from "@prisma/client";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
 	try {
 		const session = await getSession();
 		const user = session?.user;
@@ -14,10 +15,15 @@ export async function GET() {
 			);
 		}
 
+		const searchParams = request.nextUrl.searchParams;
+		const integrationId = searchParams.get("integration");
+
 		const integration = await prisma.integration.findFirst({
 			where: {
 				organizationId: session.activeOrganizationId,
-				// type: "slack",
+				type: "slack",
+				id: integrationId!,
+				status: IntegrationStatus.active,
 			},
 			include: {
 				account: true,

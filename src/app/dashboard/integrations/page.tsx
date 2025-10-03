@@ -22,13 +22,6 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import {
 	AlertDialog,
 	AlertDialogAction,
 	AlertDialogCancel,
@@ -52,47 +45,19 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-
-interface Integration {
-	id: string;
-	name: string;
-	description: string;
-	category:
-		| "project"
-		| "analytics"
-		| "payments"
-		| "communication"
-		| "monitoring";
-	logo: string;
-	status: "connected" | "disconnected";
-	authType: "oauth" | "api_key";
-	lastSync?: string;
-	syncFrequency?: string;
-	nextSync?: string;
-	docsUrl: string;
-}
-
-interface SyncHistory {
-	id: string;
-	timestamp: string;
-	status: "success" | "failed";
-	itemsSynced: number;
-	duration: string;
-}
+import { Integration, IntegrationStatus } from "@prisma/client";
+import { toast } from "sonner";
+import { getProviderLogo } from "@/lib/oauth-utils";
 
 export default function IntegrationsPage() {
 	const [integrations, setIntegrations] = useState<Integration[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [connectDialogOpen, setConnectDialogOpen] = useState(false);
 	const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
-	const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
 	const [selectedIntegration, setSelectedIntegration] =
 		useState<Integration | null>(null);
 	const [apiKey, setApiKey] = useState("");
-	const [syncFrequency, setSyncFrequency] = useState("15");
 	const [isSyncing, setIsSyncing] = useState<string | null>(null);
-	const [isTesting, setIsTesting] = useState<string | null>(null);
-	const [syncHistory, setSyncHistory] = useState<SyncHistory[]>([]);
 
 	useEffect(() => {
 		fetchIntegrations();
@@ -103,9 +68,10 @@ export default function IntegrationsPage() {
 		try {
 			const response = await fetch("/api/integrations");
 			const data = await response.json();
-			setIntegrations(data.integrations);
+			setIntegrations(data.integrations || []);
 		} catch (error) {
-			console.error("[v0] Failed to fetch integrations:", error);
+			console.error("Failed to fetch integrations:", error);
+			toast.error("Integrations not found");
 		} finally {
 			setIsLoading(false);
 		}
@@ -113,12 +79,11 @@ export default function IntegrationsPage() {
 
 	const handleConnect = async (integration: Integration) => {
 		setSelectedIntegration(integration);
-		if (integration.authType === "oauth") {
-			// Redirect to OAuth flow
-			window.location.href = `/api/integrations/${integration.id}/connect`;
-		} else {
-			// Show API key dialog
-			setConnectDialogOpen(true);
+		try {
+			await fetch(`/api/integrations/${integration.id}/connect`);
+		} catch (error) {
+			console.error(`Failed to connect ${integration.id}: `, error);
+			toast.error(`Failed to connect ${integration.id}`);
 		}
 	};
 
@@ -141,7 +106,7 @@ export default function IntegrationsPage() {
 				setApiKey("");
 			}
 		} catch (error) {
-			console.error("[v0] Failed to connect integration:", error);
+			console.error("Failed to connect integration:", error);
 		}
 	};
 
@@ -153,6 +118,9 @@ export default function IntegrationsPage() {
 				`/api/integrations/${selectedIntegration.id}/disconnect`,
 				{
 					method: "POST",
+					body: JSON.stringify({
+						integrationId: selectedIntegration.id,
+					}),
 				}
 			);
 
@@ -179,198 +147,139 @@ export default function IntegrationsPage() {
 		}
 	};
 
-	const handleTestConnection = async (integrationId: string) => {
-		setIsTesting(integrationId);
-		try {
-			const response = await fetch(
-				`/api/integrations/${integrationId}/test`
-			);
-			const data = await response.json();
-			alert(
-				data.success
-					? "Connection test successful!"
-					: "Connection test failed!"
-			);
-		} catch (error) {
-			console.error("[v0] Failed to test connection:", error);
-			alert("Connection test failed!");
-		} finally {
-			setIsTesting(null);
-		}
-	};
-
-	const handleUpdateSettings = async () => {
-		if (!selectedIntegration) return;
-
-		try {
-			await fetch(
-				`/api/integrations/${selectedIntegration.id}/settings`,
-				{
-					method: "PUT",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ syncFrequency }),
-				}
-			);
-			await fetchIntegrations();
-			setSettingsDialogOpen(false);
-		} catch (error) {
-			console.error("[v0] Failed to update settings:", error);
-		}
-	};
-
-	const openSettings = async (integration: Integration) => {
-		setSelectedIntegration(integration);
-		setSyncFrequency(integration.syncFrequency || "15");
-		setSettingsDialogOpen(true);
-
-		// Fetch sync history
-		try {
-			const response = await fetch(
-				`/api/integrations/${integration.id}/history`
-			);
-			const data = await response.json();
-			setSyncHistory(data.history);
-		} catch (error) {
-			console.error("[v0] Failed to fetch sync history:", error);
-		}
-	};
-
 	const connectedIntegrations = integrations.filter(
-		(i) => i.status === "connected"
+		(i) => i.status === IntegrationStatus.active
 	);
 	const availableIntegrations = integrations.filter(
-		(i) => i.status === "disconnected"
+		(i) => i.status === IntegrationStatus.inactive
 	);
 
-	const IntegrationCard = ({ integration }: { integration: Integration }) => (
-		<Card>
-			<CardHeader>
-				<div className="flex items-start justify-between">
-					<div className="flex items-center gap-3">
-						<div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
-							<Image
-								src={integration.logo || "/placeholder.svg"}
-								alt={integration.name}
-								className="h-8 w-8"
-							/>
+	const IntegrationCard = ({ integration }: { integration: Integration }) => {
+		const name =
+			integration.type[0].toUpperCase + integration.type.slice(1);
+		const logo = getProviderLogo(integration.type);
+		return (
+			<Card>
+				<CardHeader>
+					<div className="flex items-start justify-between">
+						<div className="flex items-center gap-3">
+							<div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
+								<Image
+									src={logo}
+									alt={name}
+									className="h-8 w-8"
+								/>
+							</div>
+							<div>
+								<CardTitle className="text-lg">
+									{name}
+								</CardTitle>
+								<Badge
+									variant="outline"
+									className="mt-1 text-xs capitalize"
+								>
+									{integration.category}
+								</Badge>
+							</div>
 						</div>
-						<div>
-							<CardTitle className="text-lg">
-								{integration.name}
-							</CardTitle>
-							<Badge
-								variant="outline"
-								className="mt-1 text-xs capitalize"
-							>
-								{integration.category}
-							</Badge>
-						</div>
+						{integration.status === IntegrationStatus.active ? (
+							<CheckCircle2 className="h-5 w-5 text-green-500" />
+						) : (
+							<XCircle className="h-5 w-5 text-muted-foreground" />
+						)}
 					</div>
-					{integration.status === "connected" ? (
-						<CheckCircle2 className="h-5 w-5 text-green-500" />
-					) : (
-						<XCircle className="h-5 w-5 text-muted-foreground" />
+				</CardHeader>
+				<CardContent>
+					<p className="text-sm text-muted-foreground">
+						Lorem ipsum dolor sit amet consectetur adipisicing elit.
+						Distinctio aliquam, odio error necessitatibus sit
+						voluptatibus fuga velit amet quis repellat inventore
+						nesciunt neque, libero, hic ipsa quo quibusdam vero
+						quos!
+					</p>
+
+					{integration.status === IntegrationStatus.active && (
+						<div className="mt-4 space-y-2 text-xs">
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">
+									Last sync:
+								</span>
+								<span className="font-medium">
+									{integration.lastSyncAt?.toLocaleDateString()}
+								</span>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">
+									Category:
+								</span>
+								<span className="font-medium">
+									{integration.category}
+								</span>
+							</div>
+						</div>
 					)}
-				</div>
-			</CardHeader>
-			<CardContent>
-				<p className="text-sm text-muted-foreground">
-					{integration.description}
-				</p>
-
-				{integration.status === "connected" && (
-					<div className="mt-4 space-y-2 text-xs">
-						<div className="flex items-center justify-between">
-							<span className="text-muted-foreground">
-								Last sync:
-							</span>
-							<span className="font-medium">
-								{integration.lastSync}
-							</span>
-						</div>
-						<div className="flex items-center justify-between">
-							<span className="text-muted-foreground">
-								Frequency:
-							</span>
-							<span className="font-medium">
-								Every {integration.syncFrequency} min
-							</span>
-						</div>
-						<div className="flex items-center justify-between">
-							<span className="text-muted-foreground">
-								Next sync:
-							</span>
-							<span className="font-medium">
-								{integration.nextSync}
-							</span>
-						</div>
-					</div>
-				)}
-			</CardContent>
-			<CardFooter className="flex gap-2">
-				{integration.status === "connected" ? (
-					<>
-						<Button
-							variant="outline"
-							size="sm"
-							className="flex-1 bg-transparent"
-							onClick={() => handleManualSync(integration.id)}
-							disabled={isSyncing === integration.id}
-						>
-							{isSyncing === integration.id ? (
-								<>
-									<Loader2 className="h-4 w-4 mr-2 animate-spin" />
-									Syncing...
-								</>
-							) : (
-								<>
-									<RefreshCw className="h-4 w-4 mr-2" />
-									Sync Now
-								</>
-							)}
-						</Button>
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => openSettings(integration)}
-						>
-							<Settings className="h-4 w-4" />
-						</Button>
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => {
-								setSelectedIntegration(integration);
-								setDisconnectDialogOpen(true);
-							}}
-						>
-							Disconnect
-						</Button>
-					</>
-				) : (
-					<>
-						<Button
-							className="flex-1"
-							size="sm"
-							onClick={() => handleConnect(integration)}
-						>
-							<Plug className="h-4 w-4 mr-2" />
-							Connect
-						</Button>
-						<Button variant="outline" size="sm" asChild>
-							<Link
-								href={integration.docsUrl}
-								target="_blank"
-								rel="noopener noreferrer"
+				</CardContent>
+				<CardFooter className="flex gap-2">
+					{integration.status === IntegrationStatus.active ? (
+						<>
+							<Button
+								variant="outline"
+								size="sm"
+								className="flex-1 bg-transparent"
+								onClick={() => handleManualSync(integration.id)}
+								disabled={isSyncing === integration.id}
 							>
-								<ExternalLink className="h-4 w-4" />
-							</Link>
-						</Button>
-					</>
-				)}
-			</CardFooter>
-		</Card>
-	);
+								{isSyncing === integration.id ? (
+									<>
+										<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+										Syncing...
+									</>
+								) : (
+									<>
+										<RefreshCw className="h-4 w-4 mr-2" />
+										Sync Now
+									</>
+								)}
+							</Button>
+							<Button variant="outline" size="sm">
+								<Settings className="h-4 w-4" />
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => {
+									setSelectedIntegration(integration);
+									setDisconnectDialogOpen(true);
+								}}
+							>
+								Disconnect
+							</Button>
+						</>
+					) : (
+						<>
+							<Button
+								className="flex-1"
+								size="sm"
+								onClick={() => handleConnect(integration)}
+							>
+								<Plug className="h-4 w-4 mr-2" />
+								Connect
+							</Button>
+							<Button variant="outline" size="sm" asChild>
+								<Link
+									href={""}
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									<ExternalLink className="h-4 w-4" />
+								</Link>
+							</Button>
+						</>
+					)}
+				</CardFooter>
+			</Card>
+		);
+	};
 
 	return (
 		<div className="space-y-6">
@@ -429,7 +338,8 @@ export default function IntegrationsPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{connectedIntegrations[0]?.lastSync || "N/A"}
+							{connectedIntegrations[0]?.lastSyncAt?.toLocaleString() ||
+								"N/A"}
 						</div>
 						<p className="text-xs text-muted-foreground mt-1">
 							Most recent
@@ -509,7 +419,7 @@ export default function IntegrationsPage() {
 				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>
-							Connect {selectedIntegration?.name}
+							Connect {selectedIntegration?.type}
 						</DialogTitle>
 						<DialogDescription>
 							Enter your API key to connect this integration
@@ -528,15 +438,15 @@ export default function IntegrationsPage() {
 						</div>
 						<div className="text-xs text-muted-foreground">
 							You can find your API key in your{" "}
-							{selectedIntegration?.name} account settings.{" "}
-							<a
-								href={selectedIntegration?.docsUrl}
+							{selectedIntegration?.type} account settings.{" "}
+							<Link
+								href={"#"}
 								target="_blank"
 								rel="noopener noreferrer"
 								className="text-primary hover:underline"
 							>
 								View documentation
-							</a>
+							</Link>
 						</div>
 					</div>
 					<DialogFooter>
@@ -564,11 +474,11 @@ export default function IntegrationsPage() {
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>
-							Disconnect {selectedIntegration?.name}?
+							Disconnect {selectedIntegration?.type}?
 						</AlertDialogTitle>
 						<AlertDialogDescription>
 							This will stop syncing data from{" "}
-							{selectedIntegration?.name}. Your existing data will
+							{selectedIntegration?.type}. Your existing data will
 							be preserved, but no new data will be imported.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
@@ -580,130 +490,6 @@ export default function IntegrationsPage() {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-
-			{/* Settings Dialog */}
-			<Dialog
-				open={settingsDialogOpen}
-				onOpenChange={setSettingsDialogOpen}
-			>
-				<DialogContent className="max-w-2xl">
-					<DialogHeader>
-						<DialogTitle>
-							{selectedIntegration?.name} Settings
-						</DialogTitle>
-						<DialogDescription>
-							Configure sync frequency and view sync history
-						</DialogDescription>
-					</DialogHeader>
-					<div className="space-y-6 py-4">
-						{/* Sync Frequency */}
-						<div className="space-y-2">
-							<Label htmlFor="sync-frequency">
-								Sync Frequency
-							</Label>
-							<Select
-								value={syncFrequency}
-								onValueChange={setSyncFrequency}
-							>
-								<SelectTrigger id="sync-frequency">
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="5">
-										Every 5 minutes
-									</SelectItem>
-									<SelectItem value="15">
-										Every 15 minutes
-									</SelectItem>
-									<SelectItem value="30">
-										Every 30 minutes
-									</SelectItem>
-									<SelectItem value="60">
-										Every hour
-									</SelectItem>
-									<SelectItem value="360">
-										Every 6 hours
-									</SelectItem>
-									<SelectItem value="1440">Daily</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
-
-						{/* Test Connection */}
-						<div className="space-y-2">
-							<Label>Connection Test</Label>
-							<Button
-								variant="outline"
-								className="w-full bg-transparent"
-								onClick={() =>
-									selectedIntegration &&
-									handleTestConnection(selectedIntegration.id)
-								}
-								disabled={isTesting === selectedIntegration?.id}
-							>
-								{isTesting === selectedIntegration?.id ? (
-									<>
-										<Loader2 className="h-4 w-4 mr-2 animate-spin" />
-										Testing...
-									</>
-								) : (
-									<>
-										<Plug className="h-4 w-4 mr-2" />
-										Test Connection
-									</>
-								)}
-							</Button>
-						</div>
-
-						{/* Sync History */}
-						<div className="space-y-2">
-							<Label>Recent Sync History</Label>
-							<div className="border rounded-lg divide-y max-h-48 overflow-y-auto">
-								{syncHistory.length > 0 ? (
-									syncHistory.map((sync) => (
-										<div
-											key={sync.id}
-											className="p-3 flex items-center justify-between text-sm"
-										>
-											<div className="flex items-center gap-2">
-												{sync.status === "success" ? (
-													<CheckCircle2 className="h-4 w-4 text-green-500" />
-												) : (
-													<XCircle className="h-4 w-4 text-red-500" />
-												)}
-												<span className="text-muted-foreground">
-													{sync.timestamp}
-												</span>
-											</div>
-											<div className="flex items-center gap-4 text-xs text-muted-foreground">
-												<span>
-													{sync.itemsSynced} items
-												</span>
-												<span>{sync.duration}</span>
-											</div>
-										</div>
-									))
-								) : (
-									<div className="p-6 text-center text-sm text-muted-foreground">
-										No sync history available
-									</div>
-								)}
-							</div>
-						</div>
-					</div>
-					<DialogFooter>
-						<Button
-							variant="outline"
-							onClick={() => setSettingsDialogOpen(false)}
-						>
-							Cancel
-						</Button>
-						<Button onClick={handleUpdateSettings}>
-							Save Changes
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
 		</div>
 	);
 }
