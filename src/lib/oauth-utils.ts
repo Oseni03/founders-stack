@@ -22,7 +22,7 @@ export const OAuthProviders = [
 			"groups:history",
 			"groups:read",
 		],
-		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/integrations/slack`,
+		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/slack`,
 	},
 ];
 
