@@ -13,7 +13,7 @@ export async function GET(
 		const data = await auth.api.oAuth2LinkAccount({
 			body: {
 				providerId,
-				callbackURL: `/dashboard/integrations/${providerId}`,
+				callbackURL: `/api/auth/oauth2/callback/${providerId}`,
 			},
 			// This endpoint requires session cookies.
 			headers: await headers(),
