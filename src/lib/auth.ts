@@ -64,11 +64,13 @@ export const auth = betterAuth({
 				"team:read",
 				"groups:read",
 			],
+			// redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/integrations/slack`,
 		},
 		github: {
 			clientId: process.env.GITHUB_CLIENT_ID as string,
 			clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
 			scope: ["repo", "read:discussion", "project"],
+			// redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/code`,
 		},
 	},
 	database: prismaAdapter(prisma, {

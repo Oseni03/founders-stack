@@ -13,6 +13,7 @@ export async function GET(
 		const data = await auth.api.linkSocialAccount({
 			body: {
 				provider: providerId,
+				callbackURL: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/code`,
 			},
 			// This endpoint requires session cookies.
 			headers: await headers(),
