@@ -56,6 +56,7 @@ export default function IntegrationsPage() {
 			if (resp.ok) {
 				const data = await resp.json();
 				if (data.url) {
+					toast.success(`Redirecting to ${integrationId}...`);
 					window.location.href = data.url;
 				}
 			} else {

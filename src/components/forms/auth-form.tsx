@@ -98,10 +98,12 @@ const AuthContent = ({ className, ...props }: React.ComponentProps<"div">) => {
 								<div className="flex size-8 items-center justify-center rounded-md">
 									<GalleryVerticalEnd className="size-6" />
 								</div>
-								<span className="sr-only">Noteapp</span>
+								<span className="sr-only">
+									Founders&rsquo; Stack
+								</span>
 							</Link>
 							<h1 className="text-xl font-bold">
-								Welcome to Noteapp.
+								Welcome to Founders&rsquo; Stack.
 							</h1>
 							{isLogin ? (
 								<div className="text-center text-sm">
