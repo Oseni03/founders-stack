@@ -1,26 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-	Card,
-	CardContent,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -32,32 +14,21 @@ import {
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-	CheckCircle2,
-	XCircle,
-	RefreshCw,
-	Settings,
-	Plug,
-	Clock,
-	AlertCircle,
-	ExternalLink,
-	Loader2,
-} from "lucide-react";
-import Link from "next/link";
-import Image from "next/image";
+import { CheckCircle2, Plug, Clock, AlertCircle } from "lucide-react";
 import { Integration, IntegrationStatus } from "@prisma/client";
 import { toast } from "sonner";
-import { getProviderLogo } from "@/lib/oauth-utils";
+import { INTEGRATIONS } from "@/lib/oauth-utils";
+import {
+	IntegrationCard,
+	UnconnectedIntegrationCard,
+} from "@/components/integrations/integration-card";
 
 export default function IntegrationsPage() {
 	const [integrations, setIntegrations] = useState<Integration[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
-	const [connectDialogOpen, setConnectDialogOpen] = useState(false);
 	const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
 	const [selectedIntegration, setSelectedIntegration] =
 		useState<Integration | null>(null);
-	const [apiKey, setApiKey] = useState("");
-	const [isSyncing, setIsSyncing] = useState<string | null>(null);
 
 	useEffect(() => {
 		fetchIntegrations();
@@ -77,37 +48,18 @@ export default function IntegrationsPage() {
 		}
 	};
 
-	const handleConnect = async (integration: Integration) => {
-		setSelectedIntegration(integration);
+	const handleConnect = async (integrationId: string) => {
 		try {
-			await fetch(`/api/integrations/${integration.id}/connect`);
+			await fetch(`/api/integrations/${integrationId}/connect`);
 		} catch (error) {
-			console.error(`Failed to connect ${integration.id}: `, error);
-			toast.error(`Failed to connect ${integration.id}`);
+			console.error(`Failed to connect ${integrationId}: `, error);
+			toast.error(`Failed to connect ${integrationId}`);
 		}
 	};
 
-	const handleConnectWithApiKey = async () => {
-		if (!selectedIntegration) return;
-
-		try {
-			const response = await fetch(
-				`/api/integrations/${selectedIntegration.id}/connect`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ apiKey }),
-				}
-			);
-
-			if (response.ok) {
-				await fetchIntegrations();
-				setConnectDialogOpen(false);
-				setApiKey("");
-			}
-		} catch (error) {
-			console.error("Failed to connect integration:", error);
-		}
+	const onDisconnect = (integration: Integration) => {
+		setSelectedIntegration(integration);
+		setDisconnectDialogOpen(true);
 	};
 
 	const handleDisconnect = async () => {
@@ -133,153 +85,9 @@ export default function IntegrationsPage() {
 		}
 	};
 
-	const handleManualSync = async (integrationId: string) => {
-		setIsSyncing(integrationId);
-		try {
-			await fetch(`/api/integrations/${integrationId}/sync`, {
-				method: "POST",
-			});
-			await fetchIntegrations();
-		} catch (error) {
-			console.error("[v0] Failed to sync integration:", error);
-		} finally {
-			setIsSyncing(null);
-		}
-	};
-
 	const connectedIntegrations = integrations.filter(
 		(i) => i.status === IntegrationStatus.active
 	);
-	const availableIntegrations = integrations.filter(
-		(i) => i.status === IntegrationStatus.inactive
-	);
-
-	const IntegrationCard = ({ integration }: { integration: Integration }) => {
-		const name =
-			integration.type[0].toUpperCase + integration.type.slice(1);
-		const logo = getProviderLogo(integration.type);
-		return (
-			<Card>
-				<CardHeader>
-					<div className="flex items-start justify-between">
-						<div className="flex items-center gap-3">
-							<div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
-								<Image
-									src={logo}
-									alt={name}
-									className="h-8 w-8"
-								/>
-							</div>
-							<div>
-								<CardTitle className="text-lg">
-									{name}
-								</CardTitle>
-								<Badge
-									variant="outline"
-									className="mt-1 text-xs capitalize"
-								>
-									{integration.category}
-								</Badge>
-							</div>
-						</div>
-						{integration.status === IntegrationStatus.active ? (
-							<CheckCircle2 className="h-5 w-5 text-green-500" />
-						) : (
-							<XCircle className="h-5 w-5 text-muted-foreground" />
-						)}
-					</div>
-				</CardHeader>
-				<CardContent>
-					<p className="text-sm text-muted-foreground">
-						Lorem ipsum dolor sit amet consectetur adipisicing elit.
-						Distinctio aliquam, odio error necessitatibus sit
-						voluptatibus fuga velit amet quis repellat inventore
-						nesciunt neque, libero, hic ipsa quo quibusdam vero
-						quos!
-					</p>
-
-					{integration.status === IntegrationStatus.active && (
-						<div className="mt-4 space-y-2 text-xs">
-							<div className="flex items-center justify-between">
-								<span className="text-muted-foreground">
-									Last sync:
-								</span>
-								<span className="font-medium">
-									{integration.lastSyncAt?.toLocaleDateString()}
-								</span>
-							</div>
-							<div className="flex items-center justify-between">
-								<span className="text-muted-foreground">
-									Category:
-								</span>
-								<span className="font-medium">
-									{integration.category}
-								</span>
-							</div>
-						</div>
-					)}
-				</CardContent>
-				<CardFooter className="flex gap-2">
-					{integration.status === IntegrationStatus.active ? (
-						<>
-							<Button
-								variant="outline"
-								size="sm"
-								className="flex-1 bg-transparent"
-								onClick={() => handleManualSync(integration.id)}
-								disabled={isSyncing === integration.id}
-							>
-								{isSyncing === integration.id ? (
-									<>
-										<Loader2 className="h-4 w-4 mr-2 animate-spin" />
-										Syncing...
-									</>
-								) : (
-									<>
-										<RefreshCw className="h-4 w-4 mr-2" />
-										Sync Now
-									</>
-								)}
-							</Button>
-							<Button variant="outline" size="sm">
-								<Settings className="h-4 w-4" />
-							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => {
-									setSelectedIntegration(integration);
-									setDisconnectDialogOpen(true);
-								}}
-							>
-								Disconnect
-							</Button>
-						</>
-					) : (
-						<>
-							<Button
-								className="flex-1"
-								size="sm"
-								onClick={() => handleConnect(integration)}
-							>
-								<Plug className="h-4 w-4 mr-2" />
-								Connect
-							</Button>
-							<Button variant="outline" size="sm" asChild>
-								<Link
-									href={""}
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									<ExternalLink className="h-4 w-4" />
-								</Link>
-							</Button>
-						</>
-					)}
-				</CardFooter>
-			</Card>
-		);
-	};
 
 	return (
 		<div className="space-y-6">
@@ -321,7 +129,7 @@ export default function IntegrationsPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{availableIntegrations.length}
+							{INTEGRATIONS.length}
 						</div>
 						<p className="text-xs text-muted-foreground mt-1">
 							Ready to connect
@@ -355,7 +163,7 @@ export default function IntegrationsPage() {
 						Connected ({connectedIntegrations.length})
 					</TabsTrigger>
 					<TabsTrigger value="available">
-						Available ({availableIntegrations.length})
+						Available ({INTEGRATIONS.length})
 					</TabsTrigger>
 				</TabsList>
 
@@ -372,6 +180,9 @@ export default function IntegrationsPage() {
 								<IntegrationCard
 									key={integration.id}
 									integration={integration}
+									fetchIntegrations={fetchIntegrations}
+									handleConnect={handleConnect}
+									onDisconnect={onDisconnect}
 								/>
 							))}
 						</div>
@@ -400,71 +211,17 @@ export default function IntegrationsPage() {
 						</div>
 					) : (
 						<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-							{availableIntegrations.map((integration) => (
-								<IntegrationCard
+							{INTEGRATIONS.map((integration) => (
+								<UnconnectedIntegrationCard
 									key={integration.id}
 									integration={integration}
+									handleConnect={handleConnect}
 								/>
 							))}
 						</div>
 					)}
 				</TabsContent>
 			</Tabs>
-
-			{/* Connect Dialog (API Key) */}
-			<Dialog
-				open={connectDialogOpen}
-				onOpenChange={setConnectDialogOpen}
-			>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>
-							Connect {selectedIntegration?.type}
-						</DialogTitle>
-						<DialogDescription>
-							Enter your API key to connect this integration
-						</DialogDescription>
-					</DialogHeader>
-					<div className="space-y-4 py-4">
-						<div className="space-y-2">
-							<Label htmlFor="api-key">API Key</Label>
-							<Input
-								id="api-key"
-								type="password"
-								placeholder="Enter your API key"
-								value={apiKey}
-								onChange={(e) => setApiKey(e.target.value)}
-							/>
-						</div>
-						<div className="text-xs text-muted-foreground">
-							You can find your API key in your{" "}
-							{selectedIntegration?.type} account settings.{" "}
-							<Link
-								href={"#"}
-								target="_blank"
-								rel="noopener noreferrer"
-								className="text-primary hover:underline"
-							>
-								View documentation
-							</Link>
-						</div>
-					</div>
-					<DialogFooter>
-						<Button
-							variant="outline"
-							onClick={() => setConnectDialogOpen(false)}
-						>
-							Cancel
-						</Button>
-						<Button
-							onClick={handleConnectWithApiKey}
-							disabled={!apiKey}
-						>
-							Connect
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
 
 			{/* Disconnect Dialog */}
 			<AlertDialog

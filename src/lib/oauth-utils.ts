@@ -1,4 +1,4 @@
-import { IntegrationCategory } from "@prisma/client";
+import { IntegrationCategory, IntegrationStatus } from "@prisma/client";
 
 export const OAuthProviders = [
 	{
@@ -23,6 +23,20 @@ export const OAuthProviders = [
 			"groups:read",
 		],
 		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/integrations/slack`,
+	},
+];
+
+export const INTEGRATIONS = [
+	{
+		id: "slack",
+		name: "Slack",
+		description: "lorem",
+		category: "communication" as IntegrationCategory,
+		logo: "/slack-logo.png",
+		status: "inactive" as IntegrationStatus,
+		authType: "oauth",
+		lastSyncAt: new Date(),
+		docsUrl: "https://api.slack.com/",
 	},
 ];
 
