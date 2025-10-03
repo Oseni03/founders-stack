@@ -14,7 +14,7 @@ export const OAuthProviders = [
 			"channels:read",
 			"groups:history",
 			"im:history",
-			"identity.basic",
+			"im:read",
 			"reactions:write",
 			"files:read",
 			"users:read",
@@ -30,7 +30,13 @@ export const OAuthProviders = [
 		authorizationUrl: "https://github.com/login/oauth/authorize",
 		tokenUrl: "https://github.com/login/oauth/access_token",
 		userInfoUrl: "https://api.github.com/user",
-		scopes: ["repo", "read:discussion", "project"],
+		scopes: [
+			"repo",
+			"read:discussion",
+			"project",
+			"read:user",
+			"user:email",
+		],
 		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/github`,
 	},
 ];
