@@ -10,7 +10,7 @@ export async function GET(
 	try {
 		// OAuth flow - redirect to provider's authorization URL
 
-		const data = await auth.api.oAuth2LinkAccount({
+		await auth.api.oAuth2LinkAccount({
 			body: {
 				providerId,
 				callbackURL: `/dashboard/integrations/${providerId}`,
@@ -19,7 +19,7 @@ export async function GET(
 			headers: await headers(),
 		});
 
-		return NextResponse.redirect(data.url);
+		return NextResponse.json({ success: true });
 	} catch (error) {
 		console.error(`Failed to connect ${providerId}`, error);
 		return NextResponse.json(
