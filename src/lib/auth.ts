@@ -205,9 +205,9 @@ export const auth = betterAuth({
 				});
 			},
 		}),
-		// genericOAuth({
-		// 	config: OAuthProviders,
-		// }),
+		genericOAuth({
+			config: OAuthProviders,
+		}),
 	],
 });
 
