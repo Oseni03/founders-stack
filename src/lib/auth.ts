@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import {
@@ -21,7 +22,6 @@ import { createFreeSubscription } from "@/server/subscription";
 import { sendEmail } from "./resend";
 import OrganizationInvitationEmail from "@/components/emails/organization-invitation-email";
 import MagicLinkEmail from "@/components/emails/magic-link-email";
-import { OAuthProviders } from "./oauth-utils";
 import { createIntegration } from "@/server/integrations";
 
 const polarClient = new Polar({
@@ -47,30 +47,6 @@ export const auth = betterAuth({
 		google: {
 			clientId: process.env.GOOGLE_CLIENT_ID as string,
 			clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-		},
-		slack: {
-			clientId: process.env.SLACK_CLIENT_ID as string,
-			clientSecret: process.env.SLACK_CLIENT_SECRET as string,
-			scope: [
-				"chat:write",
-				"channels:history",
-				"channels:read",
-				"groups:history",
-				"im:history",
-				"identity.basic",
-				"reactions:write",
-				"files:read",
-				"users:read",
-				"team:read",
-				"groups:read",
-			],
-			redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/slack`,
-		},
-		github: {
-			clientId: process.env.GITHUB_CLIENT_ID!,
-			clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-			redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/github`,
-			scope: ["repo", "read:discussion", "project"],
 		},
 	},
 	database: prismaAdapter(prisma, {
@@ -206,7 +182,47 @@ export const auth = betterAuth({
 			},
 		}),
 		genericOAuth({
-			config: OAuthProviders,
+			config: [
+				{
+					providerId: "slack",
+					clientId: process.env.SLACK_CLIENT_ID!,
+					clientSecret: process.env.SLACK_CLIENT_SECRET!,
+					authorizationUrl: "https://slack.com/oauth/v2/authorize",
+					tokenUrl: "https://slack.com/api/oauth.v2.access",
+					userInfoUrl: "https://slack.com/api/users.info",
+					scopes: [
+						"chat:write",
+						"channels:history",
+						"channels:read",
+						"groups:history",
+						"im:history",
+						"identity.basic",
+						"reactions:write",
+						"files:read",
+						"users:read",
+						"team:read",
+						"groups:read",
+					],
+					redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/slack`,
+				},
+				{
+					providerId: "github",
+					clientId: process.env.GITHUB_CLIENT_ID!,
+					clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+					authorizationUrl:
+						"https://github.com/login/oauth/authorize",
+					tokenUrl: "https://github.com/login/oauth/access_token",
+					userInfoUrl: "https://api.github.com/user",
+					scopes: [
+						"repo",
+						"read:discussion",
+						"project",
+						"read:user",
+						"user:email",
+					],
+					redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/github`,
+				},
+			],
 		}),
 	],
 });
