@@ -50,7 +50,17 @@ export default function IntegrationsPage() {
 
 	const handleConnect = async (integrationId: string) => {
 		try {
-			await fetch(`/api/integrations/${integrationId}/connect`);
+			const resp = await fetch(
+				`/api/integrations/${integrationId}/connect`
+			);
+			if (resp.ok) {
+				const data = await resp.json();
+				if (data.url) {
+					window.location.href = data.url;
+				}
+			} else {
+				toast.error(`Failed to connect ${integrationId}`);
+			}
 		} catch (error) {
 			console.error(`Failed to connect ${integrationId}: `, error);
 			toast.error(`Failed to connect ${integrationId}`);

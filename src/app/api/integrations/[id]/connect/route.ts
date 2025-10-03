@@ -19,7 +19,7 @@ export async function GET(
 			headers: await headers(),
 		});
 
-		return NextResponse.redirect(data.url);
+		return NextResponse.json(data);
 	} catch (error) {
 		console.error(`Failed to connect ${providerId}`, error);
 		return NextResponse.json(

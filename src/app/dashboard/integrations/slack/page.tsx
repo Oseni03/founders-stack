@@ -117,9 +117,18 @@ export default function SlackIntegrationPage() {
 
 	const handleConnect = async () => {
 		try {
-			await fetch(`/api/integrations/slack/connect`);
+			const resp = await fetch(`/api/integrations/slack/connect`);
+			if (resp.ok) {
+				const data = await resp.json();
+				if (data.url) {
+					window.location.href = data.url;
+				}
+			} else {
+				toast.error(`Failed to connect Slack`);
+			}
 		} catch (error) {
 			console.error("Failed to connect slack:", error);
+			toast.error(`Failed to connect Slack`);
 		}
 	};
 
