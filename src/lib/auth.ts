@@ -209,6 +209,17 @@ export const auth = betterAuth({
 						"users:read",
 					],
 					redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/slack`,
+					mapProfileToUser: async (profile) => {
+						console.log("Slack OAuth profile: ", profile);
+
+						return {
+							id: profile.id.toString(),
+							email: profile.email,
+							emailVerified: !!profile.email,
+							name: profile.name || profile.login,
+							image: profile.avatar_url,
+						};
+					},
 				},
 				{
 					providerId: "github",
