@@ -224,80 +224,80 @@ export const auth = betterAuth({
 
 					// 4. Custom User Info Getter
 					// FIXED: Properly typed to match OAuth2Tokens interface
-					getUserInfo: async (tokens: {
-						tokenType?: string;
-						accessToken?: string;
-						refreshToken?: string;
-						accessTokenExpiresAt?: Date;
-						refreshTokenExpiresAt?: Date;
-						scopes?: string[];
-						idToken?: string;
-						// Slack-specific fields from token response (add as custom properties)
-						authed_user?: { id: string };
-						[key: string]: any; // Allow additional Slack-specific fields
-					}) => {
-						// Extract Slack user ID from token response
-						// Slack returns 'authed_user.id' in the oauth.v2.access response
-						const userId = tokens.authed_user?.id;
-						const accessToken = tokens.accessToken;
+					// getUserInfo: async (tokens: {
+					// 	tokenType?: string;
+					// 	accessToken?: string;
+					// 	refreshToken?: string;
+					// 	accessTokenExpiresAt?: Date;
+					// 	refreshTokenExpiresAt?: Date;
+					// 	scopes?: string[];
+					// 	idToken?: string;
+					// 	// Slack-specific fields from token response (add as custom properties)
+					// 	authed_user?: { id: string };
+					// 	[key: string]: any; // Allow additional Slack-specific fields
+					// }) => {
+					// 	// Extract Slack user ID from token response
+					// 	// Slack returns 'authed_user.id' in the oauth.v2.access response
+					// 	const userId = tokens.authed_user?.id;
+					// 	const accessToken = tokens.accessToken;
 
-						if (!userId || !accessToken) {
-							console.error(
-								"Missing userId or accessToken in Slack token response:",
-								tokens
-							);
-							return null;
-						}
+					// 	if (!userId || !accessToken) {
+					// 		console.error(
+					// 			"Missing userId or accessToken in Slack token response:",
+					// 			tokens
+					// 		);
+					// 		return null;
+					// 	}
 
-						try {
-							const userResponse = await fetch(
-								`https://slack.com/api/users.profile.get?user=${userId}`,
-								{
-									method: "GET",
-									headers: {
-										Authorization: `Bearer ${accessToken}`,
-										"Content-Type":
-											"application/json; charset=utf-8",
-									},
-								}
-							);
+					// 	try {
+					// 		const userResponse = await fetch(
+					// 			`https://slack.com/api/users.profile.get?user=${userId}`,
+					// 			{
+					// 				method: "GET",
+					// 				headers: {
+					// 					Authorization: `Bearer ${accessToken}`,
+					// 					"Content-Type":
+					// 						"application/json; charset=utf-8",
+					// 				},
+					// 			}
+					// 		);
 
-							if (!userResponse.ok) {
-								console.error(
-									"Slack users.info API error:",
-									userResponse.status
-								);
-								return null;
-							}
+					// 		if (!userResponse.ok) {
+					// 			console.error(
+					// 				"Slack users.info API error:",
+					// 				userResponse.status
+					// 			);
+					// 			return null;
+					// 		}
 
-							const data = await userResponse.json();
+					// 		const data = await userResponse.json();
 
-							// Slack API returns { ok: true/false, user: {...} }
-							if (!data.ok) {
-								console.error(
-									"Slack API returned error:",
-									data.error
-								);
-								return null;
-							}
+					// 		// Slack API returns { ok: true/false, user: {...} }
+					// 		if (!data.ok) {
+					// 			console.error(
+					// 				"Slack API returned error:",
+					// 				data.error
+					// 			);
+					// 			return null;
+					// 		}
 
-							const profile = data.profile;
+					// 		const profile = data.profile;
 
-							return {
-								id: "",
-								name: profile.real_name_normalized,
-								email: profile.email,
-								emailVerified: true,
-								image: profile.image_32,
-							};
-						} catch (error) {
-							console.error(
-								"Error fetching Slack user info:",
-								error
-							);
-							return null;
-						}
-					},
+					// 		return {
+					// 			id: "",
+					// 			name: profile.real_name_normalized,
+					// 			email: profile.email,
+					// 			emailVerified: true,
+					// 			image: profile.image_32,
+					// 		};
+					// 	} catch (error) {
+					// 		console.error(
+					// 			"Error fetching Slack user info:",
+					// 			error
+					// 		);
+					// 		return null;
+					// 	}
+					// },
 
 					// 5. Data Mapping: Map Slack user data to your user model
 					mapProfileToUser: (profile) => {
