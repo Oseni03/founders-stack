@@ -229,13 +229,16 @@ export const auth = betterAuth({
 						"https://github.com/login/oauth/authorize",
 					tokenUrl: "https://github.com/login/oauth/access_token",
 					userInfoUrl: "https://api.github.com/user",
-					// scopes: [
-					// 	"repo",
-					// 	"read:discussion",
-					// 	"project",
-					// 	"read:user",
-					// 	"user:email",
-					// ],
+					scopes: [
+						"repo",
+						"read:discussion",
+						"project",
+						"read:user",
+						"user:email",
+					],
+					authorizationUrlParams: {
+						scope: "repo read:discussion project read:user user:email",
+					},
 					redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/github`,
 					mapProfileToUser: async (profile) => {
 						console.log("GitHub OAuth profile: ", profile);
