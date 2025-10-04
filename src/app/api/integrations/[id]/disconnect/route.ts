@@ -7,10 +7,8 @@ export async function POST(
 	request: Request,
 	{ params }: { params: Promise<{ id: string }> }
 ) {
-	const { id: providerId } = await params;
+	const { id: integrationId } = await params;
 	try {
-		const { integrationId } = await request.json();
-
 		const integration = await prisma.integration.findFirst({
 			where: { id: integrationId },
 		});
@@ -23,7 +21,10 @@ export async function POST(
 		}
 
 		await auth.api.unlinkAccount({
-			body: { providerId, accountId: integration.accountId },
+			body: {
+				providerId: integration.type,
+				accountId: integration.accountId,
+			},
 			headers: await headers(),
 		});
 
@@ -31,7 +32,7 @@ export async function POST(
 	} catch (error) {
 		console.error("Error disconnecting/unlinking Integration: ", error);
 		return NextResponse.json(
-			{ error: `Failed to fetch disconnect ${providerId}` },
+			{ error: `Failed to disconnect integration` },
 			{ status: 500 }
 		);
 	}

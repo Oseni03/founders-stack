@@ -77,22 +77,24 @@ export default function IntegrationsPage() {
 		if (!selectedIntegration) return;
 
 		try {
+			toast.loading(`Unlinking ${selectedIntegration.type}...`);
 			const response = await fetch(
-				`/api/integrations/${selectedIntegration.id}/disconnect`,
-				{
-					method: "POST",
-					body: JSON.stringify({
-						integrationId: selectedIntegration.id,
-					}),
-				}
+				`/api/integrations/${selectedIntegration.id}/disconnect`
 			);
 
+			toast.dismiss();
 			if (response.ok) {
-				await fetchIntegrations();
+				setIntegrations((prev) =>
+					prev.filter((item) => item.id !== selectedIntegration.id)
+				);
+				// await fetchIntegrations();
 				setDisconnectDialogOpen(false);
+				toast.success("Integration disconnected successfully!");
 			}
 		} catch (error) {
-			console.error("[v0] Failed to disconnect integration:", error);
+			console.error("Failed to disconnect integration:", error);
+			toast.dismiss();
+			toast.error("Failed to disconnect integration");
 		}
 	};
 
