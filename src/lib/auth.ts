@@ -108,7 +108,7 @@ export const auth = betterAuth({
 		accountLinking: {
 			enabled: true,
 			allowDifferentEmails: true,
-			allowUnlinkingAll: false,
+			allowUnlinkingAll: true,
 		},
 	},
 	plugins: [
@@ -258,6 +258,7 @@ export const auth = betterAuth({
 									(e: any) => e.primary && e.verified
 								);
 								email = primaryEmail?.email || emails[0]?.email;
+								console.log("Github email generated: ", email);
 							}
 						}
 

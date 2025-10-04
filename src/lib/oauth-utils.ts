@@ -89,6 +89,8 @@ export const getIntegrationCategory = (providerId: string) => {
 	switch (providerId) {
 		case "slack":
 			return IntegrationCategory.communication;
+		case "github":
+			return IntegrationCategory.version_control;
 		default:
 			return IntegrationCategory.other;
 	}

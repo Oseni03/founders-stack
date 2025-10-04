@@ -32,7 +32,6 @@ export async function createIntegration(account: Account) {
 		where: {
 			type: account.providerId,
 			organizationId: activeOrg.id,
-			category,
 			accountId: account.id,
 		},
 		create: {

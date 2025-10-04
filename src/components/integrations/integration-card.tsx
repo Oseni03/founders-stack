@@ -37,7 +37,7 @@ export const IntegrationCard = ({
 }) => {
 	const [isSyncing, setIsSyncing] = useState<string | null>(null);
 
-	const name = integration.type[0].toUpperCase + integration.type.slice(1);
+	const name = integration.type[0].toUpperCase() + integration.type.slice(1);
 	const logo = getProviderLogo(integration.type);
 
 	const handleManualSync = async (integrationId: string) => {
