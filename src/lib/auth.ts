@@ -188,9 +188,14 @@ export const auth = betterAuth({
 					providerId: "slack",
 					clientId: process.env.SLACK_CLIENT_ID!,
 					clientSecret: process.env.SLACK_CLIENT_SECRET!,
+
+					// 1. Authorization URL: Send user here
 					authorizationUrl: "https://slack.com/oauth/v2/authorize",
+
+					// 2. Token URL: Exchange code for token
 					tokenUrl: "https://slack.com/api/oauth.v2.access",
-					userInfoUrl: "https://slack.com/api/users.info",
+
+					// 3. Scopes: Define required permissions
 					scopes: [
 						"calls:read",
 						"channels:history",
@@ -208,16 +213,109 @@ export const auth = betterAuth({
 						"mpim:history",
 						"users:read",
 					],
-					redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/slack`,
-					mapProfileToUser: async (profile) => {
-						console.log("Slack OAuth profile: ", profile);
+
+					// 4. Custom User Info Getter
+					// FIXED: Properly typed to match OAuth2Tokens interface
+					getUserInfo: async (tokens: {
+						tokenType?: string;
+						accessToken?: string;
+						refreshToken?: string;
+						accessTokenExpiresAt?: Date;
+						refreshTokenExpiresAt?: Date;
+						scopes?: string[];
+						idToken?: string;
+						// Slack-specific fields from token response (add as custom properties)
+						authed_user?: { id: string };
+						[key: string]: any; // Allow additional Slack-specific fields
+					}) => {
+						// Extract Slack user ID from token response
+						// Slack returns 'authed_user.id' in the oauth.v2.access response
+						const userId = tokens.authed_user?.id;
+						const accessToken = tokens.accessToken;
+
+						if (!userId || !accessToken) {
+							console.error(
+								"Missing userId or accessToken in Slack token response:",
+								tokens
+							);
+							return null;
+						}
+
+						try {
+							const userResponse = await fetch(
+								`https://slack.com/api/users.info?user=${userId}`,
+								{
+									method: "GET",
+									headers: {
+										Authorization: `Bearer ${accessToken}`,
+										"Content-Type":
+											"application/json; charset=utf-8",
+									},
+								}
+							);
+
+							if (!userResponse.ok) {
+								console.error(
+									"Slack users.info API error:",
+									userResponse.status
+								);
+								return null;
+							}
+
+							const data = await userResponse.json();
+
+							// Slack API returns { ok: true/false, user: {...} }
+							if (!data.ok) {
+								console.error(
+									"Slack API returned error:",
+									data.error
+								);
+								return null;
+							}
+
+							return data;
+						} catch (error) {
+							console.error(
+								"Error fetching Slack user info:",
+								error
+							);
+							return null;
+						}
+					},
+
+					// 5. Data Mapping: Map Slack user data to your user model
+					mapProfileToUser: (profile) => {
+						// Handle null response from getUserInfo
+						if (!profile || !profile.user) {
+							throw new Error("Invalid profile data from Slack");
+						}
+
+						const user = profile.user;
+						const userProfile = user.profile;
+
+						// Throw error if essential data is missing
+						if (!user.id) {
+							throw new Error(
+								"Missing user ID from Slack profile"
+							);
+						}
 
 						return {
-							id: profile.id.toString(),
-							email: profile.email,
-							emailVerified: !!profile.email,
-							name: profile.name || profile.login,
-							image: profile.avatar_url,
+							id: user.id,
+							email:
+								userProfile?.email || `${user.id}@slack.local`,
+							emailVerified: Boolean(
+								user.is_email_confirmed || userProfile?.email
+							),
+							name:
+								userProfile?.real_name ||
+								userProfile?.display_name ||
+								user.name ||
+								"Slack User",
+							image:
+								userProfile?.image_512 ||
+								userProfile?.image_192 ||
+								null,
 						};
 					},
 				},
