@@ -9,11 +9,32 @@ export async function GET(
 	const { id: providerId } = await params;
 	try {
 		// OAuth flow - redirect to provider's authorization URL
+		let scopes;
+		if (providerId === "slack") {
+			scopes = [
+				"calls:read",
+				"channels:history",
+				"channels:read",
+				"conversations.connect:read",
+				"groups:read",
+				"reminders:read",
+				"im:read",
+				"mpim:read",
+				"metadata.message:read",
+				"pins:read",
+				"team:read",
+				"users.profile:read",
+				"im:history",
+				"mpim:history",
+				"users:read",
+			];
+		}
 
 		const data = await auth.api.oAuth2LinkAccount({
 			body: {
 				providerId: providerId,
 				callbackURL: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/integrations`,
+				scopes,
 			},
 			// This endpoint requires session cookies.
 			headers: await headers(),
