@@ -79,7 +79,10 @@ export default function IntegrationsPage() {
 		try {
 			toast.loading(`Unlinking ${selectedIntegration.type}...`);
 			const response = await fetch(
-				`/api/integrations/${selectedIntegration.id}/disconnect`
+				`/api/integrations/${selectedIntegration.id}/disconnect`,
+				{
+					method: "POST",
+				}
 			);
 
 			toast.dismiss();
