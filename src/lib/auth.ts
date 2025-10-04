@@ -32,7 +32,7 @@ const polarClient = new Polar({
 });
 
 export const auth = betterAuth({
-	appName: "Founders' stack",
+	appName: "Founders' Stack",
 	baseURL: process.env.NEXT_PUBLIC_APP_URL,
 	session: {
 		cookieCache: {
@@ -183,7 +183,83 @@ export const auth = betterAuth({
 			},
 		}),
 		genericOAuth({
-			config: OAuthProviders,
+			config: [
+				{
+					providerId: "slack",
+					clientId: process.env.SLACK_CLIENT_ID!,
+					clientSecret: process.env.SLACK_CLIENT_SECRET!,
+					authorizationUrl: "https://slack.com/oauth/v2/authorize",
+					tokenUrl: "https://slack.com/api/oauth.v2.access",
+					userInfoUrl: "https://slack.com/api/users.info",
+					scopes: [
+						"calls:read",
+						"channels:history",
+						"channels:read",
+						"conversations.connect:read",
+						"groups:read",
+						"reminders:read",
+						"im:read",
+						"mpim:read",
+						"metadata.message:read",
+						"pins:read",
+						"team:read",
+						"users.profile:read",
+						"im:history",
+						"mpim:history",
+						"users:read",
+					],
+					redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/slack`,
+				},
+				{
+					providerId: "github",
+					clientId: process.env.GITHUB_CLIENT_ID!,
+					clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+					authorizationUrl:
+						"https://github.com/login/oauth/authorize",
+					tokenUrl: "https://github.com/login/oauth/access_token",
+					userInfoUrl: "https://api.github.com/user",
+					// scopes: [
+					// 	"repo",
+					// 	"read:discussion",
+					// 	"project",
+					// 	"read:user",
+					// 	"user:email",
+					// ],
+					redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/github`,
+					mapProfileToUser: async (profile) => {
+						console.log("GitHub OAuth profile: ", profile);
+						let email = profile.email;
+
+						if (!email) {
+							const emailsResponse = await fetch(
+								"https://api.github.com/user/emails",
+								{
+									headers: {
+										Authorization: `Bearer ${profile.access_token}`,
+										Accept: "application/vnd.github.v3+json",
+									},
+								}
+							);
+
+							if (emailsResponse.ok) {
+								const emails = await emailsResponse.json();
+								const primaryEmail = emails.find(
+									(e: any) => e.primary && e.verified
+								);
+								email = primaryEmail?.email || emails[0]?.email;
+							}
+						}
+
+						return {
+							id: profile.id.toString(),
+							email: email || `${profile.login}@github.local`,
+							emailVerified: !!profile.email,
+							name: profile.name || profile.login,
+							image: profile.avatar_url,
+						};
+					},
+				},
+			],
 		}),
 	],
 });
