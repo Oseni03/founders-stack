@@ -23,6 +23,7 @@ export const OAuthProviders = [
 			"users.profile:read",
 			"im:history",
 			"mpim:history",
+			"users:read",
 		],
 		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/slack`,
 	},
