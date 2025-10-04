@@ -194,32 +194,33 @@ export const auth = betterAuth({
 					// 2. Token URL: Exchange code for token
 					tokenUrl: "https://slack.com/api/oauth.v2.access",
 
-					// authorizationUrlParams: {
-					// 	// BOT SCOPES: Workspace-level permissions (access via bot token xoxb-)
-					// 	scope: [
-					// 		"calls:read", // Read workspace call information
-					// 		"channels:history", // Read messages in public channels
-					// 		"channels:read", // View basic public channel info
-					// 		// "conversations.connect:read", // ❌ REMOVE: Slack Connect feature - rarely needed
-					// 		"groups:read", // View basic private channel info
-					// 		"im:read", // View basic direct message info
-					// 		"mpim:read", // View basic group DM info
-					// 		"metadata.message:read", // Read message metadata
-					// 		"pins:read", // View pinned items
-					// 		"team:read", // Read workspace info
-					// 		"im:history", // Read DM message history
-					// 		"mpim:history", // Read group DM history
-					// 	].join(","),
+					authorizationUrlParams: {
+						// BOT SCOPES: Workspace-level permissions (access via bot token xoxb-)
+						scope: [
+							"calls:read", // Read workspace call information
+							"channels:history", // Read messages in public channels
+							"channels:read", // View basic public channel info
+							// "conversations.connect:read", // ❌ REMOVE: Slack Connect feature - rarely needed
+							"groups:read", // View basic private channel info
+							"im:read", // View basic direct message info
+							"mpim:read", // View basic group DM info
+							"metadata.message:read", // Read message metadata
+							"pins:read", // View pinned items
+							"team:read", // Read workspace info
+							"im:history", // Read DM message history
+							"mpim:history", // Read group DM history
+						].join(","),
 
-					// 	// USER SCOPES: Individual user permissions (access via user token xoxp-)
-					// 	// CRITICAL: These provide authed_user.id and authed_user.access_token
-					// 	user_scope: [
-					// 		"identify", // ✅ REQUIRED: Provides authed_user data
-					// 		"users:read", // ✅ REQUIRED: Read user information
-					// 		"users.profile:read", // ✅ REQUIRED: Read user profile details
-					// 		"reminders:read", // Optional: Read user's personal reminders
-					// 	].join(","),
-					// },
+						// USER SCOPES: Individual user permissions (access via user token xoxp-)
+						// CRITICAL: These provide authed_user.id and authed_user.access_token
+						user_scope: [
+							"identify", // ✅ REQUIRED: Provides authed_user data
+							"users:read", // ✅ REQUIRED: Read user information
+							"users.profile:read", // ✅ REQUIRED: Read user profile details
+							"reminders:read", // Optional: Read user's personal reminders
+							"users:read.email",
+						].join(","),
+					},
 
 					// 4. Custom User Info Getter
 					// FIXED: Properly typed to match OAuth2Tokens interface
@@ -250,7 +251,7 @@ export const auth = betterAuth({
 
 						try {
 							const userResponse = await fetch(
-								`https://slack.com/api/users.info?user=${userId}`,
+								`https://slack.com/api/users.profile.get?user=${userId}`,
 								{
 									method: "GET",
 									headers: {
@@ -280,7 +281,15 @@ export const auth = betterAuth({
 								return null;
 							}
 
-							return data;
+							const profile = data.profile;
+
+							return {
+								id: "",
+								name: profile.real_name_normalized,
+								email: profile.email,
+								emailVerified: true,
+								image: profile.image_32,
+							};
 						} catch (error) {
 							console.error(
 								"Error fetching Slack user info:",
@@ -292,6 +301,7 @@ export const auth = betterAuth({
 
 					// 5. Data Mapping: Map Slack user data to your user model
 					mapProfileToUser: (profile) => {
+						console.log("Slack profile data: ", profile);
 						// Handle null response from getUserInfo
 						if (!profile || !profile.user) {
 							throw new Error("Invalid profile data from Slack");
