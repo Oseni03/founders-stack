@@ -23,6 +23,7 @@ import { sendEmail } from "./resend";
 import OrganizationInvitationEmail from "@/components/emails/organization-invitation-email";
 import MagicLinkEmail from "@/components/emails/magic-link-email";
 import { createIntegration } from "@/server/integrations";
+import { OAuthProviders } from "./oauth-utils";
 
 const polarClient = new Polar({
 	accessToken: process.env.POLAR_ACCESS_TOKEN!,
@@ -182,47 +183,7 @@ export const auth = betterAuth({
 			},
 		}),
 		genericOAuth({
-			config: [
-				{
-					providerId: "slack",
-					clientId: process.env.SLACK_CLIENT_ID!,
-					clientSecret: process.env.SLACK_CLIENT_SECRET!,
-					authorizationUrl: "https://slack.com/oauth/v2/authorize",
-					tokenUrl: "https://slack.com/api/oauth.v2.access",
-					userInfoUrl: "https://slack.com/api/users.info",
-					scopes: [
-						"chat:write",
-						"channels:history",
-						"channels:read",
-						"groups:history",
-						"im:history",
-						"identity.basic",
-						"reactions:write",
-						"files:read",
-						"users:read",
-						"team:read",
-						"groups:read",
-					],
-					redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/slack`,
-				},
-				{
-					providerId: "github",
-					clientId: process.env.GITHUB_CLIENT_ID!,
-					clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-					authorizationUrl:
-						"https://github.com/login/oauth/authorize",
-					tokenUrl: "https://github.com/login/oauth/access_token",
-					userInfoUrl: "https://api.github.com/user",
-					scopes: [
-						"repo",
-						"read:discussion",
-						"project",
-						"read:user",
-						"user:email",
-					],
-					redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/github`,
-				},
-			],
+			config: OAuthProviders,
 		}),
 	],
 });
