@@ -41,15 +41,21 @@ export async function withAuth(
 			);
 		}
 
-		const isAdmin = !!activeOrg?.members?.find(
-			(member) =>
-				member.userId == session?.user?.id && member.role == "admin"
+		const member = activeOrg?.members.find(
+			(member) => member.userId === session.user.id
 		);
+
+		if (!member) {
+			return NextResponse.json(
+				{ error: "Unauthorized - Not a member of organization" },
+				{ status: 401 }
+			);
+		}
 
 		const userContext = {
 			...session.user,
 			organizationId: activeOrgId,
-			role: isAdmin ? "admin" : "member",
+			role: member.role,
 		};
 
 		return await handler(request, userContext, session.session);

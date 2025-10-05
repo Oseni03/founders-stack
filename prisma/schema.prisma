@@ -436,10 +436,10 @@ model Repository {
   issues       Issue[]
   branches     Branch[]
 
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  RepositoryHealth RepositoryHealth[]
-  Contributor      Contributor[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  repositoryHealth RepositoryHealth?
+  contributors     Contributor[]
 
   @@unique([externalId, sourceTool])
   @@index([organizationId, name])
@@ -565,7 +565,7 @@ model Contributor {
 model RepositoryHealth {
   id             String   @id @default(uuid())
   organizationId String
-  repositoryId   String
+  repositoryId   String   @unique
   healthScore    Int      @default(0) // 0-100 scale
   openIssues     Int      @default(0)
   stalePrs       Int      @default(0)
