@@ -41,9 +41,15 @@ export async function withAuth(
 			);
 		}
 
+		const isAdmin = !!activeOrg?.members?.find(
+			(member) =>
+				member.userId == session?.user?.id && member.role == "admin"
+		);
+
 		const userContext = {
 			...session.user,
 			organizationId: activeOrgId,
+			role: isAdmin ? "admin" : "member",
 		};
 
 		return await handler(request, userContext, session.session);

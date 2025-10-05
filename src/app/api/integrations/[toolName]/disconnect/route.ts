@@ -1,17 +1,19 @@
 import { withAuth } from "@/lib/middleware";
 import { prisma } from "@/lib/prisma";
+import { getIntegration } from "@/server/integrations";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
 	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> }
+	{ params }: { params: Promise<{ toolName: string }> }
 ) {
-	return withAuth(request, async () => {
-		const { id: integrationId } = await params;
+	return withAuth(request, async (request, user) => {
+		const { toolName } = await params;
 		try {
-			const integration = await prisma.integration.findFirst({
-				where: { id: integrationId },
-			});
+			const integration = await getIntegration(
+				user.organizationId,
+				toolName
+			);
 
 			if (!integration) {
 				return NextResponse.json(

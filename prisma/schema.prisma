@@ -108,6 +108,7 @@ model Organization {
   Issue            Issue[]
   Branch           Branch[]
   RepositoryHealth RepositoryHealth[]
+  Contributor      Contributor[]
 
   @@unique([slug])
   @@map("organization")
@@ -266,6 +267,7 @@ model Task {
   MessageThread   MessageThread[]
   DeploymentEvent DeploymentEvent[]
 
+  @@unique([externalId, sourceTool])
   @@index([organizationId, status, priority])
   @@index([externalId, sourceTool])
 }
@@ -290,7 +292,9 @@ model MessageThread {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  @@unique([externalId, sourceTool])
   @@index([organizationId, relatedTaskId])
+  @@index([externalId, sourceTool])
 }
 
 // Code/CI Category
@@ -317,7 +321,9 @@ model DeploymentEvent {
   Commit       Commit?   @relation(fields: [commitId], references: [id])
   commitId     String?
 
+  @@unique([externalId, sourceTool])
   @@index([organizationId, status])
+  @@index([externalId, sourceTool])
 }
 
 // Finance Category
@@ -342,7 +348,9 @@ model Transaction {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  @@unique([externalId, sourceTool])
   @@index([organizationId, date, status])
+  @@index([externalId, sourceTool])
 }
 
 // Supporting Entity for Finance (Customers)
@@ -362,7 +370,9 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([externalId, sourceTool])
   @@index([organizationId, email])
+  @@index([externalId, sourceTool])
 }
 
 // Feedback/Analytics Category
@@ -385,7 +395,9 @@ model UserReport {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  @@unique([externalId, sourceTool])
   @@index([organizationId, sentiment])
+  @@index([externalId, sourceTool])
 }
 
 // Alerts System (For Phase 2: Configurable notifications)
@@ -413,6 +425,7 @@ model Repository {
   id             String @id @default(uuid())
   organizationId String
   name           String
+  owner          String
   externalId     String
   sourceTool     String // e.g., "github"
   attributes     Json?
@@ -426,8 +439,11 @@ model Repository {
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   RepositoryHealth RepositoryHealth[]
+  Contributor      Contributor[]
 
+  @@unique([externalId, sourceTool])
   @@index([organizationId, name])
+  @@index([externalId, sourceTool])
 }
 
 model Commit {
@@ -448,7 +464,9 @@ model Commit {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([externalId, sourceTool])
   @@index([organizationId, committedAt])
+  @@index([externalId, sourceTool])
 }
 
 model PullRequest {
@@ -472,7 +490,9 @@ model PullRequest {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([externalId, sourceTool])
   @@index([organizationId, status])
+  @@index([externalId, sourceTool])
 }
 
 model Issue {
@@ -492,7 +512,9 @@ model Issue {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([externalId, sourceTool])
   @@index([organizationId, status])
+  @@index([externalId, sourceTool])
 }
 
 model Branch {
@@ -513,7 +535,31 @@ model Branch {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([externalId, sourceTool])
   @@index([organizationId, name])
+  @@index([externalId, sourceTool])
+}
+
+// Contributor model
+model Contributor {
+  id             String @id @default(uuid())
+  organizationId String
+  repositoryId   String
+  externalId     String // GitHub user ID
+  sourceTool     String // e.g., "github"
+  login          String // GitHub username
+  contributions  Int    @default(0) // Number of contributions (e.g., commits, PRs)
+  attributes     Json? // Flexible tool-specific data (e.g., avatar URL)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  repository   Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([externalId, sourceTool])
+  @@index([organizationId, login])
+  @@map("contributor")
 }
 
 model RepositoryHealth {
@@ -530,6 +576,7 @@ model RepositoryHealth {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   repository   Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
 
+  @@unique([organizationId, repositoryId])
   @@index([organizationId, repositoryId])
 }
 
