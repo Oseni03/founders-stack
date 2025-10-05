@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "./auth";
-import { prisma } from "./prisma";
 import { Session, User } from "better-auth";
 
 export interface AuthUser extends User {
@@ -21,6 +20,10 @@ export async function withAuth(
 			headers: request.headers,
 		});
 
+		const activeOrg = await auth.api.getFullOrganization({
+			headers: request.headers,
+		});
+
 		if (!session) {
 			return NextResponse.json(
 				{ error: "Unauthorized - Please login" },
@@ -28,40 +31,19 @@ export async function withAuth(
 			);
 		}
 
-		// Get user with organization membership
-		const user = await prisma.user.findUnique({
-			where: { id: session.user.id },
-			include: {
-				members: {
-					include: {
-						organization: true,
-					},
-				},
-			},
-		});
-
-		if (!user) {
-			return NextResponse.json(
-				{ error: "User not found" },
-				{ status: 404 }
-			);
-		}
 		// Get active organization from session or default to first membership
-		const activeOrgId = session.activeOrganizationId;
-		const activeMembership =
-			user.members.find((m) => m.organizationId === activeOrgId) ||
-			user.members[0];
+		const activeOrgId = session.activeOrganizationId || activeOrg?.id;
 
-		if (!activeMembership) {
+		if (!activeOrgId) {
 			return NextResponse.json(
-				{ error: "No organization membership found" },
-				{ status: 403 }
+				{ error: "Unauthorized - No active organization" },
+				{ status: 401 }
 			);
 		}
 
 		const userContext = {
 			...session.user,
-			organizationId: activeOrgId || activeMembership.organizationId,
+			organizationId: activeOrgId,
 		};
 
 		return await handler(request, userContext, session.session);

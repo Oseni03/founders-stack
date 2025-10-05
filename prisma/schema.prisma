@@ -94,12 +94,20 @@ model Organization {
   invitations     Invitation[]
 
   // Relations
-  integrations   Integration[]
-  tasks          Task[]
-  transactions   Transaction[]
-  metrics        Metric[]
-  codeActivities CodeActivity[]
-  alerts         Alert[]
+  integrations     Integration[] // Connected tools
+  tasks            Task[]
+  messageThreads   MessageThread[]
+  deploymentEvents DeploymentEvent[]
+  transactions     Transaction[]
+  userReports      UserReport[]
+  customers        Customer[]
+  alerts           Alert[]
+  Repository       Repository[]
+  Commit           Commit[]
+  PullRequest      PullRequest[]
+  Issue            Issue[]
+  Branch           Branch[]
+  RepositoryHealth RepositoryHealth[]
 
   @@unique([slug])
   @@map("organization")
@@ -163,15 +171,6 @@ model Subscription {
   @@map("subscription")
 }
 
-// ============================================================================
-// ENUMS
-// ============================================================================
-
-enum UserRole {
-  admin
-  member
-}
-
 enum IntegrationStatus {
   active
   inactive
@@ -190,12 +189,13 @@ enum IntegrationCategory {
 }
 
 enum TaskStatus {
-  todo
-  in_progress
-  review
-  done
-  blocked
-  cancelled
+  open
+  closed
+}
+
+enum IntegrationType {
+  oauth
+  api_key
 }
 
 enum TaskPriority {
@@ -213,247 +213,324 @@ enum TransactionStatus {
   cancelled
 }
 
-enum CodeActivityType {
-  commit
-  pull_request
-  merge
-  branch_created
-  branch_deleted
-  tag_created
-  release
-}
-
-enum AlertType {
-  task_overdue
-  transaction_threshold
-  metric_threshold
-  code_activity
-  integration_error
-  custom
-}
-
-enum AlertChannel {
-  email
-  slack
-  webhook
-  in_app
-}
-
-// ============================================================================
-// INTEGRATION METADATA
-// ============================================================================
-
-// Integration extends Account with SaaS-specific metadata
-// The Account holds the OAuth tokens, this holds sync status and config
 model Integration {
   id             String              @id @default(cuid())
   category       IntegrationCategory
   status         IntegrationStatus   @default(pending)
-  config         Json? // Tool-specific configuration
   lastSyncAt     DateTime?
-  type           String
+  toolName       String // e.g., "stripe", "jira"
+  type           IntegrationType // e.g., "oauth", "api_key"
   lastSyncStatus String?
-  errorMessage   String?
-  syncEnabled    Boolean             @default(true)
+  syncInterval   Int? // Minutes, e.g., 15
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
   // Multi-tenant field
   organizationId String
-  userId         String?
-  accountId      String  @unique // Links to BetterAuth Account
+  accountId      String @unique // Links to BetterAuth Account
 
   // Relations
-  User           User?          @relation(fields: [userId], references: [id])
-  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  account        Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  tasks          Task[]
-  transactions   Transaction[]
-  metrics        Metric[]
-  codeActivities CodeActivity[]
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  account      Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  User         User?        @relation(fields: [userId], references: [id])
+  userId       String?
 
-  @@index([organizationId])
+  @@index([organizationId, toolName])
   @@index([organizationId, status])
   @@index([organizationId, category])
   @@index([accountId])
 }
 
-// ============================================================================
-// DATA ENTITIES
-// ============================================================================
-
+// Project/Task Category
 model Task {
-  id          String       @id @default(cuid())
-  externalId  String // ID from source system (e.g., JIRA-123)
-  title       String
-  description String?      @db.Text
-  status      TaskStatus   @default(todo)
-  priority    TaskPriority @default(medium)
-  assignee    String? // Name or email of assignee
-  assigneeId  String? // External assignee ID
-  dueDate     DateTime?
-  completedAt DateTime?
-  sourceUrl   String? // Link to original task
-  metadata    Json? // Additional source-specific data
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id              String        @id @default(uuid())
+  organizationId  String
+  externalId      String // From source tool
+  sourceTool      String // e.g., "jira"
+  status          TaskStatus // e.g., "open", "closed"
+  assigneeId      String? // Unified user ID or external string
+  priority        TaskPriority? // e.g., "P1"
+  parentProjectId String? // Link to parent (if hierarchical)
+  externalLink    String?
+  dueDate         DateTime?
+  labels          String[] // Array for tags
+  attributes      Json? // Flexible tool-specific data (JSONB)
+  relatedTaskId   String? // Self-relation for threads/hierarchy
 
-  // Multi-tenant fields
-  organizationId String
-  integrationId  String
-
-  // Relations
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  integration  Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  // relatedTask    Task?     @relation("TaskRelations", fields: [relatedTaskId], references: [id])
 
-  @@unique([integrationId, externalId])
-  @@index([organizationId])
-  @@index([integrationId])
-  @@index([organizationId, status])
-  @@index([organizationId, priority])
-  @@index([organizationId, dueDate])
-  @@index([assignee])
+  lastSyncedAt    DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  MessageThread   MessageThread[]
+  DeploymentEvent DeploymentEvent[]
+
+  @@index([organizationId, status, priority])
+  @@index([externalId, sourceTool])
 }
 
+// Communication Category
+model MessageThread {
+  id                   String    @id @default(uuid())
+  organizationId       String
+  externalId           String
+  sourceTool           String // e.g., "slack"
+  participants         String[] // Array of user IDs/emails
+  relatedTaskId        String? // Link to Task
+  lastMessageTimestamp DateTime?
+  unreadCount          Int       @default(0)
+  sentimentScore       Float? // Derived from NLP
+  attributes           Json?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  relatedTask  Task?        @relation(fields: [relatedTaskId], references: [id])
+
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([organizationId, relatedTaskId])
+}
+
+// Code/CI Category
+model DeploymentEvent {
+  id              String    @id @default(uuid())
+  organizationId  String
+  externalId      String
+  sourceTool      String // e.g., "github"
+  commitHash      String?
+  status          String // e.g., "success"
+  environment     String? // e.g., "prod"
+  errorLogSummary String?
+  buildDuration   Int? // Seconds
+  deployedAt      DateTime?
+  relatedTaskId   String? // Link to Task
+  attributes      Json?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  relatedTask  Task?        @relation(fields: [relatedTaskId], references: [id])
+
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  Commit       Commit?   @relation(fields: [commitId], references: [id])
+  commitId     String?
+
+  @@index([organizationId, status])
+}
+
+// Finance Category
 model Transaction {
-  id            String            @id @default(cuid())
-  externalId    String // ID from payment system
-  amount        Decimal           @db.Decimal(19, 4)
-  currency      String            @default("USD")
-  status        TransactionStatus @default(pending)
-  customerId    String?
-  customerName  String?
-  customerEmail String?
-  description   String?
-  sourceUrl     String?
-  metadata      Json?
-  processedAt   DateTime?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-
-  // Multi-tenant fields
+  id             String            @id @default(uuid())
   organizationId String
-  integrationId  String
+  externalId     String
+  sourceTool     String // e.g., "stripe"
+  amount         Float
+  type           String // e.g., "subscription"
+  customerId     String? // Link to Customer
+  status         TransactionStatus
+  date           DateTime
+  currency       String            @default("USD")
+  refundReason   String?
+  attributes     Json?
 
-  // Relations
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  integration  Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  customer     Customer?    @relation(fields: [customerId], references: [id])
 
-  @@unique([integrationId, externalId])
-  @@index([organizationId])
-  @@index([integrationId])
-  @@index([organizationId, status])
-  @@index([organizationId, createdAt])
-  @@index([customerId])
-  @@index([customerEmail])
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([organizationId, date, status])
 }
 
-model Metric {
-  id        String   @id @default(cuid())
-  name      String // e.g., "response_time", "error_rate"
-  value     Decimal  @db.Decimal(19, 4)
-  unit      String? // e.g., "ms", "percent", "count"
-  category  String // e.g., "performance", "business", "custom"
-  timestamp DateTime
-  metadata  Json? // Additional context
+// Supporting Entity for Finance (Customers)
+model Customer {
+  id             String  @id @default(uuid())
+  organizationId String
+  externalId     String
+  sourceTool     String
+  name           String?
+  email          String?
+  planTier       String? // e.g., "basic"
+  attributes     Json?
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  // Multi-tenant fields
-  organizationId String
-  integrationId  String
-
-  // Relations
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  integration  Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
-
-  @@index([organizationId])
-  @@index([integrationId])
-  @@index([organizationId, name])
-  @@index([organizationId, category])
-  @@index([organizationId, timestamp])
-  @@index([name, timestamp])
+  @@index([organizationId, email])
 }
 
-model CodeActivity {
-  id          String           @id @default(cuid())
-  externalId  String // Commit SHA, PR number, etc.
-  type        CodeActivityType
-  author      String
-  authorEmail String?
-  repository  String
-  branch      String?
-  message     String?          @db.Text
-  additions   Int?
-  deletions   Int?
-  sourceUrl   String?
-  metadata    Json?
-  occurredAt  DateTime // When the activity happened in the source
-  createdAt   DateTime         @default(now())
-
-  // Multi-tenant fields
+// Feedback/Analytics Category
+model UserReport {
+  id             String  @id @default(uuid())
   organizationId String
-  integrationId  String
+  externalId     String
+  sourceTool     String // e.g., "zendesk"
+  severity       String? // e.g., "high"
+  sourceUrl      String?
+  sentiment      String? // e.g., "negative"
+  userMetadata   Json? // e.g., { "planTier": "pro" }
+  pageViews      Int? // For analytics
+  conversionRate Float? // Derived
+  attributes     Json?
 
-  // Relations
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  integration  Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
 
-  @@unique([integrationId, externalId])
-  @@index([organizationId])
-  @@index([integrationId])
-  @@index([organizationId, type])
-  @@index([organizationId, occurredAt])
-  @@index([author])
-  @@index([repository])
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([organizationId, sentiment])
 }
 
-// ============================================================================
-// ALERTING SYSTEM
-// ============================================================================
-
+// Alerts System (For Phase 2: Configurable notifications)
 model Alert {
-  id              String         @id @default(cuid())
-  name            String
-  type            AlertType
-  description     String?
-  threshold       Decimal?       @db.Decimal(19, 4)
-  condition       Json // Complex condition rules
-  channels        AlertChannel[]
-  isActive        Boolean        @default(true)
-  lastTriggeredAt DateTime?
-  triggerCount    Int            @default(0)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  id                String  @id @default(uuid())
+  organizationId    String
+  type              String // e.g., "churn_threshold"
+  threshold         Float? // e.g., 5% churn
+  status            String // e.g., "triggered"
+  message           String
+  relatedEntityId   String? // Generic link to Task/Transaction ID
+  relatedEntityType String? // e.g., "Task"
 
-  // Multi-tenant fields
-  organizationId String
-  userId         String // User who created the alert
-
-  // Relations
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  logs         AlertLog[]
 
-  @@index([organizationId])
-  @@index([userId])
-  @@index([organizationId, isActive])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  User      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+
   @@index([organizationId, type])
 }
 
-model AlertLog {
-  id        String   @id @default(cuid())
-  alertId   String
-  triggered Boolean
-  message   String   @db.Text
-  data      Json?
+model Repository {
+  id             String @id @default(uuid())
+  organizationId String
+  name           String
+  externalId     String
+  sourceTool     String // e.g., "github"
+  attributes     Json?
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  commits      Commit[]
+  pullRequests PullRequest[]
+  issues       Issue[]
+  branches     Branch[]
+
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  RepositoryHealth RepositoryHealth[]
+
+  @@index([organizationId, name])
+}
+
+model Commit {
+  id             String   @id @default(uuid())
+  organizationId String
+  repositoryId   String
+  externalId     String
+  sourceTool     String // e.g., "github"
+  authorId       String? // Link to User or external author
+  committedAt    DateTime
+  message        String
+  attributes     Json?
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  repository       Repository        @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  deploymentEvents DeploymentEvent[]
+
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  // Relations
-  alert Alert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  @@index([organizationId, committedAt])
+}
 
-  @@index([alertId])
-  @@index([alertId, createdAt])
-  @@index([triggered, createdAt])
+model PullRequest {
+  id             String    @id @default(uuid())
+  organizationId String
+  repositoryId   String
+  externalId     String
+  sourceTool     String // e.g., "github"
+  title          String
+  status         String // e.g., "open", "merged", "draft"
+  reviewStatus   String? // e.g., "awaiting_review"
+  mergedAt       DateTime?
+  authorId       String? // Link to User
+  reviewerIds    String[] // Array of reviewer IDs
+  avgReviewTime  Float? // Hours
+  attributes     Json?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  repository   Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, status])
+}
+
+model Issue {
+  id             String  @id @default(uuid())
+  organizationId String
+  repositoryId   String
+  externalId     String
+  sourceTool     String // e.g., "github"
+  title          String
+  status         String // e.g., "open", "closed"
+  authorId       String? // Link to User
+  attributes     Json?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  repository   Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, status])
+}
+
+model Branch {
+  id             String    @id @default(uuid())
+  organizationId String
+  repositoryId   String
+  externalId     String
+  sourceTool     String // e.g., "github"
+  name           String
+  lastCommitAt   DateTime?
+  status         String // e.g., "active", "stale"
+  commitsAhead   Int       @default(0)
+  attributes     Json?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  repository   Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, name])
+}
+
+model RepositoryHealth {
+  id             String   @id @default(uuid())
+  organizationId String
+  repositoryId   String
+  healthScore    Int      @default(0) // 0-100 scale
+  openIssues     Int      @default(0)
+  stalePrs       Int      @default(0)
+  avgReviewTime  Float? // Hours
+  testCoverage   Float? // Percentage
+  updatedAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  repository   Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, repositoryId])
 }
 
 model CDMRecentSearches {

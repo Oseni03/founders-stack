@@ -77,7 +77,7 @@ export default function IntegrationsPage() {
 		if (!selectedIntegration) return;
 
 		try {
-			toast.loading(`Unlinking ${selectedIntegration.type}...`);
+			toast.loading(`Unlinking ${selectedIntegration.toolName}...`);
 			const response = await fetch(
 				`/api/integrations/${selectedIntegration.id}/disconnect`,
 				{
@@ -247,12 +247,12 @@ export default function IntegrationsPage() {
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>
-							Disconnect {selectedIntegration?.type}?
+							Disconnect {selectedIntegration?.toolName}?
 						</AlertDialogTitle>
 						<AlertDialogDescription>
 							This will stop syncing data from{" "}
-							{selectedIntegration?.type}. Your existing data will
-							be preserved, but no new data will be imported.
+							{selectedIntegration?.toolName}. Your existing data
+							will be preserved, but no new data will be imported.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

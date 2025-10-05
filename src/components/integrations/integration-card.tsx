@@ -37,8 +37,9 @@ export const IntegrationCard = ({
 }) => {
 	const [isSyncing, setIsSyncing] = useState<string | null>(null);
 
-	const name = integration.type[0].toUpperCase() + integration.type.slice(1);
-	const logo = getProviderLogo(integration.type);
+	const name =
+		integration.toolName[0].toUpperCase() + integration.toolName.slice(1);
+	const logo = getProviderLogo(integration.toolName);
 
 	const handleManualSync = async (integrationId: string) => {
 		setIsSyncing(integrationId);
@@ -145,7 +146,7 @@ export const IntegrationCard = ({
 						<Button
 							className="flex-1"
 							size="sm"
-							onClick={() => handleConnect(integration.type)}
+							onClick={() => handleConnect(integration.toolName)}
 						>
 							<Plug className="h-4 w-4 mr-2" />
 							Connect

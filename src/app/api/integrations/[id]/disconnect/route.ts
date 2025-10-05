@@ -1,46 +1,36 @@
-import { getSession } from "@/lib/auth-utils";
+import { withAuth } from "@/lib/middleware";
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
-	request: Request,
+	request: NextRequest,
 	{ params }: { params: Promise<{ id: string }> }
 ) {
-	const { id: integrationId } = await params;
-	try {
-		const session = await getSession();
-		const user = session?.user;
+	return withAuth(request, async () => {
+		const { id: integrationId } = await params;
+		try {
+			const integration = await prisma.integration.findFirst({
+				where: { id: integrationId },
+			});
 
-		if (!user) {
+			if (!integration) {
+				return NextResponse.json(
+					{ error: "Account not connected" },
+					{ status: 404 }
+				);
+			}
+
+			await prisma.account.delete({
+				where: { id: integration.accountId },
+			});
+
+			return NextResponse.json({ success: true });
+		} catch (error) {
+			console.error("Error disconnecting/unlinking Integration: ", error);
 			return NextResponse.json(
-				{ error: "Unauthorized" },
-				{ status: 401 }
+				{ error: `Failed to disconnect integration` },
+				{ status: 500 }
 			);
 		}
-
-		// Add Permission authorization
-
-		const integration = await prisma.integration.findFirst({
-			where: { id: integrationId },
-		});
-
-		if (!integration) {
-			return NextResponse.json(
-				{ error: "Account not connected" },
-				{ status: 404 }
-			);
-		}
-
-		await prisma.account.delete({
-			where: { id: integration.accountId },
-		});
-
-		return NextResponse.json({ success: true });
-	} catch (error) {
-		console.error("Error disconnecting/unlinking Integration: ", error);
-		return NextResponse.json(
-			{ error: `Failed to disconnect integration` },
-			{ status: 500 }
-		);
-	}
+	});
 }
