@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// lib/connectors/github.ts
-import { Octokit } from "@octokit/rest"; // Latest: 22.0.0[](https://www.npmjs.com/package/@octokit/rest)
-import { retry } from "@octokit/plugin-retry"; // Latest: 8.0.2[](https://www.npmjs.com/package/@octokit/plugin-retry)
-import { throttling } from "@octokit/plugin-throttling"; // Latest: 11.0.2[](https://www.npmjs.com/package/@octokit/plugin-throttling)
+import { Octokit } from "@octokit/rest";
+import { retry } from "@octokit/plugin-retry";
+import { throttling } from "@octokit/plugin-throttling";
 import { prisma } from "../prisma";
 import { getIntegration } from "@/server/integrations";
 
@@ -16,6 +15,18 @@ interface CommitData {
 	committedAt: Date;
 	message: string;
 	attributes?: Record<string, any>; // Flexible JSON for extra data
+}
+
+export interface RepoData {
+	externalId: string; // GitHub repository ID (stringified)
+	name: string; // Repository name (e.g., "my-repo")
+	fullName: string; // Full repository name (e.g., "username/my-repo")
+	owner?: string | null; // Repository owner (e.g., "username")
+	url: string; // Repository HTML URL (e.g., "https://github.com/username/my-repo")
+	defaultBranch: string;
+	openIssuesCount: number;
+	visibility?: string;
+	description: string | null;
 }
 
 interface PullRequestData {
@@ -64,10 +75,10 @@ interface RepositoryHealthData {
 
 export class GitHubConnector {
 	private octokit: InstanceType<typeof OctokitWithPlugins>;
-	private owner: string;
-	private repo: string;
+	private owner?: string;
+	private repo?: string;
 
-	constructor(token: string, owner: string, repo: string) {
+	constructor(token: string, owner?: string, repo?: string) {
 		this.octokit = new OctokitWithPlugins({
 			auth: token,
 			throttle: {
@@ -91,11 +102,37 @@ export class GitHubConnector {
 	}
 
 	// Fetch commits (e.g., for activity charts and recent lists)
+	async fetchRepositories(): Promise<RepoData[]> {
+		try {
+			const { data } =
+				await this.octokit.rest.repos.listForAuthenticatedUser({
+					visibility: "all",
+					per_page: 100,
+				});
+			return data.map((repo) => ({
+				externalId: repo.id.toString(),
+				name: repo.name,
+				fullName: repo.full_name,
+				owner: repo.owner.name,
+				url: repo.url,
+				defaultBranch: repo.default_branch,
+				openIssuesCount: repo.open_issues_count,
+				visibility: repo.visibility,
+				description: repo.description,
+				// attributes: { url: commit.html_url }, // Extra for CDM Json
+			}));
+		} catch (error) {
+			console.error("GitHub fetchCommits error:", error);
+			throw new Error("Failed to fetch commits");
+		}
+	}
+
+	// Fetch commits (e.g., for activity charts and recent lists)
 	async fetchCommits(since?: Date): Promise<CommitData[]> {
 		try {
 			const { data } = await this.octokit.rest.repos.listCommits({
-				owner: this.owner,
-				repo: this.repo,
+				owner: this.owner!,
+				repo: this.repo!,
 				since: since?.toISOString(),
 				per_page: 100, // MVP limit; add pagination for large repos
 			});
@@ -123,8 +160,8 @@ export class GitHubConnector {
 	): Promise<PullRequestData[]> {
 		try {
 			const { data } = await this.octokit.rest.pulls.list({
-				owner: this.owner,
-				repo: this.repo,
+				owner: this.owner!,
+				repo: this.repo!,
 				state,
 				per_page: 100,
 			});
@@ -152,8 +189,8 @@ export class GitHubConnector {
 	): Promise<IssueData[]> {
 		try {
 			const { data } = await this.octokit.rest.issues.listForRepo({
-				owner: this.owner,
-				repo: this.repo,
+				owner: this.owner!,
+				repo: this.repo!,
 				state,
 				per_page: 100,
 			});
@@ -177,8 +214,8 @@ export class GitHubConnector {
 	async fetchBranches(): Promise<BranchData[]> {
 		try {
 			const { data } = await this.octokit.rest.repos.listBranches({
-				owner: this.owner,
-				repo: this.repo,
+				owner: this.owner!,
+				repo: this.repo!,
 				per_page: 100, // MVP limit; add pagination for large repos if needed
 			});
 
@@ -187,16 +224,16 @@ export class GitHubConnector {
 				data.map(async (branch) => {
 					const { data: commit } =
 						await this.octokit.rest.git.getCommit({
-							owner: this.owner,
-							repo: this.repo,
+							owner: this.owner!,
+							repo: this.repo!,
 							commit_sha: branch.commit.sha,
 						});
 
 					// Compare branch with main to get commitsAhead
 					const compareResult =
 						await this.octokit.rest.repos.compareCommits({
-							owner: this.owner,
-							repo: this.repo,
+							owner: this.owner!,
+							repo: this.repo!,
 							base: "main", // Assume main as base; configurable if needed
 							head: branch.name,
 						});
@@ -232,8 +269,8 @@ export class GitHubConnector {
 	async fetchContributors(): Promise<ContributorData[]> {
 		try {
 			const { data } = await this.octokit.rest.repos.listContributors({
-				owner: this.owner,
-				repo: this.repo,
+				owner: this.owner!,
+				repo: this.repo!,
 				per_page: 100, // MVP limit; add pagination for large repos if needed
 				// anon: false, // Exclude anonymous contributions
 			});
@@ -292,12 +329,13 @@ export class GitHubConnector {
 }
 
 export async function syncGitHub(organizationId: string) {
+	// Fetch integration
 	const integration = await getIntegration(organizationId, "github");
-
 	if (!integration?.account.accessToken) {
 		throw new Error("Integration not connected");
 	}
 
+	// Fetch all repositories for the organization
 	const repositories = await prisma.repository.findMany({
 		where: {
 			organizationId,
@@ -305,166 +343,145 @@ export async function syncGitHub(organizationId: string) {
 		},
 	});
 
-	for (const repo of repositories) {
-		// Instantiate connector and sync
+	if (repositories.length === 0) {
+		return; // Early return if no repositories
+	}
+
+	// Process repositories in parallel with a limit to respect API rate limits
+	const syncPromises = repositories.map((repo) => async () => {
 		const connector = new GitHubConnector(
-			integration?.account.accessToken,
+			integration.account.accessToken!,
 			repo.owner,
 			repo.name
 		);
 
-		const [
-			commits,
-			pullRequests,
-			issues,
-			branches,
-			repoHealth,
-			contributors,
-		] = await Promise.all([
-			connector.fetchCommits(),
-			connector.fetchPullRequests(),
-			connector.fetchIssues(),
-			connector.fetchBranches(),
-			connector.computeRepositoryHealth(),
-			connector.fetchContributors(),
-		]);
+		try {
+			// Parallel fetch from GitHub
+			const [
+				commits,
+				pullRequests,
+				issues,
+				branches,
+				repoHealth,
+				contributors,
+			] = await Promise.all([
+				connector.fetchCommits(),
+				connector.fetchPullRequests(),
+				connector.fetchIssues(),
+				connector.fetchBranches(),
+				connector.computeRepositoryHealth(),
+				connector.fetchContributors(),
+			]);
 
-		// Upsert to Prisma (idempotent)
-		for (const commit of commits) {
-			await prisma.commit.upsert({
-				where: {
-					externalId_sourceTool: {
-						externalId: commit.externalId,
+			// Batch upsert using Prisma transaction
+			await prisma.$transaction(async (tx) => {
+				// Upsert commits
+				await tx.commit.createMany({
+					data: commits.map((commit) => ({
+						...commit,
+						organizationId,
 						sourceTool: "github",
-					},
-				},
-				update: {
-					...commit,
-					organizationId,
-					repositoryId: repo.id,
-				},
-				create: {
-					...commit,
-					organizationId,
-					sourceTool: "github",
-					repositoryId: repo.id,
-				},
-			});
-		}
+						repositoryId: repo.id,
+						externalId_sourceTool: {
+							externalId: commit.externalId,
+							sourceTool: "github",
+						},
+					})),
+					skipDuplicates: true,
+				});
 
-		for (const pr of pullRequests) {
-			await prisma.pullRequest.upsert({
-				where: {
-					externalId_sourceTool: {
-						externalId: pr.externalId,
+				// Upsert pullRequests
+				await tx.pullRequest.createMany({
+					data: pullRequests.map((pr) => ({
+						...pr,
+						organizationId,
 						sourceTool: "github",
-					},
-				},
-				update: {
-					...pr,
-					organizationId,
-					sourceTool: "github",
-					repositoryId: repo.id,
-				},
-				create: {
-					...pr,
-					organizationId,
-					sourceTool: "github",
-					repositoryId: repo.id,
-				},
-			});
-		}
+						repositoryId: repo.id,
+						externalId_sourceTool: {
+							externalId: pr.externalId,
+							sourceTool: "github",
+						},
+					})),
+					skipDuplicates: true,
+				});
 
-		for (const issue of issues) {
-			await prisma.issue.upsert({
-				where: {
-					externalId_sourceTool: {
-						externalId: issue.externalId,
+				// Upsert issues
+				await tx.issue.createMany({
+					data: issues.map((issue) => ({
+						...issue,
+						organizationId,
 						sourceTool: "github",
-					},
-				},
-				update: {
-					...issue,
-					organizationId,
-					sourceTool: "github",
-					repositoryId: repo.id,
-				},
-				create: {
-					...issue,
-					organizationId,
-					sourceTool: "github",
-					repositoryId: repo.id,
-				},
-			});
-		}
+						repositoryId: repo.id,
+						externalId_sourceTool: {
+							externalId: issue.externalId,
+							sourceTool: "github",
+						},
+					})),
+					skipDuplicates: true,
+				});
 
-		for (const branch of branches) {
-			await prisma.branch.upsert({
-				where: {
-					externalId_sourceTool: {
-						externalId: branch.externalId,
+				// Upsert branches
+				await tx.branch.createMany({
+					data: branches.map((branch) => ({
+						...branch,
+						organizationId,
 						sourceTool: "github",
-					},
-				},
-				update: {
-					...branch,
-					organizationId,
-					sourceTool: "github",
-					repositoryId: repo.id,
-				},
-				create: {
-					...branch,
-					organizationId,
-					sourceTool: "github",
-					repositoryId: repo.id,
-				},
-			});
-		}
+						repositoryId: repo.id,
+						externalId_sourceTool: {
+							externalId: branch.externalId,
+							sourceTool: "github",
+						},
+					})),
+					skipDuplicates: true,
+				});
 
-		for (const contributor of contributors) {
-			await prisma.contributor.upsert({
-				where: {
-					externalId_sourceTool: {
-						externalId: contributor.externalId,
+				// Upsert contributors
+				await tx.contributor.createMany({
+					data: contributors.map((contributor) => ({
+						...contributor,
+						organizationId,
 						sourceTool: "github",
+						repositoryId: repo.id,
+						externalId_sourceTool: {
+							externalId: contributor.externalId,
+							sourceTool: "github",
+						},
+					})),
+					skipDuplicates: true,
+				});
+
+				// Upsert repository health
+				await tx.repositoryHealth.upsert({
+					where: {
+						organizationId_repositoryId: {
+							organizationId,
+							repositoryId: repo.id,
+						},
 					},
-				},
-				update: {
-					...contributor,
-					organizationId,
-					sourceTool: "github",
-					repositoryId: repo.id,
-				},
-				create: {
-					...contributor,
-					organizationId,
-					sourceTool: "github",
-					repositoryId: repo.id,
-				},
+					update: repoHealth,
+					create: {
+						...repoHealth,
+						organizationId,
+						repositoryId: repo.id,
+					},
+				});
 			});
+
+			// Update lastSyncedAt outside transaction to avoid rollback issues
+			await prisma.integration.update({
+				where: { id: integration.id },
+				data: { lastSyncAt: new Date() },
+			});
+		} catch (error) {
+			console.error(`Sync failed for repo ${repo.name}:`, error);
+			// Optionally rethrow or log for retry logic
 		}
+	});
 
-		await prisma.repositoryHealth.upsert({
-			where: {
-				organizationId_repositoryId: {
-					repositoryId: repo.id,
-					organizationId,
-				},
-			},
-			update: {
-				...repoHealth,
-			},
-			create: {
-				...repoHealth,
-				organizationId,
-				repositoryId: repo.id,
-			},
-		});
-
-		// Update lastSyncedAt
-		await prisma.integration.update({
-			where: { id: integration.id },
-			data: { lastSyncAt: new Date() },
-		});
+	// Execute syncs with a concurrency limit (e.g., 5 concurrent syncs to respect GitHub API limits)
+	const concurrencyLimit = 5;
+	for (let i = 0; i < syncPromises.length; i += concurrencyLimit) {
+		const batch = syncPromises.slice(i, i + concurrencyLimit);
+		await Promise.all(batch.map((fn) => fn()));
 	}
 }

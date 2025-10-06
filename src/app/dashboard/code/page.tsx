@@ -30,6 +30,22 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+	DialogFooter,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useSearchParams, useRouter } from "next/navigation";
+import { RepoData } from "@/lib/connectors/github";
+import { saveRepositories } from "@/server/code";
+import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 
 interface PRStatus {
 	open: number;
@@ -46,6 +62,7 @@ interface RepoHealth {
 }
 
 export default function CodePage() {
+	const { activeOrganization } = useOrganizationStore((state) => state);
 	const {
 		branches,
 		commits,
@@ -76,11 +93,26 @@ export default function CodePage() {
 		fetchPullRequests,
 		fetchIssues,
 	} = useCodeStore((state) => state);
-
 	const [selectedRepoId, setSelectedRepoId] = useState<string>("");
 	const [prStatus, setPRStatus] = useState<PRStatus | null>(null);
 	const [repoHealth, setRepoHealth] = useState<RepoHealth | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
+	const [open, setOpen] = useState(false);
+	const [githubRepos, setGithubRepos] = useState<RepoData[]>([]);
+	const [selectedRepos, setSelectedRepos] = useState<RepoData[]>([]);
+	const [repoFetchLoading, setRepoFetchLoading] = useState(false);
+	const [searchTerm, setSearchTerm] = useState("");
+
+	const searchParams = useSearchParams();
+	const router = useRouter();
+
+	useEffect(() => {
+		const addRepo = searchParams.get("addRepo");
+		if (addRepo === "true") {
+			setOpen(true);
+			router.replace("/code"); // Assuming the page path is /code. Adjust if different.
+		}
+	}, [searchParams, router]);
 
 	useEffect(() => {
 		const fetchAllData = async () => {
@@ -94,6 +126,7 @@ export default function CodePage() {
 					toast.info("No repositories found", {
 						description: "Kindly integrate and add a repository",
 					});
+					return;
 				}
 
 				const initialRepoId = repositories[0].id;
@@ -244,6 +277,67 @@ export default function CodePage() {
 		}
 	};
 
+	const fetchGithubRepos = async () => {
+		setRepoFetchLoading(true);
+		try {
+			const res = await fetch("/api/integrations/github/repos");
+			if (!res.ok) {
+				const errorData = await res.json();
+				throw new Error(
+					errorData.error || "Failed to fetch repositories"
+				);
+			}
+			const data = await res.json();
+			setGithubRepos(data);
+		} catch (error) {
+			toast.error("Failed to fetch your GitHub repositories");
+			console.error("[FETCH_GITHUB_REPOS]", error);
+		} finally {
+			setRepoFetchLoading(false);
+		}
+	};
+
+	const handleOpenChange = (isOpen: boolean) => {
+		setOpen(isOpen);
+		if (isOpen) {
+			fetchGithubRepos();
+			setSelectedRepos([]);
+			setSearchTerm("");
+		}
+	};
+
+	const handleSelectRepo = (repo: RepoData) => {
+		setSelectedRepos((prev) =>
+			prev.some((r) => r.externalId === repo.externalId)
+				? prev.filter((r) => r.externalId !== repo.externalId)
+				: [...prev, repo]
+		);
+	};
+
+	const handleSaveRepos = async () => {
+		if (selectedRepos.length === 0) return;
+		if (!activeOrganization) return;
+
+		try {
+			const repoIds = selectedRepos.map((r) => r.externalId);
+			await saveRepositories(activeOrganization.id, selectedRepos);
+			await fetchRepositories(); // Refresh the repositories in store
+			setOpen(false);
+			toast.success("Repositories added successfully");
+			// Optionally set selectedRepoId to the first new repo
+			const newRepo = repositories.find((repo) =>
+				repoIds.includes(repo.externalId)
+			);
+			if (newRepo) {
+				setSelectedRepoId(newRepo.id);
+				handleRepoChange(newRepo.id);
+			}
+		} catch (error) {
+			toast.error("Failed to save repositories");
+			console.error("[SAVE_REPOS]", error);
+		}
+	};
+
 	const getHealthColor = (score: number) => {
 		if (score >= 80) return "text-green-500";
 		if (score >= 60) return "text-yellow-500";
@@ -279,6 +373,10 @@ export default function CodePage() {
 		issuesError ||
 		prError;
 
+	const filteredRepos = githubRepos.filter((repo) =>
+		repo.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+	);
+
 	return (
 		<div className="space-y-6">
 			{/* Header with Repository Selector */}
@@ -306,6 +404,84 @@ export default function CodePage() {
 							))}
 						</SelectContent>
 					</Select>
+					<Dialog open={open} onOpenChange={handleOpenChange}>
+						<DialogTrigger asChild>
+							<Button>Add repository</Button>
+						</DialogTrigger>
+						<DialogContent className="sm:max-w-md">
+							<DialogHeader>
+								<DialogTitle>
+									Select GitHub Repositories
+								</DialogTitle>
+							</DialogHeader>
+							<Input
+								placeholder="Search repositories..."
+								value={searchTerm}
+								onChange={(e) => setSearchTerm(e.target.value)}
+								className="mb-4"
+							/>
+							{repoFetchLoading ? (
+								<div className="space-y-2">
+									{[1, 2, 3, 4, 5].map((i) => (
+										<Skeleton
+											key={i}
+											className="h-10 w-full"
+										/>
+									))}
+								</div>
+							) : (
+								<ScrollArea className="h-[300px] pr-4">
+									{filteredRepos.length === 0 ? (
+										<p className="text-center text-sm text-muted-foreground">
+											No repositories found.
+										</p>
+									) : (
+										filteredRepos.map((repo) => (
+											<div
+												key={repo.externalId}
+												className="flex items-center space-x-2 py-2"
+											>
+												<Checkbox
+													id={`repo-${repo.externalId}`}
+													checked={selectedRepos.some(
+														(r) =>
+															r.externalId ===
+															repo.externalId
+													)}
+													onCheckedChange={() =>
+														handleSelectRepo(repo)
+													}
+												/>
+												<label
+													htmlFor={`repo-${repo.externalId}`}
+													className="text-sm flex-1 cursor-pointer"
+												>
+													{repo.fullName}
+												</label>
+											</div>
+										))
+									)}
+								</ScrollArea>
+							)}
+							<DialogFooter>
+								<Button
+									variant="outline"
+									onClick={() => setOpen(false)}
+								>
+									Cancel
+								</Button>
+								<Button
+									onClick={handleSaveRepos}
+									disabled={
+										selectedRepos.length === 0 ||
+										repoFetchLoading
+									}
+								>
+									Save Selected ({selectedRepos.length})
+								</Button>
+							</DialogFooter>
+						</DialogContent>
+					</Dialog>
 				</div>
 			</div>
 

@@ -1,5 +1,6 @@
 "use server";
 
+import { RepoData, syncGitHub } from "@/lib/connectors/github";
 import { prisma } from "@/lib/prisma";
 
 export async function getRepositories(organizationId: string) {
@@ -43,4 +44,49 @@ export async function getCommits(organizationId: string, repoId: string) {
 		where: { organizationId, repositoryId: repoId },
 	});
 	return commits;
+}
+
+export async function saveRepositories(
+	organizationId: string,
+	repos: RepoData[]
+) {
+	try {
+		// Batch upsert using Prisma's $transaction
+		await prisma.$transaction(
+			repos.map((repo) =>
+				prisma.repository.upsert({
+					where: {
+						externalId_sourceTool: {
+							externalId: repo.externalId,
+							sourceTool: "github",
+						},
+					},
+					update: {
+						attributes: {
+							url: repo.url,
+							defaultBranch: repo.defaultBranch,
+							openIssuesCount: repo.openIssuesCount,
+							visibility: repo.visibility,
+							description: repo.description,
+						},
+					},
+					create: {
+						organizationId,
+						name: repo.name,
+						owner: repo.owner!,
+						externalId: repo.externalId,
+						sourceTool: "github",
+						attributes: { url: repo.url }, // Optional URL
+					},
+				})
+			)
+		);
+
+		await syncGitHub(organizationId);
+
+		return repos; // Return the input repos for chaining or confirmation
+	} catch (error) {
+		console.error("Failed to save repositories:", error);
+		throw new Error("Failed to save repositories due to an internal error");
+	}
 }
