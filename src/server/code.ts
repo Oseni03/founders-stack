@@ -12,7 +12,7 @@ export async function getRepositories(organizationId: string) {
 export async function getRepository(repoId: string, organizationId: string) {
 	const repository = await prisma.repository.findUnique({
 		where: { id: repoId, organizationId },
-		include: { repositoryHealth: true },
+		include: { health: true },
 	});
 	return repository;
 }

@@ -71,15 +71,15 @@ export const createCodeStore = () => {
 						});
 					} catch (error) {
 						set((state) => {
-							state.loading = false;
+							state.loading.repositories = false;
 							state.error.repositories = (error as Error).message;
 						});
 					}
 				},
 				fetchBranches: async (repoId: string) => {
 					set((state) => {
-						state.loading = true;
-						state.error = null;
+						state.loading.branches = true;
+						state.error.branches = null;
 					});
 					try {
 						const response = await fetch(
@@ -90,19 +90,19 @@ export const createCodeStore = () => {
 						const { data } = await response.json();
 						set((state) => {
 							state.branches = data;
-							state.loading = false;
+							state.loading.branches = false;
 						});
 					} catch (error) {
 						set((state) => {
-							state.loading = false;
-							state.error = (error as Error).message;
+							state.loading.branches = false;
+							state.error.branches = (error as Error).message;
 						});
 					}
 				},
 				fetchCommits: async (repoId: string) => {
 					set((state) => {
-						state.loading = true;
-						state.error = null;
+						state.loading.commits = true;
+						state.error.commits = null;
 					});
 					try {
 						const response = await fetch(
@@ -113,19 +113,19 @@ export const createCodeStore = () => {
 						const { data } = await response.json();
 						set((state) => {
 							state.commits = data;
-							state.loading = false;
+							state.loading.commits = false;
 						});
 					} catch (error) {
 						set((state) => {
-							state.loading = false;
-							state.error = (error as Error).message;
+							state.loading.commits = false;
+							state.error.commits = (error as Error).message;
 						});
 					}
 				},
 				fetchContributors: async (repoId: string) => {
 					set((state) => {
-						state.loading = true;
-						state.error = null;
+						state.loading.contributors = true;
+						state.error.contributors = null;
 					});
 					try {
 						const response = await fetch(
@@ -136,19 +136,19 @@ export const createCodeStore = () => {
 						const { data } = await response.json();
 						set((state) => {
 							state.contributors = data;
-							state.loading = false;
+							state.loading.contributors = false;
 						});
 					} catch (error) {
 						set((state) => {
-							state.loading = false;
-							state.error = (error as Error).message;
+							state.loading.contributors = false;
+							state.error.contributors = (error as Error).message;
 						});
 					}
 				},
 				fetchIssues: async (repoId: string) => {
 					set((state) => {
-						state.loading = true;
-						state.error = null;
+						state.loading.issues = true;
+						state.error.issues = null;
 					});
 					try {
 						const response = await fetch(
@@ -159,19 +159,19 @@ export const createCodeStore = () => {
 						const { data } = await response.json();
 						set((state) => {
 							state.issues = data;
-							state.loading = false;
+							state.loading.issues = false;
 						});
 					} catch (error) {
 						set((state) => {
-							state.loading = false;
-							state.error = (error as Error).message;
+							state.loading.issues = false;
+							state.error.issues = (error as Error).message;
 						});
 					}
 				},
 				fetchPullRequests: async (repoId: string) => {
 					set((state) => {
-						state.loading = true;
-						state.error = null;
+						state.loading.issues = true;
+						state.error.issues = null;
 					});
 					try {
 						const response = await fetch(
@@ -182,12 +182,12 @@ export const createCodeStore = () => {
 						const { data } = await response.json();
 						set((state) => {
 							state.pullRequests = data;
-							state.loading = false;
+							state.loading.pullRequests = false;
 						});
 					} catch (error) {
 						set((state) => {
-							state.loading = false;
-							state.error = (error as Error).message;
+							state.loading.pullRequests = false;
+							state.error.pullRequests = (error as Error).message;
 						});
 					}
 				},
