@@ -15,24 +15,26 @@ import {
 	GitBranch,
 	GitCommit,
 	GitPullRequest,
+	GitMerge,
 	TrendingUp,
 	Users,
 	Activity,
 } from "lucide-react";
 import { ChartWidget } from "@/components/widgets/chart-widget";
+import { useCodeStore } from "@/zustand/providers/code-store-provider";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
 
 interface PRStatus {
 	open: number;
 	merged: number;
 	draft: number;
-}
-
-interface Contributor {
-	name: string;
-	avatar: string;
-	commits: number;
-	additions: number;
-	deletions: number;
 }
 
 interface RepoHealth {
@@ -43,68 +45,117 @@ interface RepoHealth {
 	testCoverage: number;
 }
 
-interface Commit {
-	id: string;
-	message: string;
-	author: string;
-	avatar: string;
-	timestamp: string;
-	repo: string;
-	branch: string;
-	url: string;
-}
-
-interface Branch {
-	name: string;
-	lastCommit: string;
-	commitsAhead: number;
-	status: "active" | "stale" | "merged";
-}
-
 export default function CodePage() {
+	const {
+		branches,
+		commits,
+		repositories,
+		contributors,
+		pullRequests,
+		issues,
+		loading: {
+			repositories: repoLoading,
+			branches: branchesLoading,
+			commits: commitsLoading,
+			contributors: contributorsLoading,
+			pullRequests: prLoading,
+			issues: issuesLoading,
+		},
+		error: {
+			repositories: repoError,
+			branches: branchesError,
+			commits: commitsError,
+			contributors: contributorsError,
+			pullRequests: prError,
+			issues: issuesError,
+		},
+		fetchRepositories,
+		fetchBranches,
+		fetchCommits,
+		fetchContributors,
+		fetchPullRequests,
+		fetchIssues,
+	} = useCodeStore((state) => state);
+
+	const [selectedRepoId, setSelectedRepoId] = useState<string>("");
 	const [prStatus, setPRStatus] = useState<PRStatus | null>(null);
-	const [contributors, setContributors] = useState<Contributor[]>([]);
 	const [repoHealth, setRepoHealth] = useState<RepoHealth | null>(null);
-	const [recentCommits, setRecentCommits] = useState<Commit[]>([]);
-	const [branches, setBranches] = useState<Branch[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
-		const fetchData = async () => {
+		const fetchAllData = async () => {
+			setIsLoading(true);
 			try {
-				const [
-					prRes,
-					contributorsRes,
-					healthRes,
-					commitsRes,
-					branchesRes,
-				] = await Promise.all([
-					fetch("/api/code/pr-status"),
-					fetch("/api/code/contributors"),
-					fetch("/api/code/repo-health"),
-					fetch("/api/code/recent-commits"),
-					fetch("/api/code/branches"),
+				// Fetch all repositories for the project
+				await fetchRepositories();
+
+				// Select the first repo by default or use a specific one
+				if (repositories.length === 0) {
+					toast.info("No repositories found", {
+						description: "Kindly integrate and add a repository",
+					});
+				}
+
+				const initialRepoId = repositories[0].id;
+				setSelectedRepoId(initialRepoId);
+
+				// Fetch data for the selected repo
+				await Promise.all([
+					fetchBranches(initialRepoId),
+					fetchCommits(initialRepoId),
+					fetchContributors(initialRepoId),
+					fetchIssues(initialRepoId),
+					fetchPullRequests(initialRepoId),
 				]);
 
-				const [
-					prData,
-					contributorsData,
-					healthData,
-					commitsData,
-					branchesData,
-				] = await Promise.all([
-					prRes.json(),
-					contributorsRes.json(),
-					healthRes.json(),
-					commitsRes.json(),
-					branchesRes.json(),
-				]);
+				// Derive PRStatus from pullRequests
+				const filteredPRs = pullRequests.filter(
+					(pr) => pr.repositoryId === initialRepoId
+				);
+				const open = filteredPRs.filter(
+					(pr) => pr.status === "open"
+				).length;
+				const merged = filteredPRs.filter(
+					(pr) => pr.status === "merged"
+				).length;
+				const draft = filteredPRs.filter(
+					(pr) => pr.status === "draft"
+				).length;
+				setPRStatus({ open, merged, draft });
 
-				setPRStatus(prData);
-				setContributors(contributorsData.contributors);
-				setRepoHealth(healthData);
-				setRecentCommits(commitsData.commits);
-				setBranches(branchesData.branches);
+				// Derive RepoHealth
+				const filteredIssues = issues.filter(
+					(issue) => issue.repositoryId === initialRepoId
+				);
+				const filteredStalePRs = filteredPRs.filter(
+					(pr) =>
+						pr.status === "open" &&
+						Date.now() - new Date(pr.createdAt).getTime() >
+							30 * 24 * 60 * 60 * 1000
+				);
+				const avgReviewTime =
+					filteredPRs.reduce(
+						(sum, pr) => sum + (pr.avgReviewTime || 0),
+						0
+					) / (filteredPRs.length || 1);
+				const openIssues = filteredIssues.filter(
+					(issue) => issue.status === "open"
+				).length;
+				const stalePRs = filteredStalePRs.length;
+				const score = Math.max(
+					0,
+					100 -
+						openIssues * 2 -
+						stalePRs * 5 -
+						(avgReviewTime > 24 ? 10 : 0)
+				);
+				setRepoHealth({
+					score: Math.round(score),
+					openIssues,
+					stalePRs,
+					codeReviewTime: `${avgReviewTime.toFixed(1)} hours`,
+					testCoverage: 0, // Placeholder; fetch from API if available
+				});
 			} catch (error) {
 				console.error("[v0] Failed to fetch code data:", error);
 			} finally {
@@ -112,8 +163,86 @@ export default function CodePage() {
 			}
 		};
 
-		fetchData();
-	}, []);
+		fetchAllData();
+	}, [
+		fetchRepositories,
+		fetchBranches,
+		fetchCommits,
+		fetchContributors,
+		fetchIssues,
+		fetchPullRequests,
+		pullRequests,
+		issues,
+		repositories,
+	]);
+
+	const handleRepoChange = async (repoId: string) => {
+		setSelectedRepoId(repoId);
+		setIsLoading(true);
+		try {
+			await Promise.all([
+				fetchBranches(repoId),
+				fetchCommits(repoId),
+				fetchContributors(repoId),
+				fetchIssues(repoId),
+				fetchPullRequests(repoId),
+			]);
+
+			const filteredPRs = pullRequests.filter(
+				(pr) => pr.repositoryId === repoId
+			);
+			const open = filteredPRs.filter(
+				(pr) => pr.status === "open"
+			).length;
+			const merged = filteredPRs.filter(
+				(pr) => pr.status === "merged"
+			).length;
+			const draft = filteredPRs.filter(
+				(pr) => pr.status === "draft"
+			).length;
+			setPRStatus({ open, merged, draft });
+
+			const filteredIssues = issues.filter(
+				(issue) => issue.repositoryId === repoId
+			);
+			const filteredStalePRs = filteredPRs.filter(
+				(pr) =>
+					pr.status === "open" &&
+					Date.now() - new Date(pr.createdAt).getTime() >
+						30 * 24 * 60 * 60 * 1000
+			);
+			const avgReviewTime =
+				filteredPRs.reduce(
+					(sum, pr) => sum + (pr.avgReviewTime || 0),
+					0
+				) / (filteredPRs.length || 1);
+			const openIssues = filteredIssues.filter(
+				(issue) => issue.status === "open"
+			).length;
+			const stalePRs = filteredStalePRs.length;
+			const score = Math.max(
+				0,
+				100 -
+					openIssues * 2 -
+					stalePRs * 5 -
+					(avgReviewTime > 24 ? 10 : 0)
+			);
+			setRepoHealth({
+				score: Math.round(score),
+				openIssues,
+				stalePRs,
+				codeReviewTime: `${avgReviewTime.toFixed(1)} hours`,
+				testCoverage: 0,
+			});
+		} catch (error) {
+			console.error(
+				"[v0] Failed to fetch data for selected repo:",
+				error
+			);
+		} finally {
+			setIsLoading(false);
+		}
+	};
 
 	const getHealthColor = (score: number) => {
 		if (score >= 80) return "text-green-500";
@@ -134,9 +263,25 @@ export default function CodePage() {
 		}
 	};
 
+	const isAnyLoading =
+		repoLoading ||
+		branchesLoading ||
+		commitsLoading ||
+		contributorsLoading ||
+		issuesLoading ||
+		prLoading ||
+		isLoading;
+	const hasAnyError =
+		repoError ||
+		branchesError ||
+		commitsError ||
+		contributorsError ||
+		issuesError ||
+		prError;
+
 	return (
 		<div className="space-y-6">
-			{/* Header */}
+			{/* Header with Repository Selector */}
 			<div>
 				<h1 className="text-3xl font-bold tracking-tight">
 					Code Activity
@@ -145,11 +290,28 @@ export default function CodePage() {
 					Monitor commits, PRs, and repository health across all
 					projects
 				</p>
+				<div className="mt-4">
+					<Select
+						onValueChange={handleRepoChange}
+						value={selectedRepoId}
+					>
+						<SelectTrigger className="w-[180px]">
+							<SelectValue placeholder="Select Repository" />
+						</SelectTrigger>
+						<SelectContent>
+							{repositories.map((repo) => (
+								<SelectItem key={repo.id} value={repo.id}>
+									{repo.name}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
 			</div>
 
 			{/* PR Status Overview */}
 			<div className="grid gap-4 md:grid-cols-3">
-				{isLoading ? (
+				{isAnyLoading ? (
 					<>
 						<Skeleton className="h-32" />
 						<Skeleton className="h-32" />
@@ -180,7 +342,7 @@ export default function CodePage() {
 									<CardTitle className="text-sm font-medium">
 										Merged PRs
 									</CardTitle>
-									<GitPullRequest className="h-4 w-4 text-green-500" />
+									<GitMerge className="h-4 w-4 text-green-500" />
 								</CardHeader>
 								<CardContent>
 									<div className="text-2xl font-bold">
@@ -217,7 +379,7 @@ export default function CodePage() {
 			<ChartWidget
 				title="Commit Activity"
 				description="Daily commits across all repositories"
-				endpoint="/api/code/commit-activity"
+				endpoint={`/api/code/commit-activity?repoId=${selectedRepoId}`} // Adjust endpoint to accept repoId
 				chartType="bar"
 				dataKeys={[
 					{
@@ -244,7 +406,7 @@ export default function CodePage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						{isLoading ? (
+						{contributorsLoading || isLoading ? (
 							<div className="space-y-4">
 								{[1, 2, 3, 4, 5].map((i) => (
 									<Skeleton key={i} className="h-16" />
@@ -252,51 +414,61 @@ export default function CodePage() {
 							</div>
 						) : (
 							<div className="space-y-4">
-								{contributors.map((contributor, index) => (
-									<div
-										key={contributor.name}
-										className="flex items-center gap-4"
-									>
-										<div className="flex items-center gap-3 flex-1">
-											<div className="text-sm font-medium text-muted-foreground w-6">
-												{index + 1}
-											</div>
-											<Avatar className="h-10 w-10">
-												<AvatarImage
-													src={
-														contributor.avatar ||
-														"/placeholder.svg"
-													}
-													alt={contributor.name}
-												/>
-												<AvatarFallback>
-													{contributor.name
-														.slice(0, 2)
-														.toUpperCase()}
-												</AvatarFallback>
-											</Avatar>
-											<div className="flex-1">
-												<div className="font-medium">
-													{contributor.name}
+								{contributors
+									.filter(
+										(c) => c.repositoryId === selectedRepoId
+									)
+									.map((contributor, index) => (
+										<div
+											key={contributor.id}
+											className="flex items-center gap-4"
+										>
+											<div className="flex items-center gap-3 flex-1">
+												<div className="text-sm font-medium text-muted-foreground w-6">
+													{index + 1}
 												</div>
-												<div className="text-xs text-muted-foreground">
-													{contributor.commits}{" "}
-													commits
+												<Avatar className="h-10 w-10">
+													<AvatarImage
+														src={
+															contributor
+																.attributes
+																.avatarUrl ||
+															"/placeholder.svg"
+														}
+														alt={contributor.login}
+													/>
+													<AvatarFallback>
+														{contributor.login
+															.slice(0, 2)
+															.toUpperCase()}
+													</AvatarFallback>
+												</Avatar>
+												<div className="flex-1">
+													<div className="font-medium">
+														{contributor.login}
+													</div>
+													<div className="text-xs text-muted-foreground">
+														{
+															contributor.contributions
+														}{" "}
+														commits
+													</div>
+												</div>
+											</div>
+											<div className="text-right text-xs text-muted-foreground">
+												<div className="text-green-500">
+													+
+													{contributor.attributes.additions?.toLocaleString() ||
+														0}
+												</div>
+												<div className="text-red-500">
+													-
+													{contributor.attributes.deletions?.toLocaleString() ||
+														0}
 												</div>
 											</div>
 										</div>
-										<div className="text-right text-xs text-muted-foreground">
-											<div className="text-green-500">
-												+
-												{contributor.additions.toLocaleString()}
-											</div>
-											<div className="text-red-500">
-												-
-												{contributor.deletions.toLocaleString()}
-											</div>
-										</div>
-									</div>
-								))}
+									))}
 							</div>
 						)}
 					</CardContent>
@@ -314,7 +486,7 @@ export default function CodePage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						{isLoading ? (
+						{issuesLoading || prLoading || isLoading ? (
 							<div className="space-y-4">
 								<Skeleton className="h-20" />
 								<Skeleton className="h-16" />
@@ -388,7 +560,7 @@ export default function CodePage() {
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
-					{isLoading ? (
+					{commitsLoading || isLoading ? (
 						<div className="space-y-4">
 							{[1, 2, 3, 4, 5].map((i) => (
 								<Skeleton key={i} className="h-20" />
@@ -396,52 +568,62 @@ export default function CodePage() {
 						</div>
 					) : (
 						<div className="space-y-4">
-							{recentCommits.map((commit) => (
-								<a
-									key={commit.id}
-									href={commit.url}
-									target="_blank"
-									rel="noopener noreferrer"
-									className="flex items-start gap-4 p-3 rounded-lg hover:bg-accent transition-colors"
-								>
-									<Avatar className="h-10 w-10 mt-1">
-										<AvatarImage
-											src={
-												commit.avatar ||
-												"/placeholder.svg"
-											}
-											alt={commit.author}
-										/>
-										<AvatarFallback>
-											{commit.author
-												.slice(0, 2)
-												.toUpperCase()}
-										</AvatarFallback>
-									</Avatar>
-									<div className="flex-1 min-w-0">
-										<div className="font-medium text-sm">
-											{commit.message}
+							{commits
+								.filter(
+									(c) => c.repositoryId === selectedRepoId
+								)
+								.map((commit) => (
+									<a
+										key={commit.id}
+										href={commit.attributes.url || "#"}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="flex items-start gap-4 p-3 rounded-lg hover:bg-accent transition-colors"
+									>
+										<Avatar className="h-10 w-10 mt-1">
+											<AvatarImage
+												src={
+													commit.attributes
+														.avatarUrl ||
+													"/placeholder.svg"
+												}
+												alt={
+													commit.authorId || "Author"
+												}
+											/>
+											<AvatarFallback>
+												{commit.authorId
+													?.slice(0, 2)
+													.toUpperCase() || "AU"}
+											</AvatarFallback>
+										</Avatar>
+										<div className="flex-1 min-w-0">
+											<div className="font-medium text-sm">
+												{commit.message}
+											</div>
+											<div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+												<span>{commit.authorId}</span>
+												<span>•</span>
+												<span>
+													{commit.committedAt.toLocaleString()}
+												</span>
+												<span>•</span>
+												<Badge
+													variant="outline"
+													className="text-xs"
+												>
+													{commit.repositoryId}
+												</Badge>
+												<span>•</span>
+												<span className="flex items-center gap-1">
+													<GitBranch className="h-3 w-3" />
+													{commit.attributes.branch ||
+														"main"}
+												</span>
+											</div>
 										</div>
-										<div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-											<span>{commit.author}</span>
-											<span>•</span>
-											<span>{commit.timestamp}</span>
-											<span>•</span>
-											<Badge
-												variant="outline"
-												className="text-xs"
-											>
-												{commit.repo}
-											</Badge>
-											<span>•</span>
-											<span className="flex items-center gap-1">
-												<GitBranch className="h-3 w-3" />
-												{commit.branch}
-											</span>
-										</div>
-									</div>
-								</a>
-							))}
+									</a>
+								))}
 						</div>
 					)}
 				</CardContent>
@@ -459,7 +641,7 @@ export default function CodePage() {
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
-					{isLoading ? (
+					{branchesLoading || isLoading ? (
 						<div className="space-y-3">
 							{[1, 2, 3, 4, 5].map((i) => (
 								<Skeleton key={i} className="h-16" />
@@ -467,43 +649,49 @@ export default function CodePage() {
 						</div>
 					) : (
 						<div className="space-y-3">
-							{branches.map((branch) => (
-								<div
-									key={branch.name}
-									className="flex items-center justify-between p-3 rounded-lg border"
-								>
-									<div className="flex items-center gap-3">
-										<div
-											className={`h-2 w-2 rounded-full ${getBranchStatusColor(branch.status)}`}
-										/>
-										<div>
-											<div className="font-medium text-sm">
-												{branch.name}
-											</div>
-											<div className="text-xs text-muted-foreground">
-												Last commit {branch.lastCommit}
+							{branches
+								.filter(
+									(b) => b.repositoryId === selectedRepoId
+								)
+								.map((branch) => (
+									<div
+										key={branch.id}
+										className="flex items-center justify-between p-3 rounded-lg border"
+									>
+										<div className="flex items-center gap-3">
+											<div
+												className={`h-2 w-2 rounded-full ${getBranchStatusColor(branch.status)}`}
+											/>
+											<div>
+												<div className="font-medium text-sm">
+													{branch.name}
+												</div>
+												<div className="text-xs text-muted-foreground">
+													Last commit{" "}
+													{branch.lastCommitAt?.toLocaleString() ||
+														"N/A"}
+												</div>
 											</div>
 										</div>
-									</div>
-									<div className="flex items-center gap-2">
-										{branch.commitsAhead > 0 && (
+										<div className="flex items-center gap-2">
+											{branch.commitsAhead > 0 && (
+												<Badge
+													variant="secondary"
+													className="text-xs"
+												>
+													<TrendingUp className="h-3 w-3 mr-1" />
+													{branch.commitsAhead} ahead
+												</Badge>
+											)}
 											<Badge
-												variant="secondary"
-												className="text-xs"
+												variant="outline"
+												className="text-xs capitalize"
 											>
-												<TrendingUp className="h-3 w-3 mr-1" />
-												{branch.commitsAhead} ahead
+												{branch.status}
 											</Badge>
-										)}
-										<Badge
-											variant="outline"
-											className="text-xs capitalize"
-										>
-											{branch.status}
-										</Badge>
+										</div>
 									</div>
-								</div>
-							))}
+								))}
 						</div>
 					)}
 				</CardContent>
