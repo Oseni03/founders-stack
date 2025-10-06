@@ -1,0 +1,177 @@
+import { create } from "zustand";
+import { immer } from "zustand/middleware/immer";
+import {
+	Repository,
+	Branch,
+	Contributor,
+	Commit,
+	PullRequest,
+	Issue,
+} from "@prisma/client";
+
+export interface CodeState {
+	repositories: Repository[];
+	branches: Branch[];
+	contributors: Contributor[];
+	commits: Commit[];
+	pullRequests: PullRequest[];
+	issues: Issue[];
+	loading: { [key: string]: boolean };
+	error: { [key: string]: string | null };
+	fetchRepositories: () => Promise<void>;
+	fetchBranches: (repoId: string) => Promise<void>;
+	fetchContributors: (repoId: string) => Promise<void>;
+	fetchCommits: (repoId: string) => Promise<void>;
+	fetchPullRequests: (repoId: string) => Promise<void>;
+	fetchIssues: (repoId: string) => Promise<void>;
+}
+
+export const createCodeStore = () => {
+	return create<CodeState, [["zustand/immer", never]]>(
+		immer((set) => ({
+			repositories: [],
+			branches: [],
+			contributors: [],
+			commits: [],
+			pullRequests: [],
+			issues: [],
+			loading: {},
+			error: {},
+			fetchRepositories: async () => {
+				set((state) => {
+					state.loading = true;
+					state.error = null;
+				});
+				try {
+					const response = await fetch(`/api/code/repositories`);
+					if (!response.ok)
+						throw new Error("Failed to fetch repositories");
+					const { data } = await response.json();
+					set((state) => {
+						state.repositories = data;
+						state.loading = false;
+					});
+				} catch (error) {
+					set((state) => {
+						state.loading = false;
+						state.error = (error as Error).message;
+					});
+				}
+			},
+			fetchBranches: async (repoId: string) => {
+				set((state) => {
+					state.loading = true;
+					state.error = null;
+				});
+				try {
+					const response = await fetch(
+						`/api/code/repositories/${repoId}/branches`
+					);
+					if (!response.ok)
+						throw new Error("Failed to fetch branches");
+					const { data } = await response.json();
+					set((state) => {
+						state.branches = data;
+						state.loading = false;
+					});
+				} catch (error) {
+					set((state) => {
+						state.loading = false;
+						state.error = (error as Error).message;
+					});
+				}
+			},
+			fetchCommits: async (repoId: string) => {
+				set((state) => {
+					state.loading = true;
+					state.error = null;
+				});
+				try {
+					const response = await fetch(
+						`/api/code/repositories/${repoId}/commits`
+					);
+					if (!response.ok)
+						throw new Error("Failed to fetch commits");
+					const { data } = await response.json();
+					set((state) => {
+						state.commits = data;
+						state.loading = false;
+					});
+				} catch (error) {
+					set((state) => {
+						state.loading = false;
+						state.error = (error as Error).message;
+					});
+				}
+			},
+			fetchContributors: async (repoId: string) => {
+				set((state) => {
+					state.loading = true;
+					state.error = null;
+				});
+				try {
+					const response = await fetch(
+						`/api/code/repositories/${repoId}/contributors`
+					);
+					if (!response.ok)
+						throw new Error("Failed to fetch contributors");
+					const { data } = await response.json();
+					set((state) => {
+						state.contributors = data;
+						state.loading = false;
+					});
+				} catch (error) {
+					set((state) => {
+						state.loading = false;
+						state.error = (error as Error).message;
+					});
+				}
+			},
+			fetchIssues: async (repoId: string) => {
+				set((state) => {
+					state.loading = true;
+					state.error = null;
+				});
+				try {
+					const response = await fetch(
+						`/api/code/repositories/${repoId}/issues`
+					); // Note: API route not yet created
+					if (!response.ok) throw new Error("Failed to fetch issues");
+					const { data } = await response.json();
+					set((state) => {
+						state.issues = data;
+						state.loading = false;
+					});
+				} catch (error) {
+					set((state) => {
+						state.loading = false;
+						state.error = (error as Error).message;
+					});
+				}
+			},
+			fetchPullRequests: async (repoId: string) => {
+				set((state) => {
+					state.loading = true;
+					state.error = null;
+				});
+				try {
+					const response = await fetch(
+						`/api/code/repositories/${repoId}/pull-requests`
+					);
+					if (!response.ok)
+						throw new Error("Failed to fetch pull requests");
+					const { data } = await response.json();
+					set((state) => {
+						state.pullRequests = data;
+						state.loading = false;
+					});
+				} catch (error) {
+					set((state) => {
+						state.loading = false;
+						state.error = (error as Error).message;
+					});
+				}
+			},
+		}))
+	);
+};
