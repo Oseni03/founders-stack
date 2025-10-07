@@ -118,9 +118,6 @@ export default function CodePage() {
 		const fetchAllData = async () => {
 			setIsLoading(true);
 			try {
-				// Fetch all repositories for the project
-				await fetchRepositories();
-
 				// Select the first repo by default or use a specific one
 				if (repositories.length === 0) {
 					toast.info("No repositories found", {
@@ -198,7 +195,6 @@ export default function CodePage() {
 
 		fetchAllData();
 	}, [
-		fetchRepositories,
 		fetchBranches,
 		fetchCommits,
 		fetchContributors,
@@ -318,6 +314,8 @@ export default function CodePage() {
 		if (selectedRepos.length === 0) return;
 		if (!activeOrganization) return;
 
+		console.log("Selected repos to save: ", selectedRepos);
+
 		try {
 			const repoIds = selectedRepos.map((r) => r.externalId);
 			await saveRepositories(activeOrganization.id, selectedRepos);
@@ -388,7 +386,7 @@ export default function CodePage() {
 					Monitor commits, PRs, and repository health across all
 					projects
 				</p>
-				<div className="mt-4">
+				<div className="flex mt-4">
 					<Select
 						onValueChange={handleRepoChange}
 						value={selectedRepoId}
