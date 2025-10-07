@@ -44,57 +44,49 @@ export const CommitsCard = ({
 						{commits
 							.filter((c) => c.repositoryId === selectedRepoId)
 							.map((commit) => (
-								<a
-									key={commit.id}
-									href={commit.attributes.url || "#"}
-									target="_blank"
-									rel="noopener noreferrer"
-									className="flex items-start gap-4 p-3 rounded-lg hover:bg-accent transition-colors"
-								>
-									<Avatar className="h-10 w-10 mt-1">
-										<AvatarImage
-											src={
-												commit.attributes.avatarUrl ||
-												"/placeholder.svg"
-											}
-											alt={commit.authorId || "Author"}
-										/>
-										<AvatarFallback>
-											{commit.authorId
-												?.slice(0, 2)
-												.toUpperCase() || "AU"}
-										</AvatarFallback>
-									</Avatar>
-									<div className="flex-1 min-w-0">
-										<div className="font-medium text-sm">
-											{commit.message}
-										</div>
-										<div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-											<span>{commit.authorId}</span>
-											<span>•</span>
-											<span>
-												{commit.committedAt.toLocaleString()}
-											</span>
-											<span>•</span>
-											<Badge
-												variant="outline"
-												className="text-xs"
-											>
-												{commit.repositoryId}
-											</Badge>
-											<span>•</span>
-											<span className="flex items-center gap-1">
-												<GitBranch className="h-3 w-3" />
-												{commit.attributes.branch ||
-													"main"}
-											</span>
-										</div>
-									</div>
-								</a>
+								<CommitLink key={commit.id} commit={commit} />
 							))}
 					</div>
 				)}
 			</CardContent>
 		</Card>
+	);
+};
+
+const CommitLink = ({ commit }: { commit: CommitType }) => {
+	return (
+		<a
+			href={commit.attributes.url || "#"}
+			target="_blank"
+			rel="noopener noreferrer"
+			className="flex items-start gap-4 p-3 rounded-lg hover:bg-accent transition-colors"
+		>
+			<Avatar className="h-10 w-10 mt-1">
+				<AvatarImage
+					src={commit.attributes.avatarUrl || "/placeholder.svg"}
+					alt={commit.authorId || "Author"}
+				/>
+				<AvatarFallback>
+					{commit.authorId?.slice(0, 2).toUpperCase() || "AU"}
+				</AvatarFallback>
+			</Avatar>
+			<div className="flex-1 min-w-0">
+				<div className="font-medium text-sm">{commit.message}</div>
+				<div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+					<span>{commit.authorId}</span>
+					<span>•</span>
+					<span>{commit.committedAt.toLocaleString()}</span>
+					<span>•</span>
+					<Badge variant="outline" className="text-xs">
+						{commit.repositoryId}
+					</Badge>
+					<span>•</span>
+					<span className="flex items-center gap-1">
+						<GitBranch className="h-3 w-3" />
+						{commit.attributes.branch || "main"}
+					</span>
+				</div>
+			</div>
+		</a>
 	);
 };

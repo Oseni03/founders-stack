@@ -43,56 +43,59 @@ export const ContributorsCard = ({
 						{contributors
 							.filter((c) => c.repositoryId === selectedRepoId)
 							.map((contributor, index) => (
-								<div
+								<Contributorcard
 									key={contributor.id}
-									className="flex items-center gap-4"
-								>
-									<div className="flex items-center gap-3 flex-1">
-										<div className="text-sm font-medium text-muted-foreground w-6">
-											{index + 1}
-										</div>
-										<Avatar className="h-10 w-10">
-											<AvatarImage
-												src={
-													contributor.attributes
-														.avatarUrl ||
-													"/placeholder.svg"
-												}
-												alt={contributor.login}
-											/>
-											<AvatarFallback>
-												{contributor.login
-													.slice(0, 2)
-													.toUpperCase()}
-											</AvatarFallback>
-										</Avatar>
-										<div className="flex-1">
-											<div className="font-medium">
-												{contributor.login}
-											</div>
-											<div className="text-xs text-muted-foreground">
-												{contributor.contributions}{" "}
-												commits
-											</div>
-										</div>
-									</div>
-									<div className="text-right text-xs text-muted-foreground">
-										<div className="text-green-500">
-											+
-											{contributor.attributes.additions?.toLocaleString() ||
-												0}
-										</div>
-										<div className="text-red-500">
-											-
-											{contributor.attributes.deletions?.toLocaleString() ||
-												0}
-										</div>
-									</div>
-								</div>
+									index={index}
+									contributor={contributor}
+								/>
 							))}
 					</div>
 				)}
 			</CardContent>
 		</Card>
+	);
+};
+
+const Contributorcard = ({
+	index,
+	contributor,
+}: {
+	index: number;
+	contributor: ContributorType;
+}) => {
+	return (
+		<div className="flex items-center gap-4">
+			<div className="flex items-center gap-3 flex-1">
+				<div className="text-sm font-medium text-muted-foreground w-6">
+					{index + 1}
+				</div>
+				<Avatar className="h-10 w-10">
+					<AvatarImage
+						src={
+							contributor.attributes.avatarUrl ||
+							"/placeholder.svg"
+						}
+						alt={contributor.login}
+					/>
+					<AvatarFallback>
+						{contributor.login.slice(0, 2).toUpperCase()}
+					</AvatarFallback>
+				</Avatar>
+				<div className="flex-1">
+					<div className="font-medium">{contributor.login}</div>
+					<div className="text-xs text-muted-foreground">
+						{contributor.contributions} commits
+					</div>
+				</div>
+			</div>
+			<div className="text-right text-xs text-muted-foreground">
+				<div className="text-green-500">
+					+{contributor.attributes.additions?.toLocaleString() || 0}
+				</div>
+				<div className="text-red-500">
+					-{contributor.attributes.deletions?.toLocaleString() || 0}
+				</div>
+			</div>
+		</div>
 	);
 };
