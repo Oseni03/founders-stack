@@ -1,25 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-	GitBranch,
-	GitCommit,
-	GitPullRequest,
-	GitMerge,
-	TrendingUp,
-	Users,
-	Activity,
-} from "lucide-react";
 import { useCodeStore } from "@/zustand/providers/code-store-provider";
 import {
 	Select,
@@ -29,42 +11,19 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-	DialogFooter,
-} from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useSearchParams, useRouter } from "next/navigation";
-import { RepoData } from "@/lib/connectors/github";
-import { saveRepositories } from "@/server/code";
-import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
-import { z } from "zod"; // Import Zod for input validation (security: prevent injection)
 import { CommitActivityChart } from "@/components/charts/commits-activity-chart";
-
-interface PRStatus {
-	open: number;
-	merged: number;
-	draft: number;
-}
-
-interface RepoHealth {
-	score: number;
-	openIssues: number;
-	stalePRs: number;
-	codeReviewTime: string;
-	testCoverage: number;
-}
+import { GitHubRepoSelection } from "@/components/code/github-repo-selection";
+import { PRCard } from "@/components/code/pr-card";
+import { ContributorsCard } from "@/components/code/contributors-card";
+import { RepositoryHealthCard } from "@/components/code/repository-health-card";
+import { CommitsCard } from "@/components/code/commits-card";
+import { BranchActivityCard } from "@/components/code/branch-activity-card";
 
 export default function CodePage() {
-	const { activeOrganization } = useOrganizationStore((state) => state);
 	const {
+		activeRepoId,
+		repoHealth,
+		prStatus,
 		branches,
 		commits,
 		repositories,
@@ -80,6 +39,9 @@ export default function CodePage() {
 			issues: issuesLoading,
 		},
 		error: { commits: commitsError },
+		setActiveRepoId,
+		setPRStatus,
+		setRepoHealth,
 		fetchRepositories,
 		fetchBranches,
 		fetchCommits,
@@ -87,27 +49,7 @@ export default function CodePage() {
 		fetchPullRequests,
 		fetchIssues,
 	} = useCodeStore((state) => state);
-
-	const [selectedRepoId, setSelectedRepoId] = useState<string>("");
-	const [prStatus, setPRStatus] = useState<PRStatus | null>(null);
-	const [repoHealth, setRepoHealth] = useState<RepoHealth | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
-	const [open, setOpen] = useState(false);
-	const [githubRepos, setGithubRepos] = useState<RepoData[]>([]);
-	const [selectedRepos, setSelectedRepos] = useState<RepoData[]>([]);
-	const [repoFetchLoading, setRepoFetchLoading] = useState(false);
-	const [searchTerm, setSearchTerm] = useState("");
-
-	const searchParams = useSearchParams();
-	const router = useRouter();
-
-	useEffect(() => {
-		const addRepo = searchParams.get("addRepo");
-		if (addRepo === "true") {
-			setOpen(true);
-			router.replace("/code"); // Remove param to prevent loops
-		}
-	}, [searchParams, router]);
 
 	useEffect(() => {
 		const fetchAllData = async () => {
@@ -122,7 +64,7 @@ export default function CodePage() {
 				}
 
 				const initialRepoId = repositories[0].id;
-				setSelectedRepoId(initialRepoId);
+				setActiveRepoId(initialRepoId);
 
 				await Promise.all([
 					fetchBranches(initialRepoId),
@@ -198,10 +140,13 @@ export default function CodePage() {
 		pullRequests,
 		issues,
 		repositories,
+		setActiveRepoId,
+		setPRStatus,
+		setRepoHealth,
 	]);
 
 	const handleRepoChange = async (repoId: string) => {
-		setSelectedRepoId(repoId);
+		setActiveRepoId(repoId);
 		setIsLoading(true);
 		try {
 			await Promise.all([
@@ -268,109 +213,6 @@ export default function CodePage() {
 		}
 	};
 
-	const fetchGithubRepos = async () => {
-		setRepoFetchLoading(true);
-		try {
-			const res = await fetch("/api/integrations/github/repos");
-			if (!res.ok) {
-				throw new Error(await res.text());
-			}
-			const data: RepoData[] = await res.json();
-			setGithubRepos(data);
-		} catch (error) {
-			toast.error("Failed to fetch your GitHub repositories");
-			console.error("[FETCH_GITHUB_REPOS]", error);
-		} finally {
-			setRepoFetchLoading(false);
-		}
-	};
-
-	const handleOpenChange = (isOpen: boolean) => {
-		setOpen(isOpen);
-		if (isOpen) {
-			fetchGithubRepos();
-			setSelectedRepos([]);
-			setSearchTerm("");
-		}
-	};
-
-	const handleSelectRepo = (repo: RepoData) => {
-		setSelectedRepos((prev) =>
-			prev.some((r) => r.externalId === repo.externalId)
-				? prev.filter((r) => r.externalId !== repo.externalId)
-				: [...prev, repo]
-		);
-	};
-
-	const handleSaveRepos = async () => {
-		if (selectedRepos.length === 0) return;
-
-		if (!activeOrganization || !activeOrganization.id) {
-			toast.error(
-				"No active organization found. Please select or create one."
-			);
-			return;
-		}
-
-		// Validate inputs (security: prevent malformed data)
-		const repoSchema = z.array(
-			z.object({
-				externalId: z.string().min(1),
-				name: z.string().min(1),
-				fullName: z.string().min(1),
-				owner: z.string().min(1),
-				url: z.url(),
-				defaultBranch: z.string(),
-				openIssuesCount: z.number(),
-				visibility: z.string().nullable(),
-				description: z.string().nullable(),
-			})
-		);
-		try {
-			repoSchema.parse(selectedRepos); // Throws if invalid
-		} catch (validationError) {
-			toast.error("Invalid repository data");
-			console.error("[REPO_VALIDATION]", validationError);
-			return;
-		}
-
-		try {
-			await saveRepositories(activeOrganization.id, selectedRepos);
-			await fetchRepositories();
-			setOpen(false);
-			toast.success("Repositories added successfully");
-			const newRepo = repositories.find((repo) =>
-				selectedRepos.some((r) => r.externalId === repo.externalId)
-			);
-			if (newRepo) {
-				setSelectedRepoId(newRepo.id);
-				await handleRepoChange(newRepo.id);
-			}
-		} catch (error) {
-			toast.error("Failed to save repositories");
-			console.error("[SAVE_REPOS]", error);
-		}
-	};
-
-	const getHealthColor = (score: number) => {
-		if (score >= 80) return "text-green-500";
-		if (score >= 60) return "text-yellow-500";
-		return "text-red-500";
-	};
-
-	const getBranchStatusColor = (status: string) => {
-		switch (status) {
-			case "active":
-				return "bg-green-500";
-			case "stale":
-				return "bg-yellow-500";
-			case "merged":
-				return "bg-gray-500";
-			default:
-				return "bg-gray-500";
-		}
-	};
-
 	const isAnyLoading =
 		repoLoading ||
 		branchesLoading ||
@@ -379,10 +221,6 @@ export default function CodePage() {
 		issuesLoading ||
 		prLoading ||
 		isLoading;
-
-	const filteredRepos = githubRepos.filter((repo) =>
-		repo.fullName.toLowerCase().includes(searchTerm.toLowerCase())
-	);
 
 	return (
 		<div className="space-y-6">
@@ -398,7 +236,7 @@ export default function CodePage() {
 				<div className="flex mt-4 gap-2">
 					<Select
 						onValueChange={handleRepoChange}
-						value={selectedRepoId}
+						value={activeRepoId}
 					>
 						<SelectTrigger className="w-[180px]">
 							<SelectValue placeholder="Select Repository" />
@@ -411,84 +249,11 @@ export default function CodePage() {
 							))}
 						</SelectContent>
 					</Select>
-					<Dialog open={open} onOpenChange={handleOpenChange}>
-						<DialogTrigger asChild>
-							<Button>Add repository</Button>
-						</DialogTrigger>
-						<DialogContent className="sm:max-w-md">
-							<DialogHeader>
-								<DialogTitle>
-									Select GitHub Repositories
-								</DialogTitle>
-							</DialogHeader>
-							<Input
-								placeholder="Search repositories..."
-								value={searchTerm}
-								onChange={(e) => setSearchTerm(e.target.value)}
-								className="mb-4"
-							/>
-							{repoFetchLoading ? (
-								<div className="space-y-2">
-									{[1, 2, 3, 4, 5].map((i) => (
-										<Skeleton
-											key={i}
-											className="h-10 w-full"
-										/>
-									))}
-								</div>
-							) : (
-								<ScrollArea className="h-[300px] pr-4">
-									{filteredRepos.length === 0 ? (
-										<p className="text-center text-sm text-muted-foreground">
-											No repositories found.
-										</p>
-									) : (
-										filteredRepos.map((repo) => (
-											<div
-												key={repo.externalId}
-												className="flex items-center space-x-2 py-2"
-											>
-												<Checkbox
-													id={`repo-${repo.externalId}`}
-													checked={selectedRepos.some(
-														(r) =>
-															r.externalId ===
-															repo.externalId
-													)}
-													onCheckedChange={() =>
-														handleSelectRepo(repo)
-													}
-												/>
-												<label
-													htmlFor={`repo-${repo.externalId}`}
-													className="text-sm flex-1 cursor-pointer"
-												>
-													{repo.fullName}
-												</label>
-											</div>
-										))
-									)}
-								</ScrollArea>
-							)}
-							<DialogFooter>
-								<Button
-									variant="outline"
-									onClick={() => setOpen(false)}
-								>
-									Cancel
-								</Button>
-								<Button
-									onClick={handleSaveRepos}
-									disabled={
-										selectedRepos.length === 0 ||
-										repoFetchLoading
-									}
-								>
-									Save Selected ({selectedRepos.length})
-								</Button>
-							</DialogFooter>
-						</DialogContent>
-					</Dialog>
+					<GitHubRepoSelection
+						repositories={repositories}
+						onSuccess={fetchRepositories}
+						onRepoChange={handleRepoChange}
+					/>
 				</div>
 			</div>
 
@@ -501,368 +266,43 @@ export default function CodePage() {
 						<Skeleton className="h-32" />
 					</>
 				) : (
-					prStatus && (
-						<>
-							<Card>
-								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-									<CardTitle className="text-sm font-medium">
-										Open PRs
-									</CardTitle>
-									<GitPullRequest className="h-4 w-4 text-muted-foreground" />
-								</CardHeader>
-								<CardContent>
-									<div className="text-2xl font-bold">
-										{prStatus.open}
-									</div>
-									<p className="text-xs text-muted-foreground mt-1">
-										Awaiting review
-									</p>
-								</CardContent>
-							</Card>
-							<Card>
-								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-									<CardTitle className="text-sm font-medium">
-										Merged PRs
-									</CardTitle>
-									<GitMerge className="h-4 w-4 text-green-500" />
-								</CardHeader>
-								<CardContent>
-									<div className="text-2xl font-bold">
-										{prStatus.merged}
-									</div>
-									<p className="text-xs text-muted-foreground mt-1">
-										This week
-									</p>
-								</CardContent>
-							</Card>
-							<Card>
-								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-									<CardTitle className="text-sm font-medium">
-										Draft PRs
-									</CardTitle>
-									<GitPullRequest className="h-4 w-4 text-yellow-500" />
-								</CardHeader>
-								<CardContent>
-									<div className="text-2xl font-bold">
-										{prStatus.draft}
-									</div>
-									<p className="text-xs text-muted-foreground mt-1">
-										Work in progress
-									</p>
-								</CardContent>
-							</Card>
-						</>
-					)
+					prStatus && <PRCard prStatus={prStatus} />
 				)}
 			</div>
 
 			{/* Commit Activity Chart */}
 			<CommitActivityChart
 				commits={commits}
-				selectedRepoId={selectedRepoId}
+				selectedRepoId={activeRepoId}
 				isLoading={isAnyLoading}
 				error={commitsError}
 			/>
 
 			{/* Rest of the JSX (Contributor Leaderboard, Repository Health, Recent Commits, Branch Activity) unchanged */}
 			<div className="grid gap-6 lg:grid-cols-2">
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<Users className="h-5 w-5" />
-							Top Contributors
-						</CardTitle>
-						<CardDescription>
-							Most active contributors this month
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						{contributorsLoading || isLoading ? (
-							<div className="space-y-4">
-								{[1, 2, 3, 4, 5].map((i) => (
-									<Skeleton key={i} className="h-16" />
-								))}
-							</div>
-						) : (
-							<div className="space-y-4">
-								{contributors
-									.filter(
-										(c) => c.repositoryId === selectedRepoId
-									)
-									.map((contributor, index) => (
-										<div
-											key={contributor.id}
-											className="flex items-center gap-4"
-										>
-											<div className="flex items-center gap-3 flex-1">
-												<div className="text-sm font-medium text-muted-foreground w-6">
-													{index + 1}
-												</div>
-												<Avatar className="h-10 w-10">
-													<AvatarImage
-														src={
-															contributor
-																.attributes
-																.avatarUrl ||
-															"/placeholder.svg"
-														}
-														alt={contributor.login}
-													/>
-													<AvatarFallback>
-														{contributor.login
-															.slice(0, 2)
-															.toUpperCase()}
-													</AvatarFallback>
-												</Avatar>
-												<div className="flex-1">
-													<div className="font-medium">
-														{contributor.login}
-													</div>
-													<div className="text-xs text-muted-foreground">
-														{
-															contributor.contributions
-														}{" "}
-														commits
-													</div>
-												</div>
-											</div>
-											<div className="text-right text-xs text-muted-foreground">
-												<div className="text-green-500">
-													+
-													{contributor.attributes.additions?.toLocaleString() ||
-														0}
-												</div>
-												<div className="text-red-500">
-													-
-													{contributor.attributes.deletions?.toLocaleString() ||
-														0}
-												</div>
-											</div>
-										</div>
-									))}
-							</div>
-						)}
-					</CardContent>
-				</Card>
+				<ContributorsCard
+					contributors={contributors}
+					isLoading={contributorsLoading || isLoading}
+					selectedRepoId={activeRepoId}
+				/>
 
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<Activity className="h-5 w-5" />
-							Repository Health
-						</CardTitle>
-						<CardDescription>
-							Overall health metrics
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						{issuesLoading || prLoading || isLoading ? (
-							<div className="space-y-4">
-								<Skeleton className="h-20" />
-								<Skeleton className="h-16" />
-								<Skeleton className="h-16" />
-								<Skeleton className="h-16" />
-							</div>
-						) : (
-							repoHealth && (
-								<div className="space-y-6">
-									<div className="text-center">
-										<div
-											className={`text-5xl font-bold ${getHealthColor(repoHealth.score)}`}
-										>
-											{repoHealth.score}
-										</div>
-										<div className="text-sm text-muted-foreground mt-1">
-											Health Score
-										</div>
-									</div>
-									<div className="space-y-3">
-										<div className="flex items-center justify-between">
-											<span className="text-sm">
-												Open Issues
-											</span>
-											<Badge variant="outline">
-												{repoHealth.openIssues}
-											</Badge>
-										</div>
-										<div className="flex items-center justify-between">
-											<span className="text-sm">
-												Stale PRs
-											</span>
-											<Badge variant="outline">
-												{repoHealth.stalePRs}
-											</Badge>
-										</div>
-										<div className="flex items-center justify-between">
-											<span className="text-sm">
-												Avg Review Time
-											</span>
-											<Badge variant="outline">
-												{repoHealth.codeReviewTime}
-											</Badge>
-										</div>
-										<div className="flex items-center justify-between">
-											<span className="text-sm">
-												Test Coverage
-											</span>
-											<Badge variant="outline">
-												{repoHealth.testCoverage}%
-											</Badge>
-										</div>
-									</div>
-								</div>
-							)
-						)}
-					</CardContent>
-				</Card>
+				<RepositoryHealthCard
+					isLoading={issuesLoading || prLoading || isLoading}
+					repoHealth={repoHealth}
+				/>
 			</div>
 
-			<Card>
-				<CardHeader>
-					<CardTitle className="flex items-center gap-2">
-						<GitCommit className="h-5 w-5" />
-						Recent Commits
-					</CardTitle>
-					<CardDescription>
-						Latest commits across all repositories
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					{commitsLoading || isLoading ? (
-						<div className="space-y-4">
-							{[1, 2, 3, 4, 5].map((i) => (
-								<Skeleton key={i} className="h-20" />
-							))}
-						</div>
-					) : (
-						<div className="space-y-4">
-							{commits
-								.filter(
-									(c) => c.repositoryId === selectedRepoId
-								)
-								.map((commit) => (
-									<a
-										key={commit.id}
-										href={commit.attributes.url || "#"}
-										target="_blank"
-										rel="noopener noreferrer"
-										className="flex items-start gap-4 p-3 rounded-lg hover:bg-accent transition-colors"
-									>
-										<Avatar className="h-10 w-10 mt-1">
-											<AvatarImage
-												src={
-													commit.attributes
-														.avatarUrl ||
-													"/placeholder.svg"
-												}
-												alt={
-													commit.authorId || "Author"
-												}
-											/>
-											<AvatarFallback>
-												{commit.authorId
-													?.slice(0, 2)
-													.toUpperCase() || "AU"}
-											</AvatarFallback>
-										</Avatar>
-										<div className="flex-1 min-w-0">
-											<div className="font-medium text-sm">
-												{commit.message}
-											</div>
-											<div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-												<span>{commit.authorId}</span>
-												<span>•</span>
-												<span>
-													{commit.committedAt.toLocaleString()}
-												</span>
-												<span>•</span>
-												<Badge
-													variant="outline"
-													className="text-xs"
-												>
-													{commit.repositoryId}
-												</Badge>
-												<span>•</span>
-												<span className="flex items-center gap-1">
-													<GitBranch className="h-3 w-3" />
-													{commit.attributes.branch ||
-														"main"}
-												</span>
-											</div>
-										</div>
-									</a>
-								))}
-						</div>
-					)}
-				</CardContent>
-			</Card>
+			<CommitsCard
+				isLoading={commitsLoading || isLoading}
+				selectedRepoId={activeRepoId}
+				commits={commits}
+			/>
 
-			<Card>
-				<CardHeader>
-					<CardTitle className="flex items-center gap-2">
-						<GitBranch className="h-5 w-5" />
-						Branch Activity
-					</CardTitle>
-					<CardDescription>
-						Active branches across repositories
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					{branchesLoading || isLoading ? (
-						<div className="space-y-3">
-							{[1, 2, 3, 4, 5].map((i) => (
-								<Skeleton key={i} className="h-16" />
-							))}
-						</div>
-					) : (
-						<div className="space-y-3">
-							{branches
-								.filter(
-									(b) => b.repositoryId === selectedRepoId
-								)
-								.map((branch) => (
-									<div
-										key={branch.id}
-										className="flex items-center justify-between p-3 rounded-lg border"
-									>
-										<div className="flex items-center gap-3">
-											<div
-												className={`h-2 w-2 rounded-full ${getBranchStatusColor(branch.status)}`}
-											/>
-											<div>
-												<div className="font-medium text-sm">
-													{branch.name}
-												</div>
-												<div className="text-xs text-muted-foreground">
-													Last commit{" "}
-													{branch.lastCommitAt?.toLocaleString() ||
-														"N/A"}
-												</div>
-											</div>
-										</div>
-										<div className="flex items-center gap-2">
-											{branch.commitsAhead > 0 && (
-												<Badge
-													variant="secondary"
-													className="text-xs"
-												>
-													<TrendingUp className="h-3 w-3 mr-1" />
-													{branch.commitsAhead} ahead
-												</Badge>
-											)}
-											<Badge
-												variant="outline"
-												className="text-xs capitalize"
-											>
-												{branch.status}
-											</Badge>
-										</div>
-									</div>
-								))}
-						</div>
-					)}
-				</CardContent>
-			</Card>
+			<BranchActivityCard
+				isLoading={branchesLoading || isLoading}
+				selectedRepoId={activeRepoId}
+				branches={branches}
+			/>
 		</div>
 	);
 }

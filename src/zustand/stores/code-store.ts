@@ -1,32 +1,19 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
-import {
-	Repository,
-	Branch,
-	Contributor,
-	Commit,
-	PullRequest,
-	Issue,
-} from "@prisma/client";
+import { Repository, Branch, PullRequest, Issue } from "@prisma/client";
 import { persist } from "zustand/middleware";
-
-interface ContributorType extends Contributor {
-	attributes: {
-		avatarUrl?: string;
-		additions?: number;
-		deletions?: number;
-	};
-}
-
-interface CommitType extends Commit {
-	attributes: {
-		avatarUrl?: string;
-		branch?: string;
-		url?: string;
-	};
-}
+import {
+	CommitType,
+	ContributorType,
+	PRStatus,
+	RepoHealth,
+} from "@/types/code";
 
 export interface CodeState {
+	repoHealth: RepoHealth | null;
+	prStatus: PRStatus | null;
+	activeRepoId: string;
+
 	repositories: Repository[];
 	branches: Branch[];
 	contributors: ContributorType[];
@@ -41,12 +28,19 @@ export interface CodeState {
 	fetchCommits: (repoId: string) => Promise<void>;
 	fetchPullRequests: (repoId: string) => Promise<void>;
 	fetchIssues: (repoId: string) => Promise<void>;
+
+	setActiveRepoId: (repoId: string) => void;
+	setPRStatus: (status: PRStatus) => void;
+	setRepoHealth: (health: RepoHealth) => void;
 }
 
 export const createCodeStore = () => {
 	return create<CodeState>()(
 		persist(
 			immer((set) => ({
+				repoHealth: null,
+				prStatus: null,
+				activeRepoId: "",
 				repositories: [],
 				branches: [],
 				contributors: [],
@@ -190,6 +184,22 @@ export const createCodeStore = () => {
 							state.error.pullRequests = (error as Error).message;
 						});
 					}
+				},
+
+				setActiveRepoId: (repoId) => {
+					set((state) => {
+						state.activeRepoId = repoId;
+					});
+				},
+				setPRStatus: (status) => {
+					set((state) => {
+						state.prStatus = status;
+					});
+				},
+				setRepoHealth: (health) => {
+					set((state) => {
+						state.repoHealth = health;
+					});
 				},
 			})),
 			{ name: "code-store" }
