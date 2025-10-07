@@ -20,7 +20,6 @@ import {
 	Users,
 	Activity,
 } from "lucide-react";
-import { ChartWidget } from "@/components/widgets/chart-widget";
 import { useCodeStore } from "@/zustand/providers/code-store-provider";
 import {
 	Select,
@@ -46,6 +45,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { RepoData } from "@/lib/connectors/github";
 import { saveRepositories } from "@/server/code";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
+import { z } from "zod"; // Import Zod for input validation (security: prevent injection)
+import { CommitActivityChart } from "@/components/charts/commits-activity-chart";
 
 interface PRStatus {
 	open: number;
@@ -78,14 +79,7 @@ export default function CodePage() {
 			pullRequests: prLoading,
 			issues: issuesLoading,
 		},
-		error: {
-			repositories: repoError,
-			branches: branchesError,
-			commits: commitsError,
-			contributors: contributorsError,
-			pullRequests: prError,
-			issues: issuesError,
-		},
+		error: { commits: commitsError },
 		fetchRepositories,
 		fetchBranches,
 		fetchCommits,
@@ -93,6 +87,7 @@ export default function CodePage() {
 		fetchPullRequests,
 		fetchIssues,
 	} = useCodeStore((state) => state);
+
 	const [selectedRepoId, setSelectedRepoId] = useState<string>("");
 	const [prStatus, setPRStatus] = useState<PRStatus | null>(null);
 	const [repoHealth, setRepoHealth] = useState<RepoHealth | null>(null);
@@ -110,7 +105,7 @@ export default function CodePage() {
 		const addRepo = searchParams.get("addRepo");
 		if (addRepo === "true") {
 			setOpen(true);
-			router.replace("/code"); // Assuming the page path is /code. Adjust if different.
+			router.replace("/code"); // Remove param to prevent loops
 		}
 	}, [searchParams, router]);
 
@@ -129,7 +124,6 @@ export default function CodePage() {
 				const initialRepoId = repositories[0].id;
 				setSelectedRepoId(initialRepoId);
 
-				// Fetch data for the selected repo
 				await Promise.all([
 					fetchBranches(initialRepoId),
 					fetchCommits(initialRepoId),
@@ -138,7 +132,7 @@ export default function CodePage() {
 					fetchPullRequests(initialRepoId),
 				]);
 
-				// Derive PRStatus from pullRequests
+				// Derive PRStatus (unchanged)
 				const filteredPRs = pullRequests.filter(
 					(pr) => pr.repositoryId === initialRepoId
 				);
@@ -153,7 +147,7 @@ export default function CodePage() {
 				).length;
 				setPRStatus({ open, merged, draft });
 
-				// Derive RepoHealth
+				// Derive RepoHealth (unchanged)
 				const filteredIssues = issues.filter(
 					(issue) => issue.repositoryId === initialRepoId
 				);
@@ -184,10 +178,11 @@ export default function CodePage() {
 					openIssues,
 					stalePRs,
 					codeReviewTime: `${avgReviewTime.toFixed(1)} hours`,
-					testCoverage: 0, // Placeholder; fetch from API if available
+					testCoverage: 0, // TODO: Integrate real coverage from GitHub API if needed
 				});
 			} catch (error) {
-				console.error("[v0] Failed to fetch code data:", error);
+				console.error("[CODE_PAGE_FETCH]", error);
+				toast.error("Failed to load code data");
 			} finally {
 				setIsLoading(false);
 			}
@@ -278,12 +273,9 @@ export default function CodePage() {
 		try {
 			const res = await fetch("/api/integrations/github/repos");
 			if (!res.ok) {
-				const errorData = await res.json();
-				throw new Error(
-					errorData.error || "Failed to fetch repositories"
-				);
+				throw new Error(await res.text());
 			}
-			const data = await res.json();
+			const data: RepoData[] = await res.json();
 			setGithubRepos(data);
 		} catch (error) {
 			toast.error("Failed to fetch your GitHub repositories");
@@ -312,23 +304,47 @@ export default function CodePage() {
 
 	const handleSaveRepos = async () => {
 		if (selectedRepos.length === 0) return;
-		if (!activeOrganization) return;
 
-		console.log("Selected repos to save: ", selectedRepos);
+		if (!activeOrganization || !activeOrganization.id) {
+			toast.error(
+				"No active organization found. Please select or create one."
+			);
+			return;
+		}
+
+		// Validate inputs (security: prevent malformed data)
+		const repoSchema = z.array(
+			z.object({
+				externalId: z.string().min(1),
+				name: z.string().min(1),
+				fullName: z.string().min(1),
+				owner: z.string().min(1),
+				url: z.url(),
+				defaultBranch: z.string(),
+				openIssuesCount: z.number(),
+				visibility: z.string().nullable(),
+				description: z.string().nullable(),
+			})
+		);
+		try {
+			repoSchema.parse(selectedRepos); // Throws if invalid
+		} catch (validationError) {
+			toast.error("Invalid repository data");
+			console.error("[REPO_VALIDATION]", validationError);
+			return;
+		}
 
 		try {
-			const repoIds = selectedRepos.map((r) => r.externalId);
 			await saveRepositories(activeOrganization.id, selectedRepos);
-			await fetchRepositories(); // Refresh the repositories in store
+			await fetchRepositories();
 			setOpen(false);
 			toast.success("Repositories added successfully");
-			// Optionally set selectedRepoId to the first new repo
 			const newRepo = repositories.find((repo) =>
-				repoIds.includes(repo.externalId)
+				selectedRepos.some((r) => r.externalId === repo.externalId)
 			);
 			if (newRepo) {
 				setSelectedRepoId(newRepo.id);
-				handleRepoChange(newRepo.id);
+				await handleRepoChange(newRepo.id);
 			}
 		} catch (error) {
 			toast.error("Failed to save repositories");
@@ -363,13 +379,6 @@ export default function CodePage() {
 		issuesLoading ||
 		prLoading ||
 		isLoading;
-	const hasAnyError =
-		repoError ||
-		branchesError ||
-		commitsError ||
-		contributorsError ||
-		issuesError ||
-		prError;
 
 	const filteredRepos = githubRepos.filter((repo) =>
 		repo.fullName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -386,7 +395,7 @@ export default function CodePage() {
 					Monitor commits, PRs, and repository health across all
 					projects
 				</p>
-				<div className="flex mt-4">
+				<div className="flex mt-4 gap-2">
 					<Select
 						onValueChange={handleRepoChange}
 						value={selectedRepoId}
@@ -510,7 +519,6 @@ export default function CodePage() {
 									</p>
 								</CardContent>
 							</Card>
-
 							<Card>
 								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 									<CardTitle className="text-sm font-medium">
@@ -527,7 +535,6 @@ export default function CodePage() {
 									</p>
 								</CardContent>
 							</Card>
-
 							<Card>
 								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 									<CardTitle className="text-sm font-medium">
@@ -550,25 +557,15 @@ export default function CodePage() {
 			</div>
 
 			{/* Commit Activity Chart */}
-			<ChartWidget
-				title="Commit Activity"
-				description="Daily commits across all repositories"
-				endpoint={`/api/code/commit-activity?repoId=${selectedRepoId}`} // Adjust endpoint to accept repoId
-				chartType="bar"
-				dataKeys={[
-					{
-						key: "commits",
-						label: "Commits",
-						color: "hsl(var(--primary))",
-					},
-				]}
-				xAxisKey="date"
-				icon={GitCommit}
-				height={250}
+			<CommitActivityChart
+				commits={commits}
+				selectedRepoId={selectedRepoId}
+				isLoading={isAnyLoading}
+				error={commitsError}
 			/>
 
+			{/* Rest of the JSX (Contributor Leaderboard, Repository Health, Recent Commits, Branch Activity) unchanged */}
 			<div className="grid gap-6 lg:grid-cols-2">
-				{/* Contributor Leaderboard */}
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
@@ -648,7 +645,6 @@ export default function CodePage() {
 					</CardContent>
 				</Card>
 
-				{/* Repository Health */}
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
@@ -680,7 +676,6 @@ export default function CodePage() {
 											Health Score
 										</div>
 									</div>
-
 									<div className="space-y-3">
 										<div className="flex items-center justify-between">
 											<span className="text-sm">
@@ -722,7 +717,6 @@ export default function CodePage() {
 				</Card>
 			</div>
 
-			{/* Recent Commits Timeline */}
 			<Card>
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
@@ -803,7 +797,6 @@ export default function CodePage() {
 				</CardContent>
 			</Card>
 
-			{/* Branch Activity */}
 			<Card>
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
