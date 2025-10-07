@@ -23,6 +23,7 @@ import {
 	Clock,
 	Loader2,
 } from "lucide-react";
+import { useSearchStore } from "@/zustand/providers/search-store-provider";
 
 interface SearchResult {
 	id: string;
@@ -70,6 +71,7 @@ const CATEGORY_CONFIG = {
 };
 
 export function GlobalSearch() {
+	const { recentSearches, addQuery } = useSearchStore((state) => state);
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
@@ -81,13 +83,7 @@ export function GlobalSearch() {
 		tickets: [],
 		analytics: [],
 	});
-	const [recentSearches, setRecentSearches] = useState<string[]>([]);
 	const [isSearching, setIsSearching] = useState(false);
-
-	// Load recent searches on mount
-	useEffect(() => {
-		loadRecentSearches();
-	}, []);
 
 	// Keyboard shortcut (Cmd+K / Ctrl+K)
 	useEffect(() => {
@@ -123,36 +119,6 @@ export function GlobalSearch() {
 		return () => clearTimeout(timeoutId);
 	}, [query]);
 
-	const loadRecentSearches = async () => {
-		try {
-			const response = await fetch("/api/search/recent");
-			if (response.ok) {
-				const data = await response.json();
-				setRecentSearches(data.searches || []);
-			}
-		} catch (error) {
-			console.error("[v0] Failed to load recent searches:", error);
-		}
-	};
-
-	const saveRecentSearch = async (searchQuery: string) => {
-		try {
-			await fetch("/api/search/recent", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ query: searchQuery }),
-			});
-			setRecentSearches((prev) =>
-				[searchQuery, ...prev.filter((q) => q !== searchQuery)].slice(
-					0,
-					5
-				)
-			);
-		} catch (error) {
-			console.error("[v0] Failed to save recent search:", error);
-		}
-	};
-
 	const performSearch = async (searchQuery: string) => {
 		setIsSearching(true);
 		try {
@@ -171,7 +137,7 @@ export function GlobalSearch() {
 	};
 
 	const handleSelectResult = (result: SearchResult) => {
-		saveRecentSearch(query);
+		addQuery(query);
 		setOpen(false);
 		setQuery("");
 		router.push(result.url);
