@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -13,16 +13,17 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { RepoData } from "@/lib/connectors/github";
 import { toast } from "sonner";
 import { saveRepositories } from "@/server/code";
-import { z } from "zod"; // Import Zod for input validation (security: prevent injection)
+import { z } from "zod";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { Skeleton } from "../ui/skeleton";
 import { Repository } from "@prisma/client";
 
-export const GitHubRepoSelection = ({
+// Separate component that uses useSearchParams
+function RepoDialogContent({
 	repositories,
 	onSuccess,
 	onRepoChange,
@@ -30,9 +31,8 @@ export const GitHubRepoSelection = ({
 	repositories: Repository[];
 	onSuccess: () => Promise<void>;
 	onRepoChange: (repoId: string) => Promise<void>;
-}) => {
+}) {
 	const { activeOrganization } = useOrganizationStore((state) => state);
-	const router = useRouter();
 	const searchParams = useSearchParams();
 	const [open, setOpen] = useState(false);
 	const [repoFetchLoading, setRepoFetchLoading] = useState(false);
@@ -44,16 +44,22 @@ export const GitHubRepoSelection = ({
 		const addRepo = searchParams.get("addRepo");
 		if (addRepo === "true") {
 			setOpen(true);
-			router.replace("/code"); // Remove param to prevent loops
+			// Use window.history.replaceState to avoid router issues
+			window.history.replaceState(null, "", "/code");
 		}
-	}, [searchParams, router]);
+	}, [searchParams]);
 
 	const fetchGithubRepos = async () => {
 		setRepoFetchLoading(true);
 		try {
 			const res = await fetch("/api/integrations/github/repos");
 			if (!res.ok) {
-				throw new Error(await res.text());
+				const errorData = await res
+					.json()
+					.catch(() => ({ error: "Unknown error" }));
+				throw new Error(
+					errorData.error || "Failed to fetch repositories"
+				);
 			}
 			const data: RepoData[] = await res.json();
 			setGithubRepos(data);
@@ -106,6 +112,7 @@ export const GitHubRepoSelection = ({
 				description: z.string().nullable(),
 			})
 		);
+
 		try {
 			repoSchema.parse(selectedRepos); // Throws if invalid
 		} catch (validationError) {
@@ -119,6 +126,8 @@ export const GitHubRepoSelection = ({
 			await onSuccess(); // Refresh repositories state
 			setOpen(false);
 			toast.success("Repositories added successfully");
+
+			// Find newly added repo and trigger change
 			const newRepo = repositories.find((repo) =>
 				selectedRepos.some((r) => r.externalId === repo.externalId)
 			);
@@ -134,6 +143,7 @@ export const GitHubRepoSelection = ({
 	const filteredRepos = githubRepos.filter((repo) =>
 		repo.fullName.toLowerCase().includes(searchTerm.toLowerCase())
 	);
+
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogTrigger asChild>
@@ -203,5 +213,26 @@ export const GitHubRepoSelection = ({
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
+	);
+}
+
+// Main export wrapped in Suspense
+export const GitHubRepoSelection = ({
+	repositories,
+	onSuccess,
+	onRepoChange,
+}: {
+	repositories: Repository[];
+	onSuccess: () => Promise<void>;
+	onRepoChange: (repoId: string) => Promise<void>;
+}) => {
+	return (
+		<Suspense fallback={<Button disabled>Add repository</Button>}>
+			<RepoDialogContent
+				repositories={repositories}
+				onSuccess={onSuccess}
+				onRepoChange={onRepoChange}
+			/>
+		</Suspense>
 	);
 };
