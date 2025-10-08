@@ -22,6 +22,7 @@ export interface CodeState {
 	issues: Issue[];
 	loading: { [key: string]: boolean };
 	error: { [key: string]: string | null };
+	fetchData: (repoId: string) => Promise<void>;
 	fetchRepositories: () => Promise<void>;
 	fetchBranches: (repoId: string) => Promise<void>;
 	fetchContributors: (repoId: string) => Promise<void>;
@@ -37,7 +38,7 @@ export interface CodeState {
 export const createCodeStore = () => {
 	return create<CodeState>()(
 		persist(
-			immer((set) => ({
+			immer((set, get) => ({
 				repoHealth: null,
 				prStatus: null,
 				activeRepoId: "",
@@ -49,6 +50,19 @@ export const createCodeStore = () => {
 				issues: [],
 				loading: {},
 				error: {},
+				fetchData: async (repoId: string) => {
+					try {
+						await Promise.all([
+							get().fetchBranches(repoId),
+							get().fetchCommits(repoId),
+							get().fetchContributors(repoId),
+							get().fetchIssues(repoId),
+							get().fetchPullRequests(repoId),
+						]);
+					} catch (error) {
+						console.error("Error state data: ", error);
+					}
+				},
 				fetchRepositories: async () => {
 					set((state) => {
 						state.loading.repositories = true;

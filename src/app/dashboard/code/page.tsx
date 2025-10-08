@@ -42,12 +42,8 @@ export default function CodePage() {
 		setActiveRepoId,
 		setPRStatus,
 		setRepoHealth,
+		fetchData,
 		fetchRepositories,
-		fetchBranches,
-		fetchCommits,
-		fetchContributors,
-		fetchPullRequests,
-		fetchIssues,
 	} = useCodeStore((state) => state);
 	const [isLoading, setIsLoading] = useState(true);
 
@@ -66,13 +62,7 @@ export default function CodePage() {
 				const initialRepoId = repositories[0].id;
 				setActiveRepoId(initialRepoId);
 
-				await Promise.all([
-					fetchBranches(initialRepoId),
-					fetchCommits(initialRepoId),
-					fetchContributors(initialRepoId),
-					fetchIssues(initialRepoId),
-					fetchPullRequests(initialRepoId),
-				]);
+				await fetchData(initialRepoId);
 
 				// Derive PRStatus (unchanged)
 				const filteredPRs = pullRequests.filter(
@@ -132,13 +122,9 @@ export default function CodePage() {
 
 		fetchAllData();
 	}, [
-		fetchBranches,
-		fetchCommits,
-		fetchContributors,
-		fetchIssues,
-		fetchPullRequests,
-		pullRequests,
+		fetchData,
 		issues,
+		pullRequests,
 		repositories,
 		setActiveRepoId,
 		setPRStatus,
@@ -149,13 +135,7 @@ export default function CodePage() {
 		setActiveRepoId(repoId);
 		setIsLoading(true);
 		try {
-			await Promise.all([
-				fetchBranches(repoId),
-				fetchCommits(repoId),
-				fetchContributors(repoId),
-				fetchIssues(repoId),
-				fetchPullRequests(repoId),
-			]);
+			await fetchData(repoId);
 
 			const filteredPRs = pullRequests.filter(
 				(pr) => pr.repositoryId === repoId
