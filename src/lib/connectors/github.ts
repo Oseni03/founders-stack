@@ -113,7 +113,7 @@ export class GitHubConnector {
 				externalId: repo.id.toString(),
 				name: repo.name,
 				fullName: repo.full_name,
-				owner: repo.owner.name,
+				owner: repo.owner.name || repo.owner.login,
 				url: repo.url,
 				defaultBranch: repo.default_branch,
 				openIssuesCount: repo.open_issues_count,

@@ -76,7 +76,7 @@ function RepoDialogContent({
 				}
 				throw new Error(errorMessage);
 			}
-			const data = await res.json();
+			const { data } = await res.json();
 
 			// Validate the response data structure
 			if (!Array.isArray(data)) {
