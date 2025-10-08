@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle2, Plug, Clock } from "lucide-react";
@@ -30,9 +30,11 @@ export default function IntegrationsPage() {
 		toast.error(error);
 	}, [error]);
 
-	const connectedIntegrations = integrations.filter(
-		(i) => i.status === IntegrationStatus.active
-	);
+	const connectedIntegrations = useMemo(() => {
+		return integrations.filter(
+			(i) => i.status === IntegrationStatus.active
+		);
+	}, [integrations]);
 
 	return (
 		<div className="space-y-6">
