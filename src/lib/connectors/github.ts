@@ -55,6 +55,7 @@ interface BranchData {
 	lastCommitAt?: Date;
 	status: string; // e.g., "active", "stale" (computed based on age)
 	commitsAhead: number; // Relative to main (requires comparison)
+	commitsBehind: number; // Relative to main (requires comparison)
 	attributes?: Record<string, any>;
 }
 
@@ -238,6 +239,7 @@ export class GitHubConnector {
 							head: branch.name,
 						});
 					const commitsAhead = compareResult.data.ahead_by || 0; // Number of commits ahead of main
+					const commitsBehind = compareResult.data.behind_by || 0; // Number of commits ahead of main
 
 					const lastCommitAt = new Date(
 						commit.committer?.date || Date.now()
@@ -254,6 +256,7 @@ export class GitHubConnector {
 						lastCommitAt,
 						status,
 						commitsAhead,
+						commitsBehind,
 						attributes: { protected: branch.protected },
 					};
 				})
@@ -378,74 +381,76 @@ export async function syncGitHub(organizationId: string) {
 				// Upsert commits
 				await tx.commit.createMany({
 					data: commits.map((commit) => ({
-						...commit,
+						externalId: commit.externalId,
+						authorId: commit.authorId,
+						committedAt: commit.committedAt,
+						message: commit.message,
+						attributes: commit.attributes,
 						organizationId,
 						sourceTool: "github",
 						repositoryId: repo.id,
-						externalId_sourceTool: {
-							externalId: commit.externalId,
-							sourceTool: "github",
-						},
 					})),
 					skipDuplicates: true,
 				});
 
-				// Upsert pullRequests
+				// Upsert pullRequests - REMOVED externalId_sourceTool
 				await tx.pullRequest.createMany({
 					data: pullRequests.map((pr) => ({
-						...pr,
+						externalId: pr.externalId,
+						title: pr.title,
+						status: pr.status,
+						authorId: pr.authorId,
+						attributes: pr.attributes,
+						avgReviewTime: pr.avgReviewTime,
 						organizationId,
 						sourceTool: "github",
 						repositoryId: repo.id,
-						externalId_sourceTool: {
-							externalId: pr.externalId,
-							sourceTool: "github",
-						},
 					})),
 					skipDuplicates: true,
 				});
 
-				// Upsert issues
+				// Upsert issues - REMOVED externalId_sourceTool
 				await tx.issue.createMany({
 					data: issues.map((issue) => ({
-						...issue,
+						externalId: issue.externalId,
+						title: issue.title,
+						status: issue.status,
+						authorId: issue.authorId,
+						attributes: issue.attributes,
 						organizationId,
 						sourceTool: "github",
 						repositoryId: repo.id,
-						externalId_sourceTool: {
-							externalId: issue.externalId,
-							sourceTool: "github",
-						},
 					})),
 					skipDuplicates: true,
 				});
 
-				// Upsert branches
+				// Upsert branches - REMOVED externalId_sourceTool
 				await tx.branch.createMany({
 					data: branches.map((branch) => ({
-						...branch,
+						externalId: branch.externalId,
+						name: branch.name,
+						status: branch.status,
+						lastCommitAt: branch.lastCommitAt,
+						commitsAhead: branch.commitsAhead,
+						commitsBehind: branch.commitsBehind,
+						attributes: branch.attributes,
 						organizationId,
 						sourceTool: "github",
 						repositoryId: repo.id,
-						externalId_sourceTool: {
-							externalId: branch.externalId,
-							sourceTool: "github",
-						},
 					})),
 					skipDuplicates: true,
 				});
 
-				// Upsert contributors
+				// Upsert contributors - REMOVED externalId_sourceTool
 				await tx.contributor.createMany({
 					data: contributors.map((contributor) => ({
-						...contributor,
+						externalId: contributor.externalId,
+						login: contributor.login,
+						contributions: contributor.contributions,
+						attributes: contributor.attributes,
 						organizationId,
 						sourceTool: "github",
 						repositoryId: repo.id,
-						externalId_sourceTool: {
-							externalId: contributor.externalId,
-							sourceTool: "github",
-						},
 					})),
 					skipDuplicates: true,
 				});
@@ -472,8 +477,10 @@ export async function syncGitHub(organizationId: string) {
 				where: { id: integration.id },
 				data: { lastSyncAt: new Date() },
 			});
+
+			console.log(`✅ Successfully synced repo: ${repo.name}`);
 		} catch (error) {
-			console.error(`Sync failed for repo ${repo.name}:`, error);
+			console.error(`❌ Sync failed for repo ${repo.name}:`, error);
 			// Optionally rethrow or log for retry logic
 		}
 	});
@@ -484,4 +491,6 @@ export async function syncGitHub(organizationId: string) {
 		const batch = syncPromises.slice(i, i + concurrencyLimit);
 		await Promise.all(batch.map((fn) => fn()));
 	}
+
+	console.log(`✅ GitHub sync completed for organization: ${organizationId}`);
 }
