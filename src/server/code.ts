@@ -39,6 +39,13 @@ export async function getPullRequests(organizationId: string, repoId: string) {
 	return pullRequests;
 }
 
+export async function getIssues(organizationId: string, repoId: string) {
+	const issues = await prisma.issue.findMany({
+		where: { organizationId, repositoryId: repoId },
+	});
+	return issues;
+}
+
 export async function getCommits(organizationId: string, repoId: string) {
 	const commits = await prisma.commit.findMany({
 		where: { organizationId, repositoryId: repoId },
