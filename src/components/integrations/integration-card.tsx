@@ -1,5 +1,3 @@
-"use client";
-
 import { getProviderLogo, INTEGRATIONS } from "@/lib/oauth-utils";
 import {
 	Card,
@@ -22,38 +20,22 @@ import {
 import { Integration, IntegrationStatus } from "@prisma/client";
 import { Button } from "../ui/button";
 import Link from "next/link";
-import { useState } from "react";
+import { DisconnectAlertDialog } from "./disconnectAlertDialog";
 
 export const IntegrationCard = ({
 	integration,
-	fetchIntegrations,
+	syncLoading,
+	sync,
 	handleConnect,
-	onDisconnect,
 }: {
 	integration: Integration;
-	fetchIntegrations: () => Promise<void>;
+	syncLoading: boolean;
+	sync: (toolName: string) => Promise<void>;
 	handleConnect: (integrationId: string) => void;
-	onDisconnect: (integration: Integration) => void;
 }) => {
-	const [isSyncing, setIsSyncing] = useState<string | null>(null);
-
 	const name =
 		integration.toolName[0].toUpperCase() + integration.toolName.slice(1);
 	const logo = getProviderLogo(integration.toolName);
-
-	const handleManualSync = async (integrationId: string) => {
-		setIsSyncing(integrationId);
-		try {
-			await fetch(`/api/integrations/${integrationId}/sync`, {
-				method: "POST",
-			});
-			await fetchIntegrations();
-		} catch (error) {
-			console.error("[v0] Failed to sync integration:", error);
-		} finally {
-			setIsSyncing(null);
-		}
-	};
 	return (
 		<Card>
 			<CardHeader>
@@ -115,10 +97,10 @@ export const IntegrationCard = ({
 							variant="outline"
 							size="sm"
 							className="flex-1 bg-transparent"
-							onClick={() => handleManualSync(integration.id)}
-							disabled={isSyncing === integration.id}
+							onClick={() => sync(integration.toolName)}
+							disabled={syncLoading}
 						>
-							{isSyncing === integration.id ? (
+							{syncLoading ? (
 								<>
 									<Loader2 className="h-4 w-4 mr-2 animate-spin" />
 									Syncing...
@@ -133,13 +115,7 @@ export const IntegrationCard = ({
 						<Button variant="outline" size="sm">
 							<Settings className="h-4 w-4" />
 						</Button>
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => onDisconnect(integration)}
-						>
-							Disconnect
-						</Button>
+						<DisconnectAlertDialog integration={integration} />
 					</>
 				) : (
 					<>

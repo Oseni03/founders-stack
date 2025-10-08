@@ -1,105 +1,34 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2, Plug, Clock, AlertCircle } from "lucide-react";
-import { Integration, IntegrationStatus } from "@prisma/client";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CheckCircle2, Plug, Clock } from "lucide-react";
+import { IntegrationStatus } from "@prisma/client";
 import { toast } from "sonner";
 import { INTEGRATIONS } from "@/lib/oauth-utils";
-import {
-	IntegrationCard,
-	UnconnectedIntegrationCard,
-} from "@/components/integrations/integration-card";
+import { ConnectedTab } from "@/components/integrations/connected-tab";
+import { AvailableTab } from "@/components/integrations/available-tab";
+import { useIntegrationsStore } from "@/zustand/providers/integrations-store-provider";
 
 export default function IntegrationsPage() {
-	const [integrations, setIntegrations] = useState<Integration[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
-	const [selectedIntegration, setSelectedIntegration] =
-		useState<Integration | null>(null);
+	const {
+		integrations,
+		loading,
+		syncLoading,
+		error,
+		connect,
+		sync,
+		fetchIntegrations,
+	} = useIntegrationsStore((state) => state);
 
 	useEffect(() => {
 		fetchIntegrations();
-	}, []);
+	}, [fetchIntegrations]);
 
-	const fetchIntegrations = async () => {
-		setIsLoading(true);
-		try {
-			const response = await fetch("/api/integrations");
-			const data = await response.json();
-			setIntegrations(data.integrations || []);
-		} catch (error) {
-			console.error("Failed to fetch integrations:", error);
-			toast.error("Integrations not found");
-		} finally {
-			setIsLoading(false);
-		}
-	};
-
-	const handleConnect = async (integrationId: string) => {
-		try {
-			const resp = await fetch(
-				`/api/integrations/${integrationId}/connect`
-			);
-			if (resp.ok) {
-				const data = await resp.json();
-				if (data.url) {
-					toast.success(`Redirecting to ${integrationId}...`);
-					window.location.href = data.url;
-				}
-			} else {
-				toast.error(`Failed to connect ${integrationId}`);
-			}
-		} catch (error) {
-			console.error(`Failed to connect ${integrationId}: `, error);
-			toast.error(`Failed to connect ${integrationId}`);
-		}
-	};
-
-	const onDisconnect = (integration: Integration) => {
-		setSelectedIntegration(integration);
-		setDisconnectDialogOpen(true);
-	};
-
-	const handleDisconnect = async () => {
-		if (!selectedIntegration) return;
-
-		try {
-			toast.loading(`Unlinking ${selectedIntegration.toolName}...`);
-			const response = await fetch(
-				`/api/integrations/${selectedIntegration.id}/disconnect`,
-				{
-					method: "POST",
-				}
-			);
-
-			toast.dismiss();
-			if (response.ok) {
-				setIntegrations((prev) =>
-					prev.filter((item) => item.id !== selectedIntegration.id)
-				);
-				// await fetchIntegrations();
-				setDisconnectDialogOpen(false);
-				toast.success("Integration disconnected successfully!");
-			}
-		} catch (error) {
-			console.error("Failed to disconnect integration:", error);
-			toast.dismiss();
-			toast.error("Failed to disconnect integration");
-		}
-	};
+	useEffect(() => {
+		toast.error(error);
+	}, [error]);
 
 	const connectedIntegrations = integrations.filter(
 		(i) => i.status === IntegrationStatus.active
@@ -183,86 +112,16 @@ export default function IntegrationsPage() {
 					</TabsTrigger>
 				</TabsList>
 
-				<TabsContent value="connected" className="space-y-4">
-					{isLoading ? (
-						<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-							{[1, 2, 3].map((i) => (
-								<Skeleton key={i} className="h-64" />
-							))}
-						</div>
-					) : connectedIntegrations.length > 0 ? (
-						<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-							{connectedIntegrations.map((integration) => (
-								<IntegrationCard
-									key={integration.id}
-									integration={integration}
-									fetchIntegrations={fetchIntegrations}
-									handleConnect={handleConnect}
-									onDisconnect={onDisconnect}
-								/>
-							))}
-						</div>
-					) : (
-						<Card>
-							<CardContent className="flex flex-col items-center justify-center py-12">
-								<AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-								<h3 className="text-lg font-semibold mb-2">
-									No connected integrations
-								</h3>
-								<p className="text-sm text-muted-foreground text-center mb-4">
-									Connect your first integration to start
-									aggregating data
-								</p>
-							</CardContent>
-						</Card>
-					)}
-				</TabsContent>
+				<ConnectedTab
+					isLoading={loading}
+					syncLoading={syncLoading}
+					integrations={integrations}
+					onConnect={connect}
+					sync={sync}
+				/>
 
-				<TabsContent value="available" className="space-y-4">
-					{isLoading ? (
-						<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-							{[1, 2, 3, 4, 5, 6].map((i) => (
-								<Skeleton key={i} className="h-64" />
-							))}
-						</div>
-					) : (
-						<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-							{INTEGRATIONS.map((integration) => (
-								<UnconnectedIntegrationCard
-									key={integration.id}
-									integration={integration}
-									handleConnect={handleConnect}
-								/>
-							))}
-						</div>
-					)}
-				</TabsContent>
+				<AvailableTab isLoading={loading} onConnect={connect} />
 			</Tabs>
-
-			{/* Disconnect Dialog */}
-			<AlertDialog
-				open={disconnectDialogOpen}
-				onOpenChange={setDisconnectDialogOpen}
-			>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>
-							Disconnect {selectedIntegration?.toolName}?
-						</AlertDialogTitle>
-						<AlertDialogDescription>
-							This will stop syncing data from{" "}
-							{selectedIntegration?.toolName}. Your existing data
-							will be preserved, but no new data will be imported.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction onClick={handleDisconnect}>
-							Disconnect
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
 		</div>
 	);
 }
