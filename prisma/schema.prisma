@@ -527,6 +527,7 @@ model Branch {
   lastCommitAt   DateTime?
   status         String // e.g., "active", "stale"
   commitsAhead   Int       @default(0)
+  commitsBehind   Int       @default(0)
   attributes     Json?
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

@@ -17,6 +17,21 @@ interface CommitData {
 	attributes?: Record<string, any>; // Flexible JSON for extra data
 }
 
+interface PaginationOptions {
+	page?: number;
+	limit?: number;
+	search?: string;
+}
+
+interface PaginatedResponse<T> {
+	repositories: T[];
+	page: number;
+	limit: number;
+	total: number;
+	totalPages: number;
+	hasMore: boolean;
+}
+
 export interface RepoData {
 	externalId: string; // GitHub repository ID (stringified)
 	name: string; // Repository name (e.g., "my-repo")
@@ -103,28 +118,93 @@ export class GitHubConnector {
 	}
 
 	// Fetch commits (e.g., for activity charts and recent lists)
-	async fetchRepositories(): Promise<RepoData[]> {
+
+	async fetchRepositories(
+		options: PaginationOptions = {}
+	): Promise<PaginatedResponse<RepoData>> {
+		const { page = 1, limit = 50, search = "" } = options;
+
 		try {
-			const { data } =
-				await this.octokit.rest.repos.listForAuthenticatedUser({
-					visibility: "all",
-					per_page: 100,
+			let repositories: RepoData[] = [];
+			let totalCount = 0;
+
+			if (search) {
+				// Use search API when search term is provided
+				const { data } = await this.octokit.rest.search.repos({
+					q: `${search} user:@me`,
+					sort: "updated",
+					order: "desc",
+					per_page: limit,
+					page: page,
 				});
-			return data.map((repo) => ({
-				externalId: repo.id.toString(),
-				name: repo.name,
-				fullName: repo.full_name,
-				owner: repo.owner.name || repo.owner.login,
-				url: repo.url,
-				defaultBranch: repo.default_branch,
-				openIssuesCount: repo.open_issues_count,
-				visibility: repo.visibility,
-				description: repo.description,
-				// attributes: { url: commit.html_url }, // Extra for CDM Json
-			}));
+
+				totalCount = data.total_count;
+				repositories = data.items.map((repo) => ({
+					externalId: repo.id.toString(),
+					name: repo.name,
+					fullName: repo.full_name,
+					owner: repo.owner?.name || repo.owner?.login || "",
+					url: repo.html_url,
+					defaultBranch: repo.default_branch || "main",
+					openIssuesCount: repo.open_issues_count || 0,
+					visibility: repo.visibility,
+					description: repo.description || null,
+				}));
+			} else {
+				// Use regular list endpoint for all repositories
+				const { data, headers } =
+					await this.octokit.rest.repos.listForAuthenticatedUser({
+						sort: "updated",
+						visibility: "all",
+						per_page: limit,
+						page: page,
+					});
+
+				// GitHub's Link header contains pagination info
+				// Parse it to get total count (approximate)
+				const linkHeader = headers.link;
+				if (linkHeader) {
+					const lastPageMatch = linkHeader.match(
+						/page=(\d+)>; rel="last"/
+					);
+					if (lastPageMatch) {
+						const lastPage = parseInt(lastPageMatch[1]);
+						totalCount = lastPage * limit;
+					} else {
+						totalCount = data.length;
+					}
+				} else {
+					totalCount = data.length;
+				}
+
+				repositories = data.map((repo) => ({
+					externalId: repo.id.toString(),
+					name: repo.name,
+					fullName: repo.full_name,
+					owner: repo.owner?.name || repo.owner?.login || "",
+					url: repo.html_url,
+					defaultBranch: repo.default_branch || "main",
+					openIssuesCount: repo.open_issues_count || 0,
+					visibility: repo.visibility,
+					description: repo.description || null,
+				}));
+			}
+
+			// Calculate pagination metadata
+			const totalPages = Math.ceil(totalCount / limit);
+			const hasMore = page < totalPages;
+
+			return {
+				repositories,
+				page,
+				limit,
+				total: totalCount,
+				totalPages,
+				hasMore,
+			};
 		} catch (error) {
-			console.error("GitHub fetchCommits error:", error);
-			throw new Error("Failed to fetch commits");
+			console.error("GitHub fetchRepositories error:", error);
+			throw new Error("Failed to fetch repositories");
 		}
 	}
 

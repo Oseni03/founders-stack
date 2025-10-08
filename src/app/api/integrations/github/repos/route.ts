@@ -18,13 +18,35 @@ export async function GET(request: NextRequest) {
 				);
 			}
 
+			// Get pagination params from query string
+			const searchParams = request.nextUrl.searchParams;
+			const page = parseInt(searchParams.get("page") || "1");
+			const limit = Math.min(
+				parseInt(searchParams.get("limit") || "50"),
+				100
+			); // Max 100
+			const search = searchParams.get("search") || "";
+
 			const connector = new GitHubConnector(
 				integration?.account.accessToken
 			);
 
-			const data = await connector.fetchRepositories();
+			const result = await connector.fetchRepositories({
+				page,
+				limit,
+				search,
+			});
 
-			return NextResponse.json({ data });
+			return NextResponse.json({
+				data: result.repositories,
+				pagination: {
+					page: result.page,
+					limit: result.limit,
+					total: result.total,
+					totalPages: result.totalPages,
+					hasMore: result.hasMore,
+				},
+			});
 		} catch (error) {
 			console.error("Failed to fetch GitHub repositories:", error);
 			return NextResponse.json(

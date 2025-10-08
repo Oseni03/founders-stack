@@ -21,8 +21,8 @@ import { z } from "zod";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { Skeleton } from "../ui/skeleton";
 import { Repository } from "@prisma/client";
+import { Loader2 } from "lucide-react";
 
-// Separate component that uses useSearchParams
 function RepoDialogContent({
 	repositories,
 	onSuccess,
@@ -41,6 +41,13 @@ function RepoDialogContent({
 	const [searchTerm, setSearchTerm] = useState("");
 	const [isMounted, setIsMounted] = useState(false);
 
+	// Pagination state
+	const [currentPage, setCurrentPage] = useState(1);
+	const [totalPages, setTotalPages] = useState(1);
+	const [hasMore, setHasMore] = useState(false);
+	const [isLoadingMore, setIsLoadingMore] = useState(false);
+	const [totalCount, setTotalCount] = useState(0);
+
 	// Ensure component is mounted
 	useEffect(() => {
 		setIsMounted(true);
@@ -53,19 +60,35 @@ function RepoDialogContent({
 		const addRepo = searchParams.get("addRepo");
 		if (addRepo === "true") {
 			setOpen(true);
-			// Use window.history.replaceState to avoid router issues
 			if (typeof window !== "undefined") {
 				window.history.replaceState(null, "", "/code");
 			}
 		}
 	}, [searchParams, isMounted]);
 
-	const fetchGithubRepos = async () => {
+	const fetchGithubRepos = async (page = 1, append = false) => {
 		if (!isMounted) return;
 
-		setRepoFetchLoading(true);
+		if (append) {
+			setIsLoadingMore(true);
+		} else {
+			setRepoFetchLoading(true);
+		}
+
 		try {
-			const res = await fetch("/api/integrations/github/repos");
+			const params = new URLSearchParams({
+				page: page.toString(),
+				limit: "50",
+			});
+
+			if (searchTerm) {
+				params.set("search", searchTerm);
+			}
+
+			const res = await fetch(
+				`/api/integrations/github/repos?${params.toString()}`
+			);
+
 			if (!res.ok) {
 				let errorMessage = "Failed to fetch repositories";
 				try {
@@ -76,30 +99,63 @@ function RepoDialogContent({
 				}
 				throw new Error(errorMessage);
 			}
-			const { data } = await res.json();
 
-			// Validate the response data structure
+			const { data, pagination } = await res.json();
+
 			if (!Array.isArray(data)) {
 				throw new Error("Invalid response format");
 			}
+
 			if (!isMounted) return;
-			setGithubRepos(data);
+
+			// Append or replace repos based on pagination
+			if (append) {
+				setGithubRepos((prev) => [...prev, ...data]);
+			} else {
+				setGithubRepos(data);
+			}
+
+			setCurrentPage(pagination.page);
+			setTotalPages(pagination.totalPages);
+			setHasMore(pagination.hasMore);
+			setTotalCount(pagination.total);
 		} catch (error) {
 			if (!isMounted) return;
 			toast.error("Failed to fetch your GitHub repositories");
 			console.error("[FETCH_GITHUB_REPOS]", error);
-			setGithubRepos([]);
+			if (!append) {
+				setGithubRepos([]);
+			}
 		} finally {
 			if (isMounted) {
 				setRepoFetchLoading(false);
+				setIsLoadingMore(false);
 			}
 		}
+	};
+
+	// Debounced search effect
+	useEffect(() => {
+		if (!open) return;
+
+		const timeoutId = setTimeout(() => {
+			setCurrentPage(1);
+			fetchGithubRepos(1, false);
+		}, 300);
+
+		return () => clearTimeout(timeoutId);
+	}, [searchTerm, open]);
+
+	const handleLoadMore = () => {
+		if (!hasMore || isLoadingMore) return;
+		fetchGithubRepos(currentPage + 1, true);
 	};
 
 	const handleOpenChange = (isOpen: boolean) => {
 		setOpen(isOpen);
 		if (isOpen) {
-			fetchGithubRepos();
+			setCurrentPage(1);
+			fetchGithubRepos(1, false);
 			setSelectedRepos([]);
 			setSearchTerm("");
 		} else {
@@ -107,6 +163,10 @@ function RepoDialogContent({
 			setGithubRepos([]);
 			setSelectedRepos([]);
 			setSearchTerm("");
+			setCurrentPage(1);
+			setTotalPages(1);
+			setHasMore(false);
+			setTotalCount(0);
 		}
 	};
 
@@ -131,7 +191,6 @@ function RepoDialogContent({
 			return;
 		}
 
-		// Validate inputs (security: prevent malformed data)
 		const repoSchema = z.array(
 			z.object({
 				externalId: z.string().min(1),
@@ -156,18 +215,11 @@ function RepoDialogContent({
 
 		try {
 			await saveRepositories(activeOrganization.id, selectedRepos);
-
-			// Refresh repositories
 			await onSuccess();
-
-			// Close dialog
 			setOpen(false);
-
 			toast.success("Repositories added successfully");
 
-			// Small delay to allow state to update
 			setTimeout(async () => {
-				// Find newly added repo and trigger change
 				const newRepo = repositories.find((repo) =>
 					selectedRepos.some((r) => r.externalId === repo.externalId)
 				);
@@ -187,14 +239,8 @@ function RepoDialogContent({
 
 	const filteredRepos = React.useMemo(() => {
 		if (!Array.isArray(githubRepos)) return [];
-
-		return githubRepos.filter((repo) => {
-			if (!repo?.fullName) return false;
-			return repo.fullName
-				.toLowerCase()
-				.includes(searchTerm.toLowerCase());
-		});
-	}, [githubRepos, searchTerm]);
+		return githubRepos.filter((repo) => repo?.externalId && repo?.fullName);
+	}, [githubRepos]);
 
 	if (!isMounted) {
 		return <Button disabled>Add repository</Button>;
@@ -222,23 +268,20 @@ function RepoDialogContent({
 						))}
 					</div>
 				) : (
-					<ScrollArea className="h-[300px] pr-4">
-						{filteredRepos.length === 0 ? (
-							<p className="text-center text-sm text-muted-foreground">
-								{githubRepos.length === 0
-									? "No repositories found in your GitHub account."
-									: "No repositories match your search."}
-							</p>
-						) : (
-							<div className="space-y-2">
-								{filteredRepos.map((repo) => {
-									if (!repo?.externalId || !repo?.fullName)
-										return null;
-
-									return (
+					<>
+						<ScrollArea className="h-[300px] pr-4">
+							{filteredRepos.length === 0 ? (
+								<p className="text-center text-sm text-muted-foreground py-8">
+									{githubRepos.length === 0
+										? "No repositories found in your GitHub account."
+										: "No repositories match your search."}
+								</p>
+							) : (
+								<div className="space-y-2">
+									{filteredRepos.map((repo) => (
 										<div
 											key={repo.externalId}
-											className="flex items-center space-x-2 py-2"
+											className="flex items-center space-x-2 py-2 hover:bg-accent rounded-md px-2 transition-colors"
 										>
 											<Checkbox
 												id={`repo-${repo.externalId}`}
@@ -255,17 +298,60 @@ function RepoDialogContent({
 												htmlFor={`repo-${repo.externalId}`}
 												className="text-sm flex-1 cursor-pointer"
 											>
-												{repo.fullName}
+												<div className="font-medium">
+													{repo.fullName}
+												</div>
+												{repo.description && (
+													<div className="text-xs text-muted-foreground truncate">
+														{repo.description}
+													</div>
+												)}
 											</label>
 										</div>
-									);
-								})}
+									))}
+
+									{/* Load More Button */}
+									{hasMore && (
+										<div className="pt-4 flex justify-center border-t">
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={handleLoadMore}
+												disabled={isLoadingMore}
+												className="w-full"
+											>
+												{isLoadingMore ? (
+													<>
+														<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+														Loading more...
+													</>
+												) : (
+													`Load More (${currentPage} of ${totalPages})`
+												)}
+											</Button>
+										</div>
+									)}
+								</div>
+							)}
+						</ScrollArea>
+
+						{/* Pagination Info */}
+						{filteredRepos.length > 0 && (
+							<div className="text-xs text-muted-foreground text-center pt-2 border-t">
+								Showing {filteredRepos.length} of {totalCount}{" "}
+								repositories
+								{hasMore &&
+									` • Page ${currentPage} of ${totalPages}`}
 							</div>
 						)}
-					</ScrollArea>
+					</>
 				)}
-				<DialogFooter>
-					<Button variant="outline" onClick={() => setOpen(false)}>
+				<DialogFooter className="flex-col sm:flex-row gap-2">
+					<Button
+						variant="outline"
+						onClick={() => setOpen(false)}
+						className="w-full sm:w-auto"
+					>
 						Cancel
 					</Button>
 					<Button
@@ -273,6 +359,7 @@ function RepoDialogContent({
 						disabled={
 							selectedRepos.length === 0 || repoFetchLoading
 						}
+						className="w-full sm:w-auto"
 					>
 						Save Selected ({selectedRepos.length})
 					</Button>
