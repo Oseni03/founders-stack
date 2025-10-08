@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCodeStore } from "@/zustand/providers/code-store-provider";
 import {
@@ -46,72 +46,70 @@ export default function CodePage() {
 		fetchRepositories,
 	} = useCodeStore((state) => state);
 	const [isLoading, setIsLoading] = useState(true);
+	const hasInitialized = useRef(false);
 
+	// Separate effect to calculate metrics when data changes
 	useEffect(() => {
+		if (!activeRepoId || !hasInitialized.current) return;
+
+		const filteredPRs = pullRequests.filter(
+			(pr) => pr.repositoryId === activeRepoId
+		);
+		const open = filteredPRs.filter((pr) => pr.status === "open").length;
+		const merged = filteredPRs.filter(
+			(pr) => pr.status === "merged"
+		).length;
+		const draft = filteredPRs.filter((pr) => pr.status === "draft").length;
+		setPRStatus({ open, merged, draft });
+
+		const filteredIssues = issues.filter(
+			(issue) => issue.repositoryId === activeRepoId
+		);
+		const filteredStalePRs = filteredPRs.filter(
+			(pr) =>
+				pr.status === "open" &&
+				Date.now() - new Date(pr.createdAt).getTime() >
+					30 * 24 * 60 * 60 * 1000
+		);
+		const avgReviewTime =
+			filteredPRs.reduce((sum, pr) => sum + (pr.avgReviewTime || 0), 0) /
+			(filteredPRs.length || 1);
+		const openIssues = filteredIssues.filter(
+			(issue) => issue.status === "open"
+		).length;
+		const stalePRs = filteredStalePRs.length;
+		const score = Math.max(
+			0,
+			100 - openIssues * 2 - stalePRs * 5 - (avgReviewTime > 24 ? 10 : 0)
+		);
+		setRepoHealth({
+			score: Math.round(score),
+			openIssues,
+			stalePRs,
+			codeReviewTime: `${avgReviewTime.toFixed(1)} hours`,
+			testCoverage: 0,
+		});
+	}, [activeRepoId, pullRequests, issues, setPRStatus, setRepoHealth]);
+
+	// Initial data fetch - runs only once
+	useEffect(() => {
+		if (hasInitialized.current) return;
+
 		const fetchAllData = async () => {
 			setIsLoading(true);
 			try {
-				// Select the first repo by default or use a specific one
 				if (repositories.length === 0) {
 					toast.info("No repositories found", {
 						description: "Kindly integrate and add a repository",
 					});
+					setIsLoading(false);
 					return;
 				}
 
 				const initialRepoId = repositories[0].id;
 				setActiveRepoId(initialRepoId);
-
 				await fetchData(initialRepoId);
-
-				// Derive PRStatus (unchanged)
-				const filteredPRs = pullRequests.filter(
-					(pr) => pr.repositoryId === initialRepoId
-				);
-				const open = filteredPRs.filter(
-					(pr) => pr.status === "open"
-				).length;
-				const merged = filteredPRs.filter(
-					(pr) => pr.status === "merged"
-				).length;
-				const draft = filteredPRs.filter(
-					(pr) => pr.status === "draft"
-				).length;
-				setPRStatus({ open, merged, draft });
-
-				// Derive RepoHealth (unchanged)
-				const filteredIssues = issues.filter(
-					(issue) => issue.repositoryId === initialRepoId
-				);
-				const filteredStalePRs = filteredPRs.filter(
-					(pr) =>
-						pr.status === "open" &&
-						Date.now() - new Date(pr.createdAt).getTime() >
-							30 * 24 * 60 * 60 * 1000
-				);
-				const avgReviewTime =
-					filteredPRs.reduce(
-						(sum, pr) => sum + (pr.avgReviewTime || 0),
-						0
-					) / (filteredPRs.length || 1);
-				const openIssues = filteredIssues.filter(
-					(issue) => issue.status === "open"
-				).length;
-				const stalePRs = filteredStalePRs.length;
-				const score = Math.max(
-					0,
-					100 -
-						openIssues * 2 -
-						stalePRs * 5 -
-						(avgReviewTime > 24 ? 10 : 0)
-				);
-				setRepoHealth({
-					score: Math.round(score),
-					openIssues,
-					stalePRs,
-					codeReviewTime: `${avgReviewTime.toFixed(1)} hours`,
-					testCoverage: 0, // TODO: Integrate real coverage from GitHub API if needed
-				});
+				hasInitialized.current = true;
 			} catch (error) {
 				console.error("[CODE_PAGE_FETCH]", error);
 				toast.error("Failed to load code data");
@@ -121,77 +119,27 @@ export default function CodePage() {
 		};
 
 		fetchAllData();
-	}, [
-		fetchData,
-		issues,
-		pullRequests,
-		repositories,
-		setActiveRepoId,
-		setPRStatus,
-		setRepoHealth,
-	]);
+	}, [repositories, setActiveRepoId, fetchData]);
 
-	const handleRepoChange = async (repoId: string) => {
-		setActiveRepoId(repoId);
-		setIsLoading(true);
-		try {
-			await fetchData(repoId);
+	const handleRepoChange = useCallback(
+		async (repoId: string) => {
+			setActiveRepoId(repoId);
+			setIsLoading(true);
+			try {
+				await fetchData(repoId);
+			} catch (error) {
+				console.error("Failed to fetch data for selected repo:", error);
+				toast.error("Failed to load repository data");
+			} finally {
+				setIsLoading(false);
+			}
+		},
+		[setActiveRepoId, fetchData]
+	);
 
-			const filteredPRs = pullRequests.filter(
-				(pr) => pr.repositoryId === repoId
-			);
-			const open = filteredPRs.filter(
-				(pr) => pr.status === "open"
-			).length;
-			const merged = filteredPRs.filter(
-				(pr) => pr.status === "merged"
-			).length;
-			const draft = filteredPRs.filter(
-				(pr) => pr.status === "draft"
-			).length;
-			setPRStatus({ open, merged, draft });
-
-			const filteredIssues = issues.filter(
-				(issue) => issue.repositoryId === repoId
-			);
-			const filteredStalePRs = filteredPRs.filter(
-				(pr) =>
-					pr.status === "open" &&
-					Date.now() - new Date(pr.createdAt).getTime() >
-						30 * 24 * 60 * 60 * 1000
-			);
-			const avgReviewTime =
-				filteredPRs.reduce(
-					(sum, pr) => sum + (pr.avgReviewTime || 0),
-					0
-				) / (filteredPRs.length || 1);
-			const openIssues = filteredIssues.filter(
-				(issue) => issue.status === "open"
-			).length;
-			const stalePRs = filteredStalePRs.length;
-			const score = Math.max(
-				0,
-				100 -
-					openIssues * 2 -
-					stalePRs * 5 -
-					(avgReviewTime > 24 ? 10 : 0)
-			);
-			setRepoHealth({
-				score: Math.round(score),
-				openIssues,
-				stalePRs,
-				codeReviewTime: `${avgReviewTime.toFixed(1)} hours`,
-				testCoverage: 0,
-			});
-		} catch (error) {
-			console.error(
-				"[v0] Failed to fetch data for selected repo:",
-				error
-			);
-		} finally {
-			setIsLoading(false);
-		}
-	};
+	const handleRepoSuccess = useCallback(async () => {
+		await fetchRepositories();
+	}, [fetchRepositories]);
 
 	const isAnyLoading =
 		repoLoading ||
@@ -231,7 +179,7 @@ export default function CodePage() {
 					</Select>
 					<GitHubRepoSelection
 						repositories={repositories}
-						onSuccess={fetchRepositories}
+						onSuccess={handleRepoSuccess}
 						onRepoChange={handleRepoChange}
 					/>
 				</div>
@@ -258,7 +206,6 @@ export default function CodePage() {
 				error={commitsError}
 			/>
 
-			{/* Rest of the JSX (Contributor Leaderboard, Repository Health, Recent Commits, Branch Activity) unchanged */}
 			<div className="grid gap-6 lg:grid-cols-2">
 				<ContributorsCard
 					contributors={contributors}
