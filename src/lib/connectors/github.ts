@@ -11,9 +11,15 @@ const OctokitWithPlugins = Octokit.plugin(retry, throttling);
 // CDM-aligned interfaces for data normalization (match Prisma types)
 interface CommitData {
 	externalId: string; // GitHub SHA
-	authorId?: string; // GitHub user ID or email or Link to user
+	authorName?: string; // GitHub user name
+	committerName?: string;
+	avatarUrl?: string;
 	committedAt: Date;
 	message: string;
+	additions?: number;
+	deletions?: number;
+	total?: number;
+	url: string;
 	attributes?: Record<string, any>; // Flexible JSON for extra data
 }
 
@@ -218,14 +224,17 @@ export class GitHubConnector {
 				per_page: 100, // MVP limit; add pagination for large repos
 			});
 			return data.map((commit) => ({
+				url: commit.html_url,
 				externalId: commit.sha,
-				authorId:
-					commit.author?.id?.toString() ||
-					commit.commit.author?.email ||
-					"",
+				authorName: commit.author?.name || "",
+				committerName: commit.committer?.name || "",
 				committedAt: new Date(
 					commit.commit.committer?.date || Date.now()
 				),
+				avatarUrl: commit.committer?.avatar_url,
+				additions: commit.stats?.additions,
+				deletions: commit.stats?.additions,
+				total: commit.stats?.total,
 				message: commit.commit.message,
 				attributes: { url: commit.html_url }, // Extra for CDM Json
 			}));
@@ -462,7 +471,13 @@ export async function syncGitHub(organizationId: string) {
 				await tx.commit.createMany({
 					data: commits.map((commit) => ({
 						externalId: commit.externalId,
-						authorId: commit.authorId,
+						authorName: commit.authorName,
+						committerName: commit.committerName,
+						avatarUrl: commit.avatarUrl,
+						additions: commit.additions,
+						deletions: commit.deletions,
+						total: commit.total,
+						url: commit.url,
 						committedAt: commit.committedAt,
 						message: commit.message,
 						attributes: commit.attributes,

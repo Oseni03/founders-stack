@@ -452,9 +452,15 @@ model Commit {
   repositoryId   String
   externalId     String
   sourceTool     String // e.g., "github"
-  authorId       String? // Link to User or external author
+  authorName     String?
+  committerName  String?
+  avatarUrl      String?
+  additions      Int?  // Stats
+  deletions      Int?  // Stats
+  total          Int?  // Stats
   committedAt    DateTime
   message        String
+  url            String?
   attributes     Json?
 
   organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
