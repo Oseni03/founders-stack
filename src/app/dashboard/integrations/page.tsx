@@ -4,7 +4,6 @@ import { useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle2, Plug, Clock } from "lucide-react";
-import { IntegrationStatus } from "@prisma/client";
 import { toast } from "sonner";
 import { INTEGRATIONS } from "@/lib/oauth-utils";
 import { ConnectedTab } from "@/components/integrations/connected-tab";
@@ -34,9 +33,7 @@ export default function IntegrationsPage() {
 	}, [error]);
 
 	const connectedIntegrations = useMemo(() => {
-		return integrations.filter(
-			(i) => i.status === IntegrationStatus.active
-		);
+		return integrations?.filter((i) => i.status === "active") ?? [];
 	}, [integrations]);
 
 	// FIX: Safely format date
