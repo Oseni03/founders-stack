@@ -8,6 +8,7 @@ import {
 	PRStatus,
 	RepoHealth,
 } from "@/types/code";
+import { deleteRepository } from "@/server/code";
 
 export interface CodeState {
 	repoHealth: RepoHealth | null;
@@ -29,6 +30,7 @@ export interface CodeState {
 	fetchCommits: (repoId: string) => Promise<void>;
 	fetchPullRequests: (repoId: string) => Promise<void>;
 	fetchIssues: (repoId: string) => Promise<void>;
+	deleteRepository: (repoId: string) => Promise<void>;
 
 	setActiveRepoId: (repoId: string) => void;
 	setPRStatus: (status: PRStatus) => void;
@@ -174,6 +176,47 @@ export const createCodeStore = () => {
 							state.loading.issues = false;
 							state.error.issues = (error as Error).message;
 						});
+					}
+				},
+				deleteRepository: async (repositoryId: string) => {
+					try {
+						// Call the API to delete
+						await deleteRepository(repositoryId);
+
+						// Update local state
+						set((state) => {
+							// Remove repository from list
+							state.repositories = state.repositories.filter(
+								(repo) => repo.id !== repositoryId
+							);
+
+							// If deleted repo was active, switch to first available
+							if (state.activeRepoId === repositoryId) {
+								state.activeRepoId =
+									state.repositories[0]?.id || "";
+							}
+
+							// Clear related data for deleted repo
+							state.commits = state.commits.filter(
+								(c) => c.repositoryId !== repositoryId
+							);
+							state.pullRequests = state.pullRequests.filter(
+								(pr) => pr.repositoryId !== repositoryId
+							);
+							state.issues = state.issues.filter(
+								(issue) => issue.repositoryId !== repositoryId
+							);
+							state.branches = state.branches.filter(
+								(branch) => branch.repositoryId !== repositoryId
+							);
+							state.contributors = state.contributors.filter(
+								(contributor) =>
+									contributor.repositoryId !== repositoryId
+							);
+						});
+					} catch (error) {
+						console.error("[DELETE_REPOSITORY_STORE]", error);
+						throw error;
 					}
 				},
 				fetchPullRequests: async (repoId: string) => {

@@ -298,14 +298,7 @@ function RepoDialogContent({
 												htmlFor={`repo-${repo.externalId}`}
 												className="text-sm flex-1 cursor-pointer"
 											>
-												<div className="font-medium">
-													{repo.fullName}
-												</div>
-												{repo.description && (
-													<div className="text-xs text-muted-foreground truncate">
-														{repo.description}
-													</div>
-												)}
+												{repo.fullName}
 											</label>
 										</div>
 									))}
@@ -318,7 +311,6 @@ function RepoDialogContent({
 												size="sm"
 												onClick={handleLoadMore}
 												disabled={isLoadingMore}
-												className="w-full"
 											>
 												{isLoadingMore ? (
 													<>
@@ -347,11 +339,7 @@ function RepoDialogContent({
 					</>
 				)}
 				<DialogFooter className="flex-col sm:flex-row gap-2">
-					<Button
-						variant="outline"
-						onClick={() => setOpen(false)}
-						className="w-full sm:w-auto"
-					>
+					<Button variant="outline" onClick={() => setOpen(false)}>
 						Cancel
 					</Button>
 					<Button
@@ -359,7 +347,6 @@ function RepoDialogContent({
 						disabled={
 							selectedRepos.length === 0 || repoFetchLoading
 						}
-						className="w-full sm:w-auto"
 					>
 						Save Selected ({selectedRepos.length})
 					</Button>

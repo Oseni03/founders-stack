@@ -18,6 +18,7 @@ import { ContributorsCard } from "@/components/code/contributors-card";
 import { RepositoryHealthCard } from "@/components/code/repository-health-card";
 import { CommitsCard } from "@/components/code/commits-card";
 import { BranchActivityCard } from "@/components/code/branch-activity-card";
+import { DeleteRepositoryDialog } from "@/components/code/delete-repository-dialog";
 
 export default function CodePage() {
 	const {
@@ -44,6 +45,7 @@ export default function CodePage() {
 		setRepoHealth,
 		fetchData,
 		fetchRepositories,
+		deleteRepository,
 	} = useCodeStore((state) => state);
 	const [isLoading, setIsLoading] = useState(true);
 	const hasInitialized = useRef(false);
@@ -141,6 +143,23 @@ export default function CodePage() {
 		await fetchRepositories();
 	}, [fetchRepositories]);
 
+	const handleDeleteRepository = useCallback(
+		async (repoId: string) => {
+			await deleteRepository(repoId);
+
+			// If we deleted the active repo and there are repos left, load the first one
+			if (repoId === activeRepoId && repositories.length > 1) {
+				const newActiveRepo = repositories.find((r) => r.id !== repoId);
+				if (newActiveRepo) {
+					await handleRepoChange(newActiveRepo.id);
+				}
+			}
+		},
+		[deleteRepository, activeRepoId, repositories, handleRepoChange]
+	);
+
+	const activeRepository = repositories.find((r) => r.id === activeRepoId);
+
 	const isAnyLoading =
 		repoLoading ||
 		branchesLoading ||
@@ -182,6 +201,13 @@ export default function CodePage() {
 						onSuccess={handleRepoSuccess}
 						onRepoChange={handleRepoChange}
 					/>
+					{activeRepository && repositories.length > 0 && (
+						<DeleteRepositoryDialog
+							repository={activeRepository}
+							onDelete={handleDeleteRepository}
+							disabled={repositories.length === 1}
+						/>
+					)}
 				</div>
 			</div>
 

@@ -18,6 +18,19 @@ export async function getRepository(repoId: string, organizationId: string) {
 	return repository;
 }
 
+export async function deleteRepository(repositoryId: string) {
+	try {
+		const response = await prisma.repository.delete({
+			where: { id: repositoryId },
+		});
+
+		return response;
+	} catch (error) {
+		console.error("[DELETE_REPOSITORY_ACTION]", error);
+		throw error;
+	}
+}
+
 export async function getBranches(organizationId: string, repoId: string) {
 	const branches = await prisma.branch.findMany({
 		where: { organizationId, repositoryId: repoId },
