@@ -76,7 +76,7 @@ export const createCodeStore = () => {
 							throw new Error("Failed to fetch repositories");
 						const { data } = await response.json();
 						set((state) => {
-							state.repositories = data;
+							state.repositories = data || [];
 							state.loading.repositories = false;
 						});
 					} catch (error) {

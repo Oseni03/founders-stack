@@ -27,17 +27,24 @@ export default function IntegrationsPage() {
 
 	// FIX: Only show error toast if error exists and has a message
 	useEffect(() => {
-		if (error) {
+		if (error && typeof error === "string" && error.trim()) {
 			toast.error(error);
 		}
 	}, [error]);
 
+	// FIX: Ensure integrations is always an array before filtering
 	const connectedIntegrations = useMemo(() => {
-		return integrations?.filter((i) => i.status === "active") ?? [];
+		// Guard against undefined, null, or non-array values
+		if (!integrations || !Array.isArray(integrations)) {
+			return [];
+		}
+		return integrations.filter((i) => i.status === "active");
 	}, [integrations]);
 
 	// FIX: Safely format date
 	const lastSyncTime = useMemo(() => {
+		if (connectedIntegrations.length === 0) return "N/A";
+
 		const lastSync = connectedIntegrations[0]?.lastSyncAt;
 		if (!lastSync) return "N/A";
 
@@ -45,6 +52,12 @@ export default function IntegrationsPage() {
 			// Handle if lastSyncAt is a string or Date object
 			const date =
 				typeof lastSync === "string" ? new Date(lastSync) : lastSync;
+
+			// Validate date is valid
+			if (isNaN(date.getTime())) {
+				return "N/A";
+			}
+
 			return date.toLocaleString();
 		} catch (error) {
 			console.error("[DATE_FORMAT_ERROR]", error);
@@ -92,7 +105,7 @@ export default function IntegrationsPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{INTEGRATIONS.length}
+							{INTEGRATIONS?.length || 0}
 						</div>
 						<p className="text-xs text-muted-foreground mt-1">
 							Ready to connect
@@ -123,7 +136,7 @@ export default function IntegrationsPage() {
 						Connected ({connectedIntegrations.length})
 					</TabsTrigger>
 					<TabsTrigger value="available">
-						Available ({INTEGRATIONS.length})
+						Available ({INTEGRATIONS?.length || 0})
 					</TabsTrigger>
 				</TabsList>
 
