@@ -27,6 +27,7 @@ model User {
   invitations   Invitation[]
   integrations  Integration[]
   alerts        Alert[]
+  OAuthTemp     OAuthTemp[]
 
   @@unique([email])
   @@map("user")
@@ -67,6 +68,7 @@ model Account {
   // Link to Integration metadata
   integration Integration?
 
+  @@unique([userId, providerId])
   @@map("account")
 }
 
@@ -94,21 +96,22 @@ model Organization {
   invitations     Invitation[]
 
   // Relations
-  integrations     Integration[] // Connected tools
-  tasks            Task[]
-  messageThreads   MessageThread[]
-  deploymentEvents DeploymentEvent[]
-  transactions     Transaction[]
-  userReports      UserReport[]
-  customers        Customer[]
-  alerts           Alert[]
-  Repository       Repository[]
-  Commit           Commit[]
-  PullRequest      PullRequest[]
-  Issue            Issue[]
-  Branch           Branch[]
-  RepositoryHealth RepositoryHealth[]
-  Contributor      Contributor[]
+  integrations      Integration[] // Connected tools
+  tasks             Task[]
+  messageThreads    MessageThread[]
+  deploymentEvents  DeploymentEvent[]
+  transactions      Transaction[]
+  userReports       UserReport[]
+  customers         Customer[]
+  alerts            Alert[]
+  repositories      Repository[]
+  commits           Commit[]
+  pullRequests      PullRequest[]
+  issues            Issue[]
+  branches          Branch[]
+  repositoryHealths RepositoryHealth[]
+  Contributor       Contributor[]
+  Project           Project[]
 
   @@unique([slug])
   @@map("organization")
@@ -195,7 +198,8 @@ enum TaskStatus {
 }
 
 enum IntegrationType {
-  oauth
+  oauth1a
+  oauth2
   api_key
 }
 
@@ -220,7 +224,7 @@ model Integration {
   status         IntegrationStatus   @default(pending)
   lastSyncAt     DateTime?
   toolName       String // e.g., "stripe", "jira"
-  type           IntegrationType // e.g., "oauth", "api_key"
+  type           IntegrationType     @default(oauth2)
   lastSyncStatus String?
   syncInterval   Int? // Minutes, e.g., 15
   createdAt      DateTime            @default(now())
@@ -242,39 +246,73 @@ model Integration {
   @@index([accountId])
 }
 
-// Project/Task Category
-model Task {
-  id              String        @id @default(uuid())
-  organizationId  String
-  externalId      String // From source tool
-  sourceTool      String // e.g., "jira"
-  status          TaskStatus // e.g., "open", "closed"
-  assigneeId      String? // Unified user ID or external string
-  priority        TaskPriority? // e.g., "P1"
-  parentProjectId String? // Link to parent (if hierarchical)
-  externalLink    String?
-  dueDate         DateTime?
-  labels          String[] // Array for tags
-  attributes      Json? // Flexible tool-specific data (JSONB)
-  relatedTaskId   String? // Self-relation for threads/hierarchy
+model OAuthTemp {
+  id               String   @id @default(cuid())
+  userId           String
+  provider         String
+  oauthToken       String
+  oauthTokenSecret String
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, provider])
+  @@map("oauth_temp")
+}
+
+model Project {
+  id             String  @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  externalId     String? // External PM tool project/board ID (e.g., Trello board ID)
+  sourceTool     String? // e.g., "trello", "asana" if linked to one tool
+  attributes     Json? // Tool-specific: { boardId: string, workspaceId: string }
+  status         String  @default("active") // e.g., "active", "archived"
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  // relatedTask    Task?     @relation("TaskRelations", fields: [relatedTaskId], references: [id])
+  tasks        Task[]
 
-  lastSyncedAt    DateTime?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  MessageThread   MessageThread[]
-  DeploymentEvent DeploymentEvent[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([externalId, sourceTool])
+  @@index([organizationId, status])
+}
+
+// Project/Task Category
+model Task {
+  id             String        @id @default(cuid())
+  organizationId String
+  projectId      String // Link to Project (parent board/project)
+  externalId     String // From source tool
+  sourceTool     String // e.g., "trello", "asana"
+  status         TaskStatus // Normalized: "open", "in_progress", "done"
+  assigneeId     String? // External assignee ID
+  priority       TaskPriority?
+  url            String? // Tool-specific URL
+  dueDate        DateTime?
+  labels         String[]
+  attributes     Json? // Tool-specific: { listId: string, pos: number, desc: string }
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messageThreads   MessageThread[]
+  deploymentEvents DeploymentEvent[]
+
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@unique([externalId, sourceTool])
   @@index([organizationId, status, priority])
-  @@index([externalId, sourceTool])
+  @@index([organizationId, projectId, status])
+  @@index([assigneeId, dueDate])
 }
 
 // Communication Category
 model MessageThread {
-  id                   String    @id @default(uuid())
+  id                   String    @id @default(cuid())
   organizationId       String
   externalId           String
   sourceTool           String // e.g., "slack"
@@ -299,7 +337,7 @@ model MessageThread {
 
 // Code/CI Category
 model DeploymentEvent {
-  id              String    @id @default(uuid())
+  id              String    @id @default(cuid())
   organizationId  String
   externalId      String
   sourceTool      String // e.g., "github"
@@ -328,7 +366,7 @@ model DeploymentEvent {
 
 // Finance Category
 model Transaction {
-  id             String            @id @default(uuid())
+  id             String            @id @default(cuid())
   organizationId String
   externalId     String
   sourceTool     String // e.g., "stripe"
@@ -355,7 +393,7 @@ model Transaction {
 
 // Supporting Entity for Finance (Customers)
 model Customer {
-  id             String  @id @default(uuid())
+  id             String  @id @default(cuid())
   organizationId String
   externalId     String
   sourceTool     String
@@ -377,7 +415,7 @@ model Customer {
 
 // Feedback/Analytics Category
 model UserReport {
-  id             String  @id @default(uuid())
+  id             String  @id @default(cuid())
   organizationId String
   externalId     String
   sourceTool     String // e.g., "zendesk"
@@ -402,7 +440,7 @@ model UserReport {
 
 // Alerts System (For Phase 2: Configurable notifications)
 model Alert {
-  id                String  @id @default(uuid())
+  id                String  @id @default(cuid())
   organizationId    String
   type              String // e.g., "churn_threshold"
   threshold         Float? // e.g., 5% churn
@@ -422,7 +460,7 @@ model Alert {
 }
 
 model Repository {
-  id             String @id @default(uuid())
+  id             String @id @default(cuid())
   organizationId String
   name           String
   owner          String
@@ -436,10 +474,10 @@ model Repository {
   issues       Issue[]
   branches     Branch[]
 
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  health           RepositoryHealth?
-  contributors     Contributor[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  health       RepositoryHealth?
+  contributors Contributor[]
 
   @@unique([externalId, sourceTool])
   @@index([organizationId, name])
@@ -447,7 +485,7 @@ model Repository {
 }
 
 model Commit {
-  id             String   @id @default(uuid())
+  id             String   @id @default(cuid())
   organizationId String
   repositoryId   String
   externalId     String
@@ -455,9 +493,9 @@ model Commit {
   authorName     String?
   committerName  String?
   avatarUrl      String?
-  additions      Int?  // Stats
-  deletions      Int?  // Stats
-  total          Int?  // Stats
+  additions      Int? // Stats
+  deletions      Int? // Stats
+  total          Int? // Stats
   committedAt    DateTime
   message        String
   url            String?
@@ -476,7 +514,7 @@ model Commit {
 }
 
 model PullRequest {
-  id             String    @id @default(uuid())
+  id             String    @id @default(cuid())
   organizationId String
   repositoryId   String
   externalId     String
@@ -502,7 +540,7 @@ model PullRequest {
 }
 
 model Issue {
-  id             String  @id @default(uuid())
+  id             String  @id @default(cuid())
   organizationId String
   repositoryId   String
   externalId     String
@@ -524,7 +562,7 @@ model Issue {
 }
 
 model Branch {
-  id             String    @id @default(uuid())
+  id             String    @id @default(cuid())
   organizationId String
   repositoryId   String
   externalId     String
@@ -533,7 +571,7 @@ model Branch {
   lastCommitAt   DateTime?
   status         String // e.g., "active", "stale"
   commitsAhead   Int       @default(0)
-  commitsBehind   Int       @default(0)
+  commitsBehind  Int       @default(0)
   attributes     Json?
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -549,7 +587,7 @@ model Branch {
 
 // Contributor model
 model Contributor {
-  id             String @id @default(uuid())
+  id             String @id @default(cuid())
   organizationId String
   repositoryId   String
   externalId     String // GitHub user ID
@@ -570,7 +608,7 @@ model Contributor {
 }
 
 model RepositoryHealth {
-  id             String   @id @default(uuid())
+  id             String   @id @default(cuid())
   organizationId String
   repositoryId   String   @unique
   healthScore    Int      @default(0) // 0-100 scale
@@ -601,8 +639,8 @@ model CDMRecentSearches {
 }
 
 model UserPreferences {
-  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId String @unique @db.Uuid
+  id     String @id @default(cuid())
+  userId String @unique
 
   // Onboarding progress
   onboardingCompleted Boolean @default(false)

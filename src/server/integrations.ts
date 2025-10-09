@@ -3,9 +3,14 @@
 import { auth } from "@/lib/auth";
 import { getIntegrationCategory } from "@/lib/oauth-utils";
 import { prisma } from "@/lib/prisma";
-import { IntegrationStatus, IntegrationType } from "@prisma/client";
+import {
+	IntegrationCategory,
+	IntegrationStatus,
+	IntegrationType,
+} from "@prisma/client";
 import { Account } from "better-auth";
 import { headers } from "next/headers";
+import { createId } from "@paralleldrive/cuid2";
 
 export async function getIntegrationTokens(
 	organizationId: string,
@@ -42,7 +47,7 @@ export async function createIntegration(account: Account) {
 			toolName: account.providerId,
 			category,
 			status: IntegrationStatus.active,
-			type: IntegrationType.oauth,
+			type: IntegrationType.oauth2,
 			organizationId: activeOrg.id,
 			userId: account.userId,
 			accountId: account.id,
@@ -69,6 +74,71 @@ export async function getIntegrations(organizationId: string) {
 	const integration = await prisma.integration.findFirst({
 		where: {
 			organizationId,
+		},
+	});
+	return integration;
+}
+
+export async function createOAuthTemp(
+	userId: string,
+	provider: string,
+	oauthToken: string,
+	oauthTokenSecret: string
+) {
+	return await prisma.oAuthTemp.create({
+		data: {
+			userId,
+			provider,
+			oauthToken,
+			oauthTokenSecret,
+			expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10-minute ex
+		},
+	});
+}
+
+export async function getOAuthTemp(
+	userId: string,
+	provider: string,
+	oauthToken: string
+) {
+	const temp = await prisma.oAuthTemp.findFirst({
+		where: {
+			userId,
+			provider,
+			oauthToken,
+		},
+	});
+	return temp;
+}
+
+export async function createIntegrationAccount(
+	organizationId: string,
+	userId: string,
+	data: {
+		toolName: string;
+		type: IntegrationType;
+		accountId: string;
+		providerId: string;
+		category: IntegrationCategory;
+		status: IntegrationStatus;
+	}
+) {
+	const account = await prisma.account.create({
+		data: {
+			id: createId(),
+			accountId: data.accountId,
+			providerId: data.providerId,
+			userId,
+		},
+	});
+	const integration = await prisma.integration.create({
+		data: {
+			category: data.category,
+			status: data.status,
+			toolName: data.toolName,
+			type: data.type,
+			organizationId: organizationId,
+			accountId: account.id,
 		},
 	});
 	return integration;

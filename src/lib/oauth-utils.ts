@@ -53,9 +53,9 @@ export const INTEGRATIONS = [
 		category: "communication" as IntegrationCategory,
 		logo: "/slack-logo.png",
 		status: "inactive" as IntegrationStatus,
-		authType: "oauth",
+		authType: "oauth2",
 		lastSyncAt: new Date(),
-		docsUrl: "https://api.slack.com/",
+		docsUrl: "https://docs.slack.dev/",
 	},
 	{
 		id: "github",
@@ -64,14 +64,27 @@ export const INTEGRATIONS = [
 		category: "version_control" as IntegrationCategory,
 		logo: "/github-logo.png",
 		status: "inactive" as IntegrationStatus,
-		authType: "oauth",
+		authType: "oauth2",
 		lastSyncAt: new Date(),
-		docsUrl: "https://api.github.com/",
+		docsUrl: "https://docs.github.com/",
+	},
+	{
+		id: "trello",
+		name: "Trello",
+		description: "lorem",
+		category: "project_management" as IntegrationCategory,
+		logo: "/trello-logo.png",
+		status: "inactive" as IntegrationStatus,
+		authType: "oauth1a",
+		lastSyncAt: new Date(),
+		docsUrl: "https://trello.com/guide",
 	},
 ];
 
 export const getProviderLogo = (providerId: string) => {
 	switch (providerId) {
+		case "trello":
+			return "/trello-logo.png";
 		case "slack":
 			return "/slack-logo.png";
 		case "github":
@@ -87,6 +100,8 @@ export const getProviderLogo = (providerId: string) => {
 
 export const getIntegrationCategory = (providerId: string) => {
 	switch (providerId) {
+		case "trello":
+			return IntegrationCategory.project_management;
 		case "slack":
 			return IntegrationCategory.communication;
 		case "github":
