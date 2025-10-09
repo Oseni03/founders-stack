@@ -221,12 +221,12 @@ export class GitHubConnector {
 				owner: this.owner!,
 				repo: this.repo!,
 				since: since?.toISOString(),
-				per_page: 100, // MVP limit; add pagination for large repos
+				per_page: 50, // MVP limit; add pagination for large repos
 			});
 			return data.map((commit) => ({
 				url: commit.html_url,
 				externalId: commit.sha,
-				authorName: commit.author?.name || "",
+				authorName: commit.commit.author?.name,
 				committerName: commit.committer?.name || "",
 				committedAt: new Date(
 					commit.commit.committer?.date || Date.now()
