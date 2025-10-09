@@ -26,8 +26,11 @@ export default function IntegrationsPage() {
 		fetchIntegrations();
 	}, [fetchIntegrations]);
 
+	// FIX: Only show error toast if error exists and has a message
 	useEffect(() => {
-		toast.error(error);
+		if (error) {
+			toast.error(error);
+		}
 	}, [error]);
 
 	const connectedIntegrations = useMemo(() => {
@@ -35,6 +38,22 @@ export default function IntegrationsPage() {
 			(i) => i.status === IntegrationStatus.active
 		);
 	}, [integrations]);
+
+	// FIX: Safely format date
+	const lastSyncTime = useMemo(() => {
+		const lastSync = connectedIntegrations[0]?.lastSyncAt;
+		if (!lastSync) return "N/A";
+
+		try {
+			// Handle if lastSyncAt is a string or Date object
+			const date =
+				typeof lastSync === "string" ? new Date(lastSync) : lastSync;
+			return date.toLocaleString();
+		} catch (error) {
+			console.error("[DATE_FORMAT_ERROR]", error);
+			return "N/A";
+		}
+	}, [connectedIntegrations]);
 
 	return (
 		<div className="space-y-6">
@@ -92,10 +111,7 @@ export default function IntegrationsPage() {
 						<Clock className="h-4 w-4 text-muted-foreground" />
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold">
-							{connectedIntegrations[0]?.lastSyncAt?.toLocaleString() ||
-								"N/A"}
-						</div>
+						<div className="text-2xl font-bold">{lastSyncTime}</div>
 						<p className="text-xs text-muted-foreground mt-1">
 							Most recent
 						</p>
@@ -117,7 +133,7 @@ export default function IntegrationsPage() {
 				<ConnectedTab
 					isLoading={loading}
 					syncLoading={syncLoading}
-					integrations={integrations}
+					integrations={connectedIntegrations}
 					onConnect={connect}
 					sync={sync}
 				/>
