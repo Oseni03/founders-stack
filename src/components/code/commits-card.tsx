@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { GitCommit } from "lucide-react";
+import { GitCommit } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button"; // ✅ import button for pagination
@@ -132,43 +133,47 @@ const CommitLink = ({ commit }: { commit: CommitType }) => {
 
 			<div className="flex-1 min-w-0">
 				<div className="font-medium text-sm">{commit.message}</div>
-				<div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
-					<span>{commit.authorName}</span>
-					<span>•</span>
-					<span>{commit.committedAt.toLocaleString()}</span>
-					<span>•</span>
-					<Badge variant="outline" className="text-xs">
-						{commit.repositoryId}
-					</Badge>
+				<div className="flex-1 min-w-0">
+					<div className="font-medium text-sm">{commit.message}</div>
+					<div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
+						<span>{commit.authorName}</span>
+						<span>•</span>
+						<span>{commit.committedAt.toLocaleString()}</span>
+						<span>•</span>
+						<Badge variant="outline" className="text-xs">
+							{commit.repositoryId}
+						</Badge>
 
-					{/* Commit Stats */}
-					{(commit.additions !== undefined ||
-						commit.deletions !== undefined) && (
-						<>
-							<span>•</span>
-							<span className="flex items-center gap-2">
-								{commit.additions && (
-									<span className="text-green-600 dark:text-green-400 font-medium">
-										+{commit.additions.toLocaleString()}
-									</span>
-								)}
-								{commit.deletions && (
-									<span className="text-red-600 dark:text-red-400 font-medium">
-										-{commit.deletions.toLocaleString()}
-									</span>
-								)}
-								{commit.additions && commit.deletions && (
-									<span className="text-muted-foreground">
-										(±
-										{(
-											commit.additions + commit.deletions
-										).toLocaleString()}
-										)
-									</span>
-								)}
-							</span>
-						</>
-					)}
+						{/* Commit Stats */}
+						{(commit.additions !== undefined ||
+							commit.deletions !== undefined) && (
+							<>
+								<span>•</span>
+								<span className="flex items-center gap-2">
+									{commit.additions && (
+										<span className="text-green-600 dark:text-green-400 font-medium">
+											+{commit.additions.toLocaleString()}
+										</span>
+									)}
+									{commit.deletions && (
+										<span className="text-red-600 dark:text-red-400 font-medium">
+											-{commit.deletions.toLocaleString()}
+										</span>
+									)}
+									{commit.additions && commit.deletions && (
+										<span className="text-muted-foreground">
+											(±
+											{(
+												commit.additions +
+												commit.deletions
+											).toLocaleString()}
+											)
+										</span>
+									)}
+								</span>
+							</>
+						)}
+					</div>
 				</div>
 			</div>
 		</a>
