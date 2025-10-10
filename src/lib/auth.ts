@@ -389,6 +389,24 @@ export const auth = betterAuth({
 						};
 					},
 				},
+				{
+					providerId: "asana",
+					clientId: process.env.ASANA_CLIENT_ID!,
+					clientSecret: process.env.ASANA_CLIENT_SECRET!,
+					authorizationUrl: "https://app.asana.com/-/oauth_authorize",
+					tokenUrl: "https://app.asana.com/-/oauth_token",
+					userInfoUrl:
+						"https://app.asana.com/api/1.0/openid_connect/userinfo",
+					scopes: [
+						"tasks:read",
+						"projects:read",
+						"users:read",
+						"openid",
+						"email",
+						"profile",
+					],
+					redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/asana`,
+				},
 			],
 		}),
 	],

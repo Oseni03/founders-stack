@@ -1,50 +1,5 @@
 import { IntegrationCategory, IntegrationStatus } from "@prisma/client";
 
-export const OAuthProviders = [
-	{
-		providerId: "slack",
-		clientId: process.env.SLACK_CLIENT_ID!,
-		clientSecret: process.env.SLACK_CLIENT_SECRET!,
-		authorizationUrl: "https://slack.com/oauth/v2/authorize",
-		tokenUrl: "https://slack.com/api/oauth.v2.access",
-		userInfoUrl: "https://slack.com/api/users.info",
-		scopes: [
-			"calls:read",
-			"channels:history",
-			"channels:read",
-			"conversations.connect:read",
-			"groups:read",
-			"reminders:read",
-			"im:read",
-			"mpim:read",
-			"metadata.message:read",
-			"pins:read",
-			"team:read",
-			"users.profile:read",
-			"im:history",
-			"mpim:history",
-			"users:read",
-		],
-		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/slack`,
-	},
-	{
-		providerId: "github",
-		clientId: process.env.GITHUB_CLIENT_ID!,
-		clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-		authorizationUrl: "https://github.com/login/oauth/authorize",
-		tokenUrl: "https://github.com/login/oauth/access_token",
-		userInfoUrl: "https://api.github.com/user",
-		scopes: [
-			"repo",
-			"read:discussion",
-			"project",
-			"read:user",
-			"user:email",
-		],
-		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/github`,
-	},
-];
-
 export const INTEGRATIONS = [
 	{
 		id: "slack",
@@ -69,16 +24,27 @@ export const INTEGRATIONS = [
 		docsUrl: "https://docs.github.com/",
 	},
 	{
-		id: "trello",
-		name: "Trello",
+		id: "asana",
+		name: "Asana",
 		description: "lorem",
 		category: "project_management" as IntegrationCategory,
-		logo: "/trello-logo.png",
+		logo: "/asana-logo.png",
 		status: "inactive" as IntegrationStatus,
-		authType: "oauth1a",
+		authType: "oauth2",
 		lastSyncAt: new Date(),
-		docsUrl: "https://trello.com/guide",
+		docsUrl: "https://developers.asana.com/docs",
 	},
+	// {
+	// 	id: "trello",
+	// 	name: "Trello",
+	// 	description: "lorem",
+	// 	category: "project_management" as IntegrationCategory,
+	// 	logo: "/trello-logo.png",
+	// 	status: "inactive" as IntegrationStatus,
+	// 	authType: "oauth1a",
+	// 	lastSyncAt: new Date(),
+	// 	docsUrl: "https://trello.com/guide",
+	// },
 ];
 
 export const getProviderLogo = (providerId: string) => {
@@ -101,6 +67,8 @@ export const getProviderLogo = (providerId: string) => {
 export const getIntegrationCategory = (providerId: string) => {
 	switch (providerId) {
 		case "trello":
+			return IntegrationCategory.project_management;
+		case "asana":
 			return IntegrationCategory.project_management;
 		case "slack":
 			return IntegrationCategory.communication;
