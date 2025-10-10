@@ -9,7 +9,6 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -60,17 +59,18 @@ export default function IntegrationOnboardingPage() {
 			if (!response.ok)
 				throw new Error(`Failed to fetch ${tool} resources`);
 
-			const { resources, pagination } = await response.json();
+			const { resources: fetchedResources, pagination } =
+				await response.json();
 
-			if (!Array.isArray(resources)) {
+			if (!Array.isArray(fetchedResources)) {
 				throw new Error("Invalid response format");
 			}
 
 			// Append or replace repos based on pagination
 			if (append) {
-				setResources((prev) => [...prev, ...resources]);
+				setResources((prev) => [...prev, ...fetchedResources]);
 			} else {
-				setResources(resources);
+				setResources(fetchedResources);
 			}
 
 			setCurrentPage(pagination.page);
@@ -89,8 +89,14 @@ export default function IntegrationOnboardingPage() {
 		}
 	};
 
+	// Debounced search effect
 	useEffect(() => {
-		fetchResources();
+		const timeoutId = setTimeout(() => {
+			setCurrentPage(1);
+			fetchResources(1, false);
+		}, 300);
+
+		return () => clearTimeout(timeoutId);
 	}, [searchTerm, tool]);
 
 	// Handle selection toggle
@@ -133,12 +139,23 @@ export default function IntegrationOnboardingPage() {
 			router.push("/dashboard");
 		} catch (error) {
 			toast.error(`Failed to add ${tool} resources`);
-			console.error(`[SAVE_${tool.toUpperCase()}]`, error);
+			console.error(`[SAVE_${tool?.toUpperCase()}]`, error);
+		}
+	};
+
+	// Handle dialog close
+	const handleDialogClose = (open: boolean) => {
+		setDialogOpen(open);
+		if (!open) {
+			// Redirect to dashboard if user closes without saving
+			router.push("/dashboard");
 		}
 	};
 
 	// Customize title based on tool
 	const getDialogTitle = () => {
+		if (!tool) return "Select Resources";
+
 		switch (tool) {
 			case "github":
 				return "Select GitHub Repositories";
@@ -157,45 +174,46 @@ export default function IntegrationOnboardingPage() {
 
 	return (
 		<div className="flex min-h-screen flex-col items-center justify-center p-6">
-			<Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-				<DialogTrigger asChild>
-					<Button className="sr-only">Open Dialog</Button>{" "}
-					{/* Hidden trigger for auto-open */}
-				</DialogTrigger>
+			<Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
 				<DialogContent className="sm:max-w-[425px]">
 					<DialogHeader>
 						<DialogTitle>{getDialogTitle()}</DialogTitle>
 					</DialogHeader>
-					<Input
-						placeholder="Search repositories..."
-						value={searchTerm}
-						onChange={(e) => setSearchTerm(e.target.value)}
-						className="mb-4"
-					/>
-					{loading ? (
-						<div className="space-y-2">
-							{[1, 2, 3, 4, 5].map((i) => (
-								<Skeleton key={i} className="h-10 w-full" />
-							))}
-						</div>
-					) : (
-						<ScrollArea className="h-[300px] pr-4">
-							{error ? (
-								<div className="flex items-center text-destructive">
-									<AlertCircle className="mr-2 h-4 w-4" />
-									{error}
-								</div>
-							) : resources.length === 0 ? (
+
+					<div className="space-y-4">
+						<Input
+							placeholder="Search resources..."
+							value={searchTerm}
+							onChange={(e) => setSearchTerm(e.target.value)}
+						/>
+
+						{loading ? (
+							<div className="space-y-2">
+								{[1, 2, 3, 4, 5].map((i) => (
+									<Skeleton key={i} className="h-10 w-full" />
+								))}
+							</div>
+						) : error ? (
+							<div className="flex items-center justify-center py-8 text-destructive">
+								<AlertCircle className="mr-2 h-4 w-4" />
+								<span>{error}</span>
+							</div>
+						) : resources.length === 0 ? (
+							<div className="flex items-center justify-center py-8">
 								<p className="text-muted-foreground">
-									No resources found.
+									{searchTerm
+										? "No resources match your search."
+										: "No resources found."}
 								</p>
-							) : (
-								<>
-									<div className="overflow-y-auto space-y-2">
+							</div>
+						) : (
+							<>
+								<ScrollArea className="h-[300px] pr-4">
+									<div className="space-y-2">
 										{resources.map((resource) => (
 											<div
 												key={resource.externalId}
-												className="flex items-center space-x-2"
+												className="flex items-center space-x-2 py-2 px-2 hover:bg-accent rounded-md transition-colors"
 											>
 												<Checkbox
 													id={resource.externalId}
@@ -212,6 +230,7 @@ export default function IntegrationOnboardingPage() {
 													htmlFor={
 														resource.externalId
 													}
+													className="flex-1 cursor-pointer"
 												>
 													{resource.name}
 												</Label>
@@ -226,6 +245,7 @@ export default function IntegrationOnboardingPage() {
 													size="sm"
 													onClick={handleLoadMore}
 													disabled={isLoadingMore}
+													className="w-full"
 												>
 													{isLoadingMore ? (
 														<>
@@ -239,39 +259,40 @@ export default function IntegrationOnboardingPage() {
 											</div>
 										)}
 									</div>
+								</ScrollArea>
 
-									{/* Pagination Info */}
-									{resources.length > 0 && (
-										<div className="text-xs text-muted-foreground text-center pt-2 border-t">
-											Showing {resources.length} of{" "}
-											{totalCount} resources
-											{hasMore &&
-												` • Page ${currentPage} of ${totalPages}`}
-										</div>
-									)}
-
-									<Button
-										onClick={handleSave}
-										disabled={
-											selectedResources.length === 0
-										}
-										className="w-full"
-									>
-										Add Selected ({selectedResources.length}
-										)
-									</Button>
-								</>
-							)}
-						</ScrollArea>
-					)}
+								{/* Pagination Info */}
+								{resources.length > 0 && (
+									<div className="text-xs text-muted-foreground text-center pt-2 border-t">
+										Showing {resources.length} of{" "}
+										{totalCount} resources
+										{hasMore &&
+											` • Page ${currentPage} of ${totalPages}`}
+									</div>
+								)}
+							</>
+						)}
+					</div>
 
 					<DialogFooter>
 						<Button
-							onClick={handleSave}
-							disabled={selectedResources.length === 0}
-							className="w-full"
+							variant="outline"
+							onClick={() => handleDialogClose(false)}
 						>
-							Add Selected ({selectedResources.length})
+							Cancel
+						</Button>
+						<Button
+							onClick={handleSave}
+							disabled={selectedResources.length === 0 || loading}
+						>
+							{loading ? (
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Loading...
+								</>
+							) : (
+								`Add Selected (${selectedResources.length})`
+							)}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
