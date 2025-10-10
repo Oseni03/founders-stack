@@ -19,6 +19,8 @@ import { RepositoryHealthCard } from "@/components/code/repository-health-card";
 import { CommitsCard } from "@/components/code/commits-card";
 import { BranchActivityCard } from "@/components/code/branch-activity-card";
 import { DeleteRepositoryDialog } from "@/components/code/delete-repository-dialog";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function CodePage() {
 	const {
@@ -196,11 +198,11 @@ export default function CodePage() {
 							))}
 						</SelectContent>
 					</Select>
-					<GitHubRepoSelection
-						repositories={repositories}
-						onSuccess={handleRepoSuccess}
-						onRepoChange={handleRepoChange}
-					/>
+					<Button asChild>
+						<Link href="/dashboard/integrations/github/onboarding">
+							Add repository
+						</Link>
+					</Button>
 					{activeRepository && repositories.length > 0 && (
 						<DeleteRepositoryDialog
 							repository={activeRepository}

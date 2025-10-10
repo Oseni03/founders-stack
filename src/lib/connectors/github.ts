@@ -4,6 +4,7 @@ import { retry } from "@octokit/plugin-retry";
 import { throttling } from "@octokit/plugin-throttling";
 import { prisma } from "../prisma";
 import { getIntegration } from "@/server/integrations";
+import { PaginatedResponse, PaginationOptions } from "@/types/connector";
 
 // Extend Octokit with plugins for resilience against rate limits and transient errors
 const OctokitWithPlugins = Octokit.plugin(retry, throttling);
@@ -21,21 +22,6 @@ interface CommitData {
 	total?: number;
 	url: string;
 	attributes?: Record<string, any>; // Flexible JSON for extra data
-}
-
-interface PaginationOptions {
-	page?: number;
-	limit?: number;
-	search?: string;
-}
-
-interface PaginatedResponse<T> {
-	repositories: T[];
-	page: number;
-	limit: number;
-	total: number;
-	totalPages: number;
-	hasMore: boolean;
 }
 
 export interface RepoData {
