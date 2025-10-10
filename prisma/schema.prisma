@@ -287,7 +287,10 @@ model Task {
   projectId      String // Link to Project (parent board/project)
   externalId     String // From source tool
   sourceTool     String // e.g., "trello", "asana"
+  title          String
+  description    String
   status         TaskStatus // Normalized: "open", "in_progress", "done"
+  assignee       String? //  Assignee name
   assigneeId     String? // External assignee ID
   priority       TaskPriority?
   url            String? // Tool-specific URL

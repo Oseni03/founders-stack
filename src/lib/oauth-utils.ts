@@ -110,3 +110,10 @@ export const getIntegrationCategory = (providerId: string) => {
 			return IntegrationCategory.other;
 	}
 };
+
+export const taskSourceColors = {
+	github: "bg-gray-900 text-white dark:bg-gray-700",
+	jira: "bg-blue-600 text-white",
+	linear: "bg-purple-600 text-white",
+	asana: "bg-pink-600 text-white",
+};
