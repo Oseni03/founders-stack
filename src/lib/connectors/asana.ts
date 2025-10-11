@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { getIntegration } from "@/server/integrations";
-import { PaginatedResponse } from "@/types/connector";
-import { z } from "zod";
+import { PaginatedResponse, PaginationOptions } from "@/types/connector";
 import { prisma } from "../prisma";
 import { Project } from "@prisma/client";
 
@@ -25,12 +24,6 @@ export interface TaskData {
 	labels: string[];
 	attributes: Record<string, any>;
 }
-
-const paramsSchema = z.object({
-	page: z.number().min(1, "Page must be at least 1"),
-	limit: z.number().min(1).max(100, "Limit must be between 1 and 100"),
-	search: z.string().default(""),
-});
 
 export class AsanaConnector {
 	private accessToken: string;
@@ -69,20 +62,11 @@ export class AsanaConnector {
 		return response.json();
 	}
 
-	async fetchProjects(params: {
-		page: number;
-		limit: number;
-		search: string;
-	}): Promise<PaginatedResponse<ProjectData>> {
+	async fetchProjects(
+		params: PaginationOptions
+	): Promise<PaginatedResponse<ProjectData>> {
 		try {
-			const parsedParams = paramsSchema.safeParse(params);
-			if (!parsedParams.success) {
-				throw new Error(
-					`Invalid parameters: ${parsedParams.error.message}`
-				);
-			}
-
-			const { page, limit, search } = parsedParams.data;
+			const { page = 1, limit = 50, search = "" } = params;
 			const offset =
 				page > 1 ? ((page - 1) * limit).toString() : undefined;
 
@@ -156,19 +140,10 @@ export class AsanaConnector {
 
 	async fetchTasks(
 		projectGid: string,
-		params: { page: number; limit: number }
+		params: PaginationOptions
 	): Promise<PaginatedResponse<TaskData>> {
 		try {
-			const parsedParams = paramsSchema
-				.omit({ search: true })
-				.safeParse(params);
-			if (!parsedParams.success) {
-				throw new Error(
-					`Invalid parameters: ${parsedParams.error.message}`
-				);
-			}
-
-			const { page, limit } = parsedParams.data;
+			const { page = 1, limit = 50 } = params;
 			const offset =
 				page > 1 ? ((page - 1) * limit).toString() : undefined;
 
