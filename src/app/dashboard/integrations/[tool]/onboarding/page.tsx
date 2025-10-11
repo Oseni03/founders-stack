@@ -173,7 +173,7 @@ export default function IntegrationOnboardingPage() {
 	return (
 		<div className="flex min-h-screen flex-col items-center justify-center p-6">
 			<Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
-				<DialogContent className="sm:max-w-[425px]">
+				<DialogContent className="sm:max-w-md">
 					<DialogHeader>
 						<DialogTitle>{getDialogTitle()}</DialogTitle>
 					</DialogHeader>
@@ -196,67 +196,69 @@ export default function IntegrationOnboardingPage() {
 								<AlertCircle className="mr-2 h-4 w-4" />
 								<span>{error}</span>
 							</div>
-						) : resources.length === 0 ? (
-							<div className="flex items-center justify-center py-8">
-								<p className="text-muted-foreground">
-									{searchTerm
-										? "No resources match your search."
-										: "No resources found."}
-								</p>
-							</div>
 						) : (
 							<>
 								<ScrollArea className="h-[300px] pr-4">
-									<div className="space-y-2">
-										{resources.map((resource) => (
-											<div
-												key={resource.externalId}
-												className="flex items-center space-x-2 py-2 px-2 hover:bg-accent rounded-md transition-colors"
-											>
-												<Checkbox
-													id={resource.externalId}
-													checked={selectedResources.includes(
-														resource.externalId
-													)}
-													onCheckedChange={() =>
-														toggleSelection(
+									{resources.length === 0 ? (
+										<div className="flex items-center justify-center py-8">
+											<p className="text-muted-foreground">
+												{searchTerm
+													? "No resources match your search."
+													: "No resources found."}
+											</p>
+										</div>
+									) : (
+										<div className="space-y-2">
+											{resources.map((resource) => (
+												<div
+													key={resource.externalId}
+													className="flex items-center space-x-2 py-2 px-2 hover:bg-accent rounded-md transition-colors"
+												>
+													<Checkbox
+														id={resource.externalId}
+														checked={selectedResources.includes(
 															resource.externalId
-														)
-													}
-												/>
-												<Label
-													htmlFor={
-														resource.externalId
-													}
-													className="flex-1 cursor-pointer"
-												>
-													{resource.name}
-												</Label>
-											</div>
-										))}
+														)}
+														onCheckedChange={() =>
+															toggleSelection(
+																resource.externalId
+															)
+														}
+													/>
+													<Label
+														htmlFor={
+															resource.externalId
+														}
+														className="flex-1 cursor-pointer"
+													>
+														{resource.name}
+													</Label>
+												</div>
+											))}
 
-										{/* Load More Button */}
-										{hasMore && (
-											<div className="pt-4 flex justify-center border-t">
-												<Button
-													variant="outline"
-													size="sm"
-													onClick={handleLoadMore}
-													disabled={isLoadingMore}
-													className="w-full"
-												>
-													{isLoadingMore ? (
-														<>
-															<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-															Loading more...
-														</>
-													) : (
-														`Load More (${currentPage} of ${totalPages})`
-													)}
-												</Button>
-											</div>
-										)}
-									</div>
+											{/* Load More Button */}
+											{hasMore && (
+												<div className="pt-4 flex justify-center border-t">
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={handleLoadMore}
+														disabled={isLoadingMore}
+														className="w-full"
+													>
+														{isLoadingMore ? (
+															<>
+																<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+																Loading more...
+															</>
+														) : (
+															`Load More (${currentPage} of ${totalPages})`
+														)}
+													</Button>
+												</div>
+											)}
+										</div>
+									)}
 								</ScrollArea>
 
 								{/* Pagination Info */}
@@ -272,7 +274,7 @@ export default function IntegrationOnboardingPage() {
 						)}
 					</div>
 
-					<DialogFooter>
+					<DialogFooter className="flex-col sm:flex-row gap-2">
 						<Button
 							variant="outline"
 							onClick={() => handleDialogClose(false)}

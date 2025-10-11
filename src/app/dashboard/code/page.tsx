@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { CommitActivityChart } from "@/components/charts/commits-activity-chart";
-import { GitHubRepoSelection } from "@/components/code/github-repo-selection";
 import { PRCard } from "@/components/code/pr-card";
 import { ContributorsCard } from "@/components/code/contributors-card";
 import { RepositoryHealthCard } from "@/components/code/repository-health-card";
