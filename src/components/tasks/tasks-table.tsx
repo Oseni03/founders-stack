@@ -26,7 +26,7 @@ import { taskSourceColors } from "@/lib/oauth-utils";
 const statusColors = {
 	open: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
 	in_progress: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
-	closed: "bg-green-500/10 text-green-700 dark:text-green-400",
+	done: "bg-green-500/10 text-green-700 dark:text-green-400",
 	blocked: "bg-red-500/10 text-red-700 dark:text-red-400",
 };
 

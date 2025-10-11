@@ -5,6 +5,7 @@ import { throttling } from "@octokit/plugin-throttling";
 import { prisma } from "../prisma";
 import { getIntegration } from "@/server/integrations";
 import { PaginatedResponse, PaginationOptions } from "@/types/connector";
+import { Repository } from "@prisma/client";
 
 // Extend Octokit with plugins for resilience against rate limits and transient errors
 const OctokitWithPlugins = Octokit.plugin(retry, throttling);
@@ -187,7 +188,7 @@ export class GitHubConnector {
 			const hasMore = page < totalPages;
 
 			return {
-				repositories,
+				resources: repositories,
 				page,
 				limit,
 				total: totalCount,
@@ -406,7 +407,10 @@ export class GitHubConnector {
 	}
 }
 
-export async function syncGitHub(organizationId: string) {
+export async function syncGitHub(
+	organizationId: string,
+	repos: Repository[] = []
+) {
 	// Fetch integration
 	const integration = await getIntegration(organizationId, "github");
 	if (!integration?.account.accessToken) {
@@ -414,12 +418,17 @@ export async function syncGitHub(organizationId: string) {
 	}
 
 	// Fetch all repositories for the organization
-	const repositories = await prisma.repository.findMany({
-		where: {
-			organizationId,
-			sourceTool: "github",
-		},
-	});
+	let repositories;
+	if (repos.length === 0) {
+		repositories = await prisma.repository.findMany({
+			where: {
+				organizationId,
+				sourceTool: "github",
+			},
+		});
+	} else {
+		repositories = repos;
+	}
 
 	if (repositories.length === 0) {
 		return; // Early return if no repositories

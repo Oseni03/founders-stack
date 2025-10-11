@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 			});
 
 			return NextResponse.json({
-				data: result.repositories,
+				data: result.resources,
 				pagination: {
 					page: result.page,
 					limit: result.limit,

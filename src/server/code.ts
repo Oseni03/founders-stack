@@ -72,7 +72,7 @@ export async function saveRepositories(
 ) {
 	try {
 		// Batch upsert using Prisma's $transaction
-		await prisma.$transaction(
+		const results = await prisma.$transaction(
 			repos.map((repo) =>
 				prisma.repository.upsert({
 					where: {
@@ -102,7 +102,7 @@ export async function saveRepositories(
 			)
 		);
 
-		await syncGitHub(organizationId);
+		await syncGitHub(organizationId, results);
 
 		return repos; // Return the input repos for chaining or confirmation
 	} catch (error) {

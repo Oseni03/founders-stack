@@ -194,7 +194,8 @@ enum IntegrationCategory {
 
 enum TaskStatus {
   open
-  closed
+  in_progress
+  done
 }
 
 enum IntegrationType {

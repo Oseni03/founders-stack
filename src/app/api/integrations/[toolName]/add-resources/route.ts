@@ -75,6 +75,33 @@ export async function POST(
 					user.organizationId,
 					selected as RepoData[]
 				);
+			} else if (toolName === "asana") {
+				const projectSchema = z.array(
+					z.object({
+						externalId: z.string().min(1),
+						name: z.string().min(1),
+						description: z.string().nullable(),
+						attributes: z.any(),
+					})
+				);
+
+				try {
+					projectSchema.parse(selected);
+				} catch (validationError) {
+					console.error("[PM_VALIDATION]", validationError);
+					return NextResponse.json(
+						{
+							error: "Invalid request data",
+							details: validationError,
+						},
+						{ status: 400 }
+					);
+				}
+
+				await saveRepositories(
+					user.organizationId,
+					selected as RepoData[]
+				);
 			}
 
 			return NextResponse.json({

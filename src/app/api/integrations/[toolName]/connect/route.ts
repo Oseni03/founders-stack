@@ -15,7 +15,7 @@ export async function GET(
 			const data = await auth.api.oAuth2LinkAccount({
 				body: {
 					providerId: toolName,
-					callbackURL: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/integrations`,
+					callbackURL: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/integrations/${toolName}/onboarding`,
 				},
 				// This endpoint requires session cookies.
 				headers: await headers(),
