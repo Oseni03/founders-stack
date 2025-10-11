@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/middleware";
 import { GitHubConnector, RepoData } from "@/lib/connectors/github";
 import { PaginatedResponse, Resources } from "@/types/connector";
 import { z } from "zod";
+import { AsanaConnector } from "@/lib/connectors/asana";
 
 // Input validation schema
 const querySchema = z.object({
@@ -87,8 +88,27 @@ export async function GET(
 						search,
 					});
 
-				resources = result.repositories;
+				resources = result.resources;
 
+				pagination = {
+					page: result.page,
+					limit: result.limit,
+					total: result.total,
+					totalPages: result.totalPages,
+					hasMore: result.hasMore,
+				};
+			} else if (toolName === "asana") {
+				const connector = new AsanaConnector(
+					integration.account.accessToken
+				);
+
+				const result = await connector.fetchProjects({
+					page,
+					limit,
+					search,
+				});
+
+				resources = result.resources;
 				pagination = {
 					page: result.page,
 					limit: result.limit,

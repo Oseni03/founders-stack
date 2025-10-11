@@ -5,7 +5,7 @@ export interface PaginationOptions {
 }
 
 export interface PaginatedResponse<T> {
-	repositories: T[];
+	resources: T[];
 	page: number;
 	limit: number;
 	total: number;
