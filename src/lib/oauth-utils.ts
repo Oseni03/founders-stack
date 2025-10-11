@@ -34,23 +34,10 @@ export const INTEGRATIONS = [
 		lastSyncAt: new Date(),
 		docsUrl: "https://developers.asana.com/docs",
 	},
-	// {
-	// 	id: "trello",
-	// 	name: "Trello",
-	// 	description: "lorem",
-	// 	category: "project_management" as IntegrationCategory,
-	// 	logo: "/trello-logo.png",
-	// 	status: "inactive" as IntegrationStatus,
-	// 	authType: "oauth1a",
-	// 	lastSyncAt: new Date(),
-	// 	docsUrl: "https://trello.com/guide",
-	// },
 ];
 
 export const getProviderLogo = (providerId: string) => {
 	switch (providerId) {
-		case "trello":
-			return "/trello-logo.png";
 		case "slack":
 			return "/slack-logo.png";
 		case "github":
@@ -66,8 +53,6 @@ export const getProviderLogo = (providerId: string) => {
 
 export const getIntegrationCategory = (providerId: string) => {
 	switch (providerId) {
-		case "trello":
-			return IntegrationCategory.project_management;
 		case "asana":
 			return IntegrationCategory.project_management;
 		case "slack":

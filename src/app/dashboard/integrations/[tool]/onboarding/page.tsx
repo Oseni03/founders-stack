@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function IntegrationOnboardingPage() {
-	const { tool } = useParams<{ tool: string }>(); // e.g., "github", "trello"
+	const { tool } = useParams<{ tool: string }>(); // e.g., "github", "asana"
 	const router = useRouter();
 	const [resources, setResources] = useState<Resources[]>([]);
 	const [selectedResources, setSelectedResources] = useState<string[]>([]);
@@ -159,8 +159,6 @@ export default function IntegrationOnboardingPage() {
 		switch (tool) {
 			case "github":
 				return "Select GitHub Repositories";
-			case "trello":
-				return "Select Trello Boards";
 			case "jira":
 				return "Select Jira Projects";
 			case "linear":

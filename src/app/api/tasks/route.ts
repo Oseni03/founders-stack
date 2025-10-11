@@ -9,7 +9,6 @@ export async function GET(req: NextRequest) {
 
 			// Calculate task counts by source
 			const counts = {
-				trello: tasks.filter((t) => t.sourceTool === "trello").length,
 				github: tasks.filter((t) => t.sourceTool === "github").length,
 				jira: tasks.filter((t) => t.sourceTool === "jira").length,
 				linear: tasks.filter((t) => t.sourceTool === "linear").length,

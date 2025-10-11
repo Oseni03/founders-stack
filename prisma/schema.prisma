@@ -266,8 +266,8 @@ model Project {
   organizationId String
   name           String
   description    String?
-  externalId     String? // External PM tool project/board ID (e.g., Trello board ID)
-  sourceTool     String? // e.g., "trello", "asana" if linked to one tool
+  externalId     String? // External PM tool project/board ID (e.g., Asana project ID)
+  sourceTool     String? // e.g., "jira", "asana" if linked to one tool
   attributes     Json? // Tool-specific: { boardId: string, workspaceId: string }
   status         String  @default("active") // e.g., "active", "archived"
 
@@ -287,7 +287,7 @@ model Task {
   organizationId String
   projectId      String // Link to Project (parent board/project)
   externalId     String // From source tool
-  sourceTool     String // e.g., "trello", "asana"
+  sourceTool     String // e.g., "jira", "asana"
   title          String
   description    String
   status         TaskStatus // Normalized: "open", "in_progress", "done"

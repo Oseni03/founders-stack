@@ -14,7 +14,6 @@ interface TaskCounts {
 	jira: number;
 	linear: number;
 	asana: number;
-	trello: number;
 	total: number;
 }
 
@@ -30,7 +29,6 @@ export default function TasksPage() {
 		jira: 0,
 		linear: 0,
 		asana: 0,
-		trello: 0,
 		total: 0,
 	});
 	const [selectedSource, setSelectedSource] = useState<string>("all");
