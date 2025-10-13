@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/middleware";
 import { syncGitHub } from "@/lib/connectors/github";
 import { syncAsana } from "@/lib/connectors/asana";
+import { syncPostHog } from "@/lib/connectors/posthog";
 
 export async function POST(
 	req: NextRequest,
@@ -15,6 +16,8 @@ export async function POST(
 				await syncGitHub(user.organizationId);
 			} else if (toolName === "asana") {
 				await syncAsana(user.organizationId);
+			} else if (toolName === "posthog") {
+				await syncPostHog(user.organizationId);
 			}
 
 			return NextResponse.json({

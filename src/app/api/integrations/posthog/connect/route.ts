@@ -86,7 +86,6 @@ export async function POST(request: NextRequest) {
 							sourceTool: "posthog",
 							organizationId: user.organizationId,
 							projectId: project.id,
-							attributes: null,
 						})),
 						skipDuplicates: true,
 					});

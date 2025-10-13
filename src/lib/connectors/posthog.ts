@@ -1,4 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { getIntegration } from "@/server/integrations";
+import { prisma } from "../prisma";
+
 // Interface for normalized data
 interface NormalizedAnalyticsEvent {
 	externalId: string;
@@ -93,4 +96,52 @@ export class PostHogConnector {
 			throw new Error("Failed to fetch PostHog events");
 		}
 	}
+}
+
+export async function syncPostHog(organizationId: string, projectId?: string) {
+	const integration = await getIntegration(organizationId, "posthog");
+
+	if (!integration?.account.apiKey) {
+		throw new Error("Integration not connected");
+	}
+
+	let projId: string;
+
+	if (projectId) {
+		projId = projectId;
+	} else {
+		const project = await prisma.project.findFirstOrThrow({
+			where: {
+				organizationId,
+				sourceTool: "posthog",
+			},
+		});
+		projId = project.id;
+	}
+
+	const connector = new PostHogConnector(integration.account.apiKey, projId);
+
+	let events;
+	try {
+		events = await connector.getEvents();
+	} catch (error: any) {
+		console.error("Error fetching PostHog events: ", error);
+		throw new Error("Error fetching PostHog events");
+	}
+
+	if (events && events.length > 0) {
+		await prisma.$transaction(async (tx) => {
+			await tx.analyticsEvent.createMany({
+				data: events.map((event) => ({
+					...event,
+					sourceTool: "posthog",
+					organizationId,
+					projectId: projId,
+				})),
+				skipDuplicates: true,
+			});
+		});
+	}
+
+	return events;
 }
