@@ -21,6 +21,8 @@ import { Integration, IntegrationStatus } from "@prisma/client";
 import { Button } from "../ui/button";
 import Link from "next/link";
 import { DisconnectAlertDialog } from "./disconnectAlertDialog";
+import { useState } from "react";
+import { APIKeyConnectForm } from "../forms/api-key-connect-form";
 
 export const IntegrationCard = ({
 	integration,
@@ -153,77 +155,98 @@ export const UnconnectedIntegrationCard = ({
 	const logo = integration.logo;
 	const name = integration.name;
 
-	return (
-		<Card>
-			<CardHeader>
-				<div className="flex items-start justify-between">
-					<div className="flex items-center gap-3">
-						<div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
-							<Image src={logo} alt={name} className="h-8 w-8" />
-						</div>
-						<div>
-							<CardTitle className="text-lg">{name}</CardTitle>
-							<Badge
-								variant="outline"
-								className="mt-1 text-xs capitalize"
-							>
-								{integration.category}
-							</Badge>
-						</div>
-					</div>
-					{integration.status === IntegrationStatus.active ? (
-						<CheckCircle2 className="h-5 w-5 text-green-500" />
-					) : (
-						<XCircle className="h-5 w-5 text-muted-foreground" />
-					)}
-				</div>
-			</CardHeader>
-			<CardContent>
-				<p className="text-sm text-muted-foreground">
-					{integration.description}
-				</p>
+	const [isAPIKeyFormOpen, setAPIKeyFormOpen] = useState(false);
 
-				{integration.status === IntegrationStatus.active && (
-					<div className="mt-4 space-y-2 text-xs">
-						<div className="flex items-center justify-between">
-							<span className="text-muted-foreground">
-								Last sync:
-							</span>
-							<span className="font-medium">
-								{integration.lastSyncAt?.toLocaleDateString() ??
-									"Never"}
-							</span>
+	const handleClick = () => {
+		if (integration.authType === "api_key") {
+			setAPIKeyFormOpen(true); // Open form for API key input
+		} else {
+			handleConnect(integration.id); // OAuth2 flow for others
+		}
+	};
+
+	return (
+		<>
+			<Card>
+				<CardHeader>
+					<div className="flex items-start justify-between">
+						<div className="flex items-center gap-3">
+							<div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center">
+								<Image
+									src={logo}
+									alt={name}
+									className="h-8 w-8"
+								/>
+							</div>
+							<div>
+								<CardTitle className="text-lg">
+									{name}
+								</CardTitle>
+								<Badge
+									variant="outline"
+									className="mt-1 text-xs capitalize"
+								>
+									{integration.category}
+								</Badge>
+							</div>
 						</div>
-						<div className="flex items-center justify-between">
-							<span className="text-muted-foreground">
-								Category:
-							</span>
-							<span className="font-medium">
-								{integration.category}
-							</span>
-						</div>
+						{integration.status === IntegrationStatus.active ? (
+							<CheckCircle2 className="h-5 w-5 text-green-500" />
+						) : (
+							<XCircle className="h-5 w-5 text-muted-foreground" />
+						)}
 					</div>
-				)}
-			</CardContent>
-			<CardFooter className="flex gap-2">
-				<Button
-					className="flex-1"
-					size="sm"
-					onClick={() => handleConnect(integration.id)}
-				>
-					<Plug className="h-4 w-4 mr-2" />
-					Connect
-				</Button>
-				<Button variant="outline" size="sm" asChild>
-					<Link
-						href={integration.docsUrl}
-						target="_blank"
-						rel="noopener noreferrer"
-					>
-						<ExternalLink className="h-4 w-4" />
-					</Link>
-				</Button>
-			</CardFooter>
-		</Card>
+				</CardHeader>
+				<CardContent>
+					<p className="text-sm text-muted-foreground">
+						{integration.description}
+					</p>
+
+					{integration.status === IntegrationStatus.active && (
+						<div className="mt-4 space-y-2 text-xs">
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">
+									Last sync:
+								</span>
+								<span className="font-medium">
+									{integration.lastSyncAt?.toLocaleDateString() ??
+										"Never"}
+								</span>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">
+									Category:
+								</span>
+								<span className="font-medium">
+									{integration.category}
+								</span>
+							</div>
+						</div>
+					)}
+				</CardContent>
+				<CardFooter className="flex gap-2">
+					<Button className="flex-1" size="sm" onClick={handleClick}>
+						<Plug className="h-4 w-4 mr-2" />
+						Connect
+					</Button>
+					<Button variant="outline" size="sm" asChild>
+						<Link
+							href={integration.docsUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							<ExternalLink className="h-4 w-4" />
+						</Link>
+					</Button>
+				</CardFooter>
+			</Card>
+			{integration.authType === "api_key" && (
+				<APIKeyConnectForm
+					isOpen={isAPIKeyFormOpen}
+					onClose={() => setAPIKeyFormOpen(false)}
+					integrationId={integration.id}
+				/>
+			)}
+		</>
 	);
 };

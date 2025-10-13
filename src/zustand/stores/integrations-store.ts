@@ -10,7 +10,14 @@ export interface IntegrationsState {
 	syncLoading: boolean;
 	error: string | null;
 	fetchIntegrations: () => Promise<void>;
-	connect: (toolName: string) => Promise<void>;
+	connect: (
+		toolName: string,
+		credentials?: {
+			apiKey?: string;
+			projectId?: string;
+			projectName?: string;
+		}
+	) => Promise<void>;
 	disconnect: (integrationId: string) => Promise<void>;
 	sync: (integrationId: string) => Promise<void>;
 }
@@ -43,30 +50,59 @@ export const createIntegrationsStore = () => {
 						});
 					}
 				},
-				connect: async (toolName) => {
-					set((state) => {
-						state.loading = true;
-						state.error = null;
-					});
+				connect: async (
+					toolName: string,
+					credentials?: {
+						apiKey?: string;
+						projectId?: string;
+						projectName?: string;
+					}
+				) => {
+					set({ loading: true, error: null });
 					try {
-						const resp = await fetch(
-							`/api/integrations/${toolName}/connect`
-						);
-						if (resp.ok) {
-							const data = await resp.json();
-							if (data.url) {
-								toast.success(`Redirecting to ${toolName}...`);
-								window.location.href = data.url;
+						if (toolName === "posthog" && credentials) {
+							// API key flow for PostHog
+							const resp = await fetch(
+								"/api/integrations/posthog/connect",
+								{
+									method: "POST",
+									headers: {
+										"Content-Type": "application/json",
+									},
+									body: JSON.stringify(credentials),
+								}
+							);
+							if (!resp.ok) {
+								throw new Error("Failed to connect PostHog");
 							}
+							toast.success("PostHog connected successfully");
 						} else {
-							throw new Error(`Failed to connect ${toolName}`);
+							// OAuth2 flow for other integrations
+							const resp = await fetch(
+								`/api/integrations/${toolName}/connect`
+							);
+							if (resp.ok) {
+								const data = await resp.json();
+								if (data.url) {
+									toast.success(
+										`Redirecting to ${toolName}...`
+									);
+									window.location.href = data.url;
+								}
+							} else {
+								throw new Error(
+									`Failed to connect ${toolName}`
+								);
+							}
 						}
+						set({ loading: false });
 					} catch (error) {
 						console.error(`Failed to connect ${toolName}: `, error);
-						set((state) => {
-							state.loading = false;
-							state.error = `Failed to connect ${toolName}`;
+						set({
+							loading: false,
+							error: `Failed to connect ${toolName}`,
 						});
+						toast.error(`Failed to connect ${toolName}`);
 					}
 				},
 				disconnect: async (integrationId) => {

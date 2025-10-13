@@ -143,3 +143,61 @@ export async function createIntegrationAccount(
 	});
 	return integration;
 }
+
+export async function createAPIIntegration(
+	organizationId: string,
+	userId: string,
+	data: {
+		toolName: string;
+		providerId: string;
+		apiKey: string;
+		category: IntegrationCategory;
+		status: IntegrationStatus;
+	}
+) {
+	// First, ensure the account exists
+	const account = await prisma.account.upsert({
+		where: {
+			userId_providerId: {
+				userId,
+				providerId: data.providerId,
+			},
+		},
+		update: {
+			apiKey: data.apiKey,
+		},
+		create: {
+			id: createId(),
+			accountId: createId(),
+			providerId: data.providerId,
+			userId,
+			apiKey: data.apiKey,
+		},
+	});
+
+	// Then create/update the integration with the account reference
+	const integration = await prisma.integration.upsert({
+		where: {
+			organizationId_toolName: {
+				organizationId,
+				toolName: data.toolName,
+			},
+		},
+		update: {
+			category: data.category,
+			status: data.status,
+			type: IntegrationType.api_key,
+			accountId: account.id,
+		},
+		create: {
+			category: data.category,
+			status: data.status,
+			toolName: data.toolName,
+			type: IntegrationType.api_key,
+			organizationId,
+			accountId: account.id,
+		},
+	});
+
+	return integration;
+}

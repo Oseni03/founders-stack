@@ -57,6 +57,7 @@ model Account {
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?
+  apiKey                String?
   idToken               String?
   accessTokenExpiresAt  DateTime?
   refreshTokenExpiresAt DateTime?
@@ -101,7 +102,7 @@ model Organization {
   messageThreads    MessageThread[]
   deploymentEvents  DeploymentEvent[]
   transactions      Transaction[]
-  userReports       UserReport[]
+  analytics         AnalyticsEvent[]
   customers         Customer[]
   alerts            Alert[]
   repositories      Repository[]
@@ -110,8 +111,8 @@ model Organization {
   issues            Issue[]
   branches          Branch[]
   repositoryHealths RepositoryHealth[]
-  Contributor       Contributor[]
-  Project           Project[]
+  contributors      Contributor[]
+  projects          Project[]
 
   @@unique([slug])
   @@map("organization")
@@ -241,7 +242,7 @@ model Integration {
   User         User?        @relation(fields: [userId], references: [id])
   userId       String?
 
-  @@index([organizationId, toolName])
+  @@unique([organizationId, toolName])
   @@index([organizationId, status])
   @@index([organizationId, category])
   @@index([accountId])
@@ -271,8 +272,9 @@ model Project {
   attributes     Json? // Tool-specific: { boardId: string, workspaceId: string }
   status         String  @default("active") // e.g., "active", "archived"
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   tasks        Task[]
+  analytics    AnalyticsEvent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -418,27 +420,36 @@ model Customer {
 }
 
 // Feedback/Analytics Category
-model UserReport {
-  id             String  @id @default(cuid())
-  organizationId String
-  externalId     String
-  sourceTool     String // e.g., "zendesk"
-  severity       String? // e.g., "high"
-  sourceUrl      String?
-  sentiment      String? // e.g., "negative"
-  userMetadata   Json? // e.g., { "planTier": "pro" }
-  pageViews      Int? // For analytics
-  conversionRate Float? // Derived
-  attributes     Json?
+model AnalyticsEvent {
+  id                    String  @id @default(cuid())
+  sourceTool            String // e.g., "postHog", "amplitude", "google-analytics"
+  organizationId        String
+  externalId            String
+  eventType             String? // e.g., "$pageview", "funnel_completed", "custom_event"
+  referrer              String?
+  referringDomain       String?
+  timezone              String?
+  pathname              String?
+  deviceType            String?
+  browserLanguagePrefix String?
+  geoipCityName         String?
+  geoipCountryName      String?
+  geoipCountryCode      String?
+  geoipContinentName    String?
+  geoipContinentCode    String?
+
+  attributes Json?
+  timestamp  DateTime
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  lastSyncedAt DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Project   Project? @relation(fields: [projectId], references: [id])
+  projectId String?
 
+  @@unique([organizationId])
   @@unique([externalId, sourceTool])
-  @@index([organizationId, sentiment])
   @@index([externalId, sourceTool])
 }
 

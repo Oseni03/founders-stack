@@ -1,13 +1,25 @@
 import { IntegrationCategory, IntegrationStatus } from "@prisma/client";
 
-export const INTEGRATIONS = [
+export interface Integration {
+	id: string;
+	name: string;
+	description: string;
+	category: IntegrationCategory;
+	logo: string;
+	status: IntegrationStatus;
+	authType: "oauth2" | "api_key";
+	lastSyncAt: Date;
+	docsUrl: string;
+}
+
+export const INTEGRATIONS: Integration[] = [
 	{
 		id: "slack",
 		name: "Slack",
-		description: "lorem",
-		category: "communication" as IntegrationCategory,
+		description: "Connect to sync messages and notifications",
+		category: "communication",
 		logo: "/slack-logo.png",
-		status: "inactive" as IntegrationStatus,
+		status: "inactive",
 		authType: "oauth2",
 		lastSyncAt: new Date(),
 		docsUrl: "https://docs.slack.dev/",
@@ -15,10 +27,10 @@ export const INTEGRATIONS = [
 	{
 		id: "github",
 		name: "GitHub",
-		description: "lorem",
-		category: "version_control" as IntegrationCategory,
+		description: "Integrate to track commits and pull requests",
+		category: "version_control",
 		logo: "/github-logo.png",
-		status: "inactive" as IntegrationStatus,
+		status: "inactive",
 		authType: "oauth2",
 		lastSyncAt: new Date(),
 		docsUrl: "https://docs.github.com/",
@@ -26,13 +38,25 @@ export const INTEGRATIONS = [
 	{
 		id: "asana",
 		name: "Asana",
-		description: "lorem",
-		category: "project_management" as IntegrationCategory,
+		description: "Sync tasks and project updates",
+		category: "project_management",
 		logo: "/asana-logo.png",
-		status: "inactive" as IntegrationStatus,
+		status: "inactive",
 		authType: "oauth2",
 		lastSyncAt: new Date(),
 		docsUrl: "https://developers.asana.com/docs",
+	},
+	{
+		id: "posthog",
+		name: "PostHog",
+		description:
+			"Track product and web analytics like page views and funnels",
+		category: "analytics",
+		logo: "/posthog-logo.png",
+		status: "inactive",
+		authType: "api_key",
+		lastSyncAt: new Date(),
+		docsUrl: "https://posthog.com/docs/api",
 	},
 ];
 
