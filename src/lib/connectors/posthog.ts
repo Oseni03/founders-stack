@@ -14,6 +14,7 @@ interface NormalizedAnalyticsEvent {
 	geoipCountryCode?: string;
 	geoipContinentName?: string;
 	geoipContinentCode?: string;
+	duration?: number;
 	timestamp: Date;
 }
 
@@ -46,6 +47,7 @@ export class PostHogConnector {
 			geoipCountryCode: properties.$geoip_country_code,
 			geoipContinentName: properties.$geoip_continent_name,
 			geoipContinentCode: properties.$geoip_continent_code,
+			duration: properties.$prev_pageview_duration,
 			timestamp: new Date(event.timestamp),
 		};
 	}
@@ -55,7 +57,7 @@ export class PostHogConnector {
 		try {
 			// Fetch events (paginated, last 24h for MVP)
 			const response = await fetch(
-				`${this.baseUrl}/projects/${this.projectId}/events?limit=30`,
+				`${this.baseUrl}/projects/${this.projectId}/events?event=[$pageview,$pageleave,$exception,$performance_event,$autocapture]&limit=100`,
 				{
 					headers: {
 						Authorization: `Bearer ${this.apiKey}`,

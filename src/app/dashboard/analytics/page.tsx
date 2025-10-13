@@ -8,7 +8,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Select,
@@ -18,108 +17,157 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, AlertTriangle } from "lucide-react";
 import {
-	AlertTriangle,
-	TrendingUp,
-	TrendingDown,
-	Users,
-	Zap,
-	Activity,
-	Bell,
-} from "lucide-react";
-import { ChartWidget } from "@/components/widgets/chart-widget";
-import {
+	AreaChart,
+	Area,
+	BarChart,
+	Bar,
 	XAxis,
 	YAxis,
 	CartesianGrid,
 	ResponsiveContainer,
 	Tooltip,
 	Legend,
-	Scatter,
-	ScatterChart,
-	ZAxis,
 } from "recharts";
-
-interface ErrorMetrics {
-	currentRate: number;
-	change: number;
-	totalErrors: number;
-	affectedUsers: number;
-}
+import { AnalyticsEvent } from "@prisma/client";
 
 interface UserMetrics {
-	activeUsers: number;
-	change: number;
-	newUsers: number;
-	retention: number;
+	pageViews: number;
+	avgSessionDuration: number;
+	uniqueVisitors: number;
 }
 
-interface PerformanceMetrics {
-	avgLoadTime: number;
-	change: number;
-	p95LoadTime: number;
-	apiLatency: number;
+interface ErrorMetrics {
+	errorCount: number;
+	errorRate: number;
 }
 
-interface Alert {
-	id: string;
-	type: "error" | "performance" | "user";
-	message: string;
+interface GeoMetrics {
+	location: string;
+	pageViews: number;
+}
+
+interface ChartData {
 	timestamp: string;
-	severity: "critical" | "warning" | "info";
-}
-
-interface CorrelationData {
-	date: string;
-	deploys: number;
-	errors: number;
-	users: number;
+	value: number;
 }
 
 export default function AnalyticsPage() {
 	const [timeRange, setTimeRange] = useState("7d");
-	const [errorMetrics, setErrorMetrics] = useState<ErrorMetrics | null>(null);
 	const [userMetrics, setUserMetrics] = useState<UserMetrics | null>(null);
-	const [performanceMetrics, setPerformanceMetrics] =
-		useState<PerformanceMetrics | null>(null);
-	const [alerts, setAlerts] = useState<Alert[]>([]);
-	const [correlationData, setCorrelationData] = useState<CorrelationData[]>(
-		[]
-	);
+	const [errorMetrics, setErrorMetrics] = useState<ErrorMetrics | null>(null);
+	const [geoMetrics, setGeoMetrics] = useState<GeoMetrics[]>([]);
+	const [pageViewTrends, setPageViewTrends] = useState<ChartData[]>([]);
+	const [sessionDurationTrends, setSessionDurationTrends] = useState<
+		ChartData[]
+	>([]);
+	const [errorTrends, setErrorTrends] = useState<ChartData[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
 		const fetchData = async () => {
 			setIsLoading(true);
 			try {
-				const [errorRes, userRes, perfRes, alertsRes, correlationRes] =
-					await Promise.all([
-						fetch(`/api/analytics/errors?range=${timeRange}`),
-						fetch(`/api/analytics/users?range=${timeRange}`),
-						fetch(`/api/analytics/performance?range=${timeRange}`),
-						fetch(`/api/analytics/alerts?range=${timeRange}`),
-						fetch(`/api/analytics/correlation?range=${timeRange}`),
-					]);
+				const response = await fetch(
+					`/api/analytics?range=${timeRange}`
+				);
+				const events: AnalyticsEvent[] = await response.json();
 
-				const [
-					errorData,
-					userData,
-					perfData,
-					alertsData,
-					correlationData,
-				] = await Promise.all([
-					errorRes.json(),
-					userRes.json(),
-					perfRes.json(),
-					alertsRes.json(),
-					correlationRes.json(),
-				]);
+				// Compute metrics from events
+				const pageViewEvents = events.filter(
+					(e) => e.eventType === "$pageview"
+				);
+				const pageLeaveEvents = events.filter(
+					(e) => e.eventType === "$pageleave"
+				);
+				const errorEvents = events.filter(
+					(e) => e.eventType === "$exception"
+				);
 
-				setErrorMetrics(errorData);
-				setUserMetrics(userData);
-				setPerformanceMetrics(perfData);
-				setAlerts(alertsData.alerts);
-				setCorrelationData(correlationData.data);
+				// User Metrics
+				const pageViews = pageViewEvents.length;
+				const avgSessionDuration =
+					pageLeaveEvents.length > 0
+						? pageLeaveEvents.reduce(
+								(sum, e) => sum + (e.duration || 0),
+								0
+							) / pageLeaveEvents.length
+						: 0;
+				const uniqueVisitors = new Set(events.map((e) => e.externalId))
+					.size;
+
+				setUserMetrics({
+					pageViews,
+					avgSessionDuration,
+					uniqueVisitors,
+				});
+
+				// Error Metrics
+				const errorCount = errorEvents.length;
+				const errorRate =
+					pageViews > 0 ? (errorCount / pageViews) * 100 : 0;
+				setErrorMetrics({ errorCount, errorRate });
+
+				// Geo Metrics
+				const geoMap = new Map<string, number>();
+				for (const e of pageViewEvents) {
+					const location = `${e.geoipCityName || "Unknown"}, ${e.geoipCountryName || "Unknown"}`;
+					geoMap.set(location, (geoMap.get(location) || 0) + 1);
+				}
+				const geoData = Array.from(geoMap.entries())
+					.map(([location, pageViews]) => ({ location, pageViews }))
+					.sort((a, b) => b.pageViews - a.pageViews);
+				setGeoMetrics(geoData);
+
+				// Helper to get date key
+				const getDateKey = (timestamp: Date): string => {
+					return timestamp.toISOString().split("T")[0];
+				};
+
+				// Page View Trends
+				const pvMap = new Map<string, number>();
+				for (const e of pageViewEvents) {
+					const key = getDateKey(e.timestamp);
+					pvMap.set(key, (pvMap.get(key) || 0) + 1);
+				}
+				const pvTrends = Array.from(pvMap.entries())
+					.map(([timestamp, value]) => ({ timestamp, value }))
+					.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+				setPageViewTrends(pvTrends);
+
+				// Session Duration Trends
+				const sdSumMap = new Map<string, number>();
+				const sdCountMap = new Map<string, number>();
+				for (const e of pageLeaveEvents) {
+					const key = getDateKey(e.timestamp);
+					sdSumMap.set(
+						key,
+						(sdSumMap.get(key) || 0) + (e.duration || 0)
+					);
+					sdCountMap.set(key, (sdCountMap.get(key) || 0) + 1);
+				}
+				const sdTrends = Array.from(sdSumMap.keys())
+					.map((key) => ({
+						timestamp: key,
+						value:
+							sdCountMap.get(key)! > 0
+								? sdSumMap.get(key)! / sdCountMap.get(key)!
+								: 0,
+					}))
+					.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+				setSessionDurationTrends(sdTrends);
+
+				// Error Trends
+				const errMap = new Map<string, number>();
+				for (const e of errorEvents) {
+					const key = getDateKey(e.timestamp);
+					errMap.set(key, (errMap.get(key) || 0) + 1);
+				}
+				const errTrends = Array.from(errMap.entries())
+					.map(([timestamp, value]) => ({ timestamp, value }))
+					.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+				setErrorTrends(errTrends);
 			} catch (error) {
 				console.error("[v0] Failed to fetch analytics data:", error);
 			} finally {
@@ -130,32 +178,6 @@ export default function AnalyticsPage() {
 		fetchData();
 	}, [timeRange]);
 
-	const getSeverityColor = (severity: string) => {
-		switch (severity) {
-			case "critical":
-				return "bg-red-500";
-			case "warning":
-				return "bg-yellow-500";
-			case "info":
-				return "bg-blue-500";
-			default:
-				return "bg-gray-500";
-		}
-	};
-
-	const getAlertIcon = (type: string) => {
-		switch (type) {
-			case "error":
-				return AlertTriangle;
-			case "performance":
-				return Zap;
-			case "user":
-				return Users;
-			default:
-				return Activity;
-		}
-	};
-
 	return (
 		<div className="space-y-6">
 			{/* Header */}
@@ -165,7 +187,7 @@ export default function AnalyticsPage() {
 						Analytics
 					</h1>
 					<p className="text-muted-foreground mt-1">
-						Monitor errors, users, and performance metrics
+						Monitor user activity, errors, and geolocation
 					</p>
 				</div>
 				<Select value={timeRange} onValueChange={setTimeRange}>
@@ -191,126 +213,66 @@ export default function AnalyticsPage() {
 					</>
 				) : (
 					<>
-						{/* Error Rate */}
-						{errorMetrics && (
-							<Card>
-								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-									<CardTitle className="text-sm font-medium">
-										Error Rate
-									</CardTitle>
-									<AlertTriangle className="h-4 w-4 text-muted-foreground" />
-								</CardHeader>
-								<CardContent>
-									<div className="text-2xl font-bold">
-										{errorMetrics.currentRate}%
-									</div>
-									<div className="flex items-center gap-1 text-xs mt-1">
-										{errorMetrics.change > 0 ? (
-											<>
-												<TrendingUp className="h-3 w-3 text-red-500" />
-												<span className="text-red-500">
-													+{errorMetrics.change}%
-												</span>
-											</>
-										) : (
-											<>
-												<TrendingDown className="h-3 w-3 text-green-500" />
-												<span className="text-green-500">
-													{errorMetrics.change}%
-												</span>
-											</>
-										)}
-										<span className="text-muted-foreground">
-											vs previous period
-										</span>
-									</div>
-									<p className="text-xs text-muted-foreground mt-2">
-										{errorMetrics.totalErrors} errors,{" "}
-										{errorMetrics.affectedUsers} users
-										affected
-									</p>
-								</CardContent>
-							</Card>
-						)}
-
-						{/* Active Users */}
+						{/* Page Views */}
 						{userMetrics && (
 							<Card>
 								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 									<CardTitle className="text-sm font-medium">
-										Active Users
+										Page Views
 									</CardTitle>
 									<Users className="h-4 w-4 text-muted-foreground" />
 								</CardHeader>
 								<CardContent>
 									<div className="text-2xl font-bold">
-										{userMetrics.activeUsers.toLocaleString()}
-									</div>
-									<div className="flex items-center gap-1 text-xs mt-1">
-										{userMetrics.change > 0 ? (
-											<>
-												<TrendingUp className="h-3 w-3 text-green-500" />
-												<span className="text-green-500">
-													+{userMetrics.change}%
-												</span>
-											</>
-										) : (
-											<>
-												<TrendingDown className="h-3 w-3 text-red-500" />
-												<span className="text-red-500">
-													{userMetrics.change}%
-												</span>
-											</>
-										)}
-										<span className="text-muted-foreground">
-											vs previous period
-										</span>
+										{userMetrics.pageViews.toLocaleString()}
 									</div>
 									<p className="text-xs text-muted-foreground mt-2">
-										{userMetrics.newUsers} new,{" "}
-										{userMetrics.retention}% retention
+										{userMetrics.uniqueVisitors} unique
+										visitors
 									</p>
 								</CardContent>
 							</Card>
 						)}
 
-						{/* Performance */}
-						{performanceMetrics && (
+						{/* Session Duration */}
+						{userMetrics && (
 							<Card>
 								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 									<CardTitle className="text-sm font-medium">
-										Avg Load Time
+										Avg Session Duration
 									</CardTitle>
-									<Zap className="h-4 w-4 text-muted-foreground" />
+									<Users className="h-4 w-4 text-muted-foreground" />
 								</CardHeader>
 								<CardContent>
 									<div className="text-2xl font-bold">
-										{performanceMetrics.avgLoadTime}ms
-									</div>
-									<div className="flex items-center gap-1 text-xs mt-1">
-										{performanceMetrics.change > 0 ? (
-											<>
-												<TrendingUp className="h-3 w-3 text-red-500" />
-												<span className="text-red-500">
-													+{performanceMetrics.change}
-													%
-												</span>
-											</>
-										) : (
-											<>
-												<TrendingDown className="h-3 w-3 text-green-500" />
-												<span className="text-green-500">
-													{performanceMetrics.change}%
-												</span>
-											</>
+										{userMetrics.avgSessionDuration.toFixed(
+											1
 										)}
-										<span className="text-muted-foreground">
-											vs previous period
-										</span>
+										s
 									</div>
 									<p className="text-xs text-muted-foreground mt-2">
-										P95: {performanceMetrics.p95LoadTime}ms,
-										API: {performanceMetrics.apiLatency}ms
+										Average time per session
+									</p>
+								</CardContent>
+							</Card>
+						)}
+
+						{/* Error Count */}
+						{errorMetrics && (
+							<Card>
+								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+									<CardTitle className="text-sm font-medium">
+										Errors
+									</CardTitle>
+									<AlertTriangle className="h-4 w-4 text-muted-foreground" />
+								</CardHeader>
+								<CardContent>
+									<div className="text-2xl font-bold">
+										{errorMetrics.errorCount}
+									</div>
+									<p className="text-xs text-muted-foreground mt-2">
+										{errorMetrics.errorRate.toFixed(2)}%
+										error rate
 									</p>
 								</CardContent>
 							</Card>
@@ -319,263 +281,139 @@ export default function AnalyticsPage() {
 				)}
 			</div>
 
-			{/* Time Series Charts */}
-			<Tabs defaultValue="errors" className="space-y-4">
+			{/* Charts */}
+			<Tabs defaultValue="users" className="space-y-4">
 				<TabsList>
-					<TabsTrigger value="errors">Error Trends</TabsTrigger>
 					<TabsTrigger value="users">User Analytics</TabsTrigger>
-					<TabsTrigger value="performance">Performance</TabsTrigger>
+					<TabsTrigger value="errors">Error Trends</TabsTrigger>
+					<TabsTrigger value="geolocation">Geolocation</TabsTrigger>
 				</TabsList>
 
-				<TabsContent value="errors" className="space-y-4">
-					<ChartWidget
-						title="Error Rate Over Time"
-						description="Percentage of requests resulting in errors"
-						endpoint={`/api/analytics/error-trends?range=${timeRange}`}
-						chartType="line"
-						dataKeys={[
-							{
-								key: "errorRate",
-								label: "Error Rate (%)",
-								color: "hsl(var(--destructive))",
-							},
-							{
-								key: "warningRate",
-								label: "Warning Rate (%)",
-								color: "hsl(var(--warning))",
-							},
-						]}
-						xAxisKey="timestamp"
-						icon={AlertTriangle}
-						height={300}
-					/>
-
-					<ChartWidget
-						title="Errors by Type"
-						description="Distribution of error types"
-						endpoint={`/api/analytics/error-types?range=${timeRange}`}
-						chartType="bar"
-						dataKeys={[
-							{
-								key: "count",
-								label: "Error Count",
-								color: "hsl(var(--destructive))",
-							},
-						]}
-						xAxisKey="type"
-						icon={AlertTriangle}
-						height={300}
-					/>
-				</TabsContent>
-
 				<TabsContent value="users" className="space-y-4">
-					<ChartWidget
-						title="Daily Active Users"
-						description="Number of unique users per day"
-						endpoint={`/api/analytics/user-trends?range=${timeRange}`}
-						chartType="line"
-						dataKeys={[
-							{
-								key: "activeUsers",
-								label: "Active Users",
-								color: "hsl(var(--primary))",
-							},
-							{
-								key: "newUsers",
-								label: "New Users",
-								color: "hsl(var(--secondary))",
-							},
-						]}
-						xAxisKey="date"
-						icon={Users}
-						height={300}
-					/>
+					<Card>
+						<CardHeader>
+							<CardTitle>Page Views Over Time</CardTitle>
+							<CardDescription>
+								Total page views by date
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="pl-2">
+							{isLoading ? (
+								<Skeleton className="h-[300px] w-full" />
+							) : (
+								<ResponsiveContainer width="100%" height={300}>
+									<AreaChart data={pageViewTrends}>
+										<CartesianGrid strokeDasharray="3 3" />
+										<XAxis dataKey="timestamp" />
+										<YAxis />
+										<Tooltip />
+										<Area
+											type="monotone"
+											dataKey="value"
+											stroke="#3b82f6"
+											fill="#3b82f6"
+											name="Page Views"
+										/>
+									</AreaChart>
+								</ResponsiveContainer>
+							)}
+						</CardContent>
+					</Card>
 
-					<ChartWidget
-						title="User Engagement"
-						description="Average session duration and page views"
-						endpoint={`/api/analytics/user-engagement?range=${timeRange}`}
-						chartType="bar"
-						dataKeys={[
-							{
-								key: "sessionDuration",
-								label: "Avg Session (min)",
-								color: "hsl(var(--primary))",
-							},
-						]}
-						xAxisKey="date"
-						icon={Activity}
-						height={300}
-					/>
+					<Card>
+						<CardHeader>
+							<CardTitle>Session Duration Over Time</CardTitle>
+							<CardDescription>
+								Average session duration by date
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="pl-2">
+							{isLoading ? (
+								<Skeleton className="h-[300px] w-full" />
+							) : (
+								<ResponsiveContainer width="100%" height={300}>
+									<AreaChart data={sessionDurationTrends}>
+										<CartesianGrid strokeDasharray="3 3" />
+										<XAxis dataKey="timestamp" />
+										<YAxis />
+										<Tooltip />
+										<Area
+											type="monotone"
+											dataKey="value"
+											stroke="#3b82f6"
+											fill="#3b82f6"
+											name="Session Duration (s)"
+										/>
+									</AreaChart>
+								</ResponsiveContainer>
+							)}
+						</CardContent>
+					</Card>
 				</TabsContent>
 
-				<TabsContent value="performance" className="space-y-4">
-					<ChartWidget
-						title="Page Load Times"
-						description="Average and P95 load times"
-						endpoint={`/api/analytics/performance-trends?range=${timeRange}`}
-						chartType="line"
-						dataKeys={[
-							{
-								key: "avgLoadTime",
-								label: "Avg Load Time (ms)",
-								color: "hsl(var(--primary))",
-							},
-							{
-								key: "p95LoadTime",
-								label: "P95 Load Time (ms)",
-								color: "hsl(var(--warning))",
-							},
-						]}
-						xAxisKey="timestamp"
-						icon={Zap}
-						height={300}
-					/>
+				<TabsContent value="errors" className="space-y-4">
+					<Card>
+						<CardHeader>
+							<CardTitle>Error Count Over Time</CardTitle>
+							<CardDescription>
+								Number of errors by date
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="pl-2">
+							{isLoading ? (
+								<Skeleton className="h-[300px] w-full" />
+							) : (
+								<ResponsiveContainer width="100%" height={300}>
+									<AreaChart data={errorTrends}>
+										<CartesianGrid strokeDasharray="3 3" />
+										<XAxis dataKey="timestamp" />
+										<YAxis />
+										<Tooltip />
+										<Area
+											type="monotone"
+											dataKey="value"
+											stroke="#ef4444"
+											fill="#ef4444"
+											name="Error Count"
+										/>
+									</AreaChart>
+								</ResponsiveContainer>
+							)}
+						</CardContent>
+					</Card>
+				</TabsContent>
 
-					<ChartWidget
-						title="API Response Times"
-						description="Average API latency by endpoint"
-						endpoint={`/api/analytics/api-latency?range=${timeRange}`}
-						chartType="bar"
-						dataKeys={[
-							{
-								key: "latency",
-								label: "Latency (ms)",
-								color: "hsl(var(--primary))",
-							},
-						]}
-						xAxisKey="endpoint"
-						icon={Zap}
-						height={300}
-					/>
+				<TabsContent value="geolocation" className="space-y-4">
+					<Card>
+						<CardHeader>
+							<CardTitle>Page Views by Location</CardTitle>
+							<CardDescription>
+								Distribution of page views by location
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="pl-2">
+							{isLoading ? (
+								<Skeleton className="h-[300px] w-full" />
+							) : (
+								<ResponsiveContainer width="100%" height={300}>
+									<BarChart data={geoMetrics}>
+										<CartesianGrid strokeDasharray="3 3" />
+										<XAxis dataKey="location" />
+										<YAxis />
+										<Tooltip />
+										<Legend />
+										<Bar
+											dataKey="pageViews"
+											fill="#3b82f6"
+											name="Page Views"
+										/>
+									</BarChart>
+								</ResponsiveContainer>
+							)}
+						</CardContent>
+					</Card>
 				</TabsContent>
 			</Tabs>
-
-			<div className="grid gap-6 lg:grid-cols-2">
-				{/* Alert Triggers */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<Bell className="h-5 w-5" />
-							Recent Alerts
-						</CardTitle>
-						<CardDescription>
-							Triggered alerts and notifications
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						{isLoading ? (
-							<div className="space-y-3">
-								{[1, 2, 3, 4].map((i) => (
-									<Skeleton key={i} className="h-16" />
-								))}
-							</div>
-						) : alerts.length > 0 ? (
-							<div className="space-y-3">
-								{alerts.map((alert) => {
-									const Icon = getAlertIcon(alert.type);
-									return (
-										<div
-											key={alert.id}
-											className="flex items-start gap-3 p-3 rounded-lg border"
-										>
-											<div
-												className={`h-2 w-2 rounded-full mt-2 ${getSeverityColor(alert.severity)}`}
-											/>
-											<div className="flex-1 min-w-0">
-												<div className="flex items-center gap-2">
-													<Icon className="h-4 w-4 text-muted-foreground" />
-													<span className="font-medium text-sm">
-														{alert.message}
-													</span>
-												</div>
-												<div className="flex items-center gap-2 mt-1">
-													<Badge
-														variant="outline"
-														className="text-xs capitalize"
-													>
-														{alert.severity}
-													</Badge>
-													<span className="text-xs text-muted-foreground">
-														{alert.timestamp}
-													</span>
-												</div>
-											</div>
-										</div>
-									);
-								})}
-							</div>
-						) : (
-							<div className="text-center py-8 text-muted-foreground text-sm">
-								No alerts triggered
-							</div>
-						)}
-					</CardContent>
-				</Card>
-
-				{/* Correlation View */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<Activity className="h-5 w-5" />
-							Deploys vs Errors
-						</CardTitle>
-						<CardDescription>
-							Correlation between deployments and error rates
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						{isLoading ? (
-							<Skeleton className="h-[300px]" />
-						) : correlationData.length > 0 ? (
-							<ResponsiveContainer width="100%" height={300}>
-								<ScatterChart>
-									<CartesianGrid
-										strokeDasharray="3 3"
-										className="stroke-muted"
-									/>
-									<XAxis
-										dataKey="deploys"
-										name="Deploys"
-										className="text-xs"
-									/>
-									<YAxis
-										dataKey="errors"
-										name="Errors"
-										className="text-xs"
-									/>
-									<ZAxis
-										dataKey="users"
-										name="Users"
-										range={[50, 400]}
-									/>
-									<Tooltip
-										cursor={{ strokeDasharray: "3 3" }}
-										contentStyle={{
-											backgroundColor:
-												"hsl(var(--background))",
-											border: "1px solid hsl(var(--border))",
-											borderRadius: "var(--radius)",
-										}}
-									/>
-									<Legend />
-									<Scatter
-										name="Deploy Impact"
-										data={correlationData}
-										fill="hsl(var(--primary))"
-									/>
-								</ScatterChart>
-							</ResponsiveContainer>
-						) : (
-							<div className="flex items-center justify-center h-[300px]">
-								<div className="text-sm text-muted-foreground">
-									No correlation data available
-								</div>
-							</div>
-						)}
-					</CardContent>
-				</Card>
-			</div>
 		</div>
 	);
 }

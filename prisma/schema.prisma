@@ -437,6 +437,7 @@ model AnalyticsEvent {
   geoipCountryCode      String?
   geoipContinentName    String?
   geoipContinentCode    String?
+  duration              Float?   // New: For $pageleave duration (seconds)
 
   attributes Json?
   timestamp  DateTime
