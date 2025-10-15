@@ -11,19 +11,8 @@ import { AvailableTab } from "@/components/integrations/available-tab";
 import { useIntegrationsStore } from "@/zustand/providers/integrations-store-provider";
 
 export default function IntegrationsPage() {
-	const {
-		integrations,
-		loading,
-		syncLoading,
-		error,
-		connect,
-		sync,
-		fetchIntegrations,
-	} = useIntegrationsStore((state) => state);
-
-	useEffect(() => {
-		fetchIntegrations();
-	}, [fetchIntegrations]);
+	const { integrations, loading, syncLoading, error, connect, sync } =
+		useIntegrationsStore((state) => state);
 
 	// FIX: Only show error toast if error exists and has a message
 	useEffect(() => {

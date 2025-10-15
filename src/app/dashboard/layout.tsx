@@ -15,11 +15,19 @@ import { Member, Organization } from "@/types";
 import { useRouter } from "next/navigation";
 import { QuickActionsToolbar } from "@/components/dashboard/quick-actions-toolbar";
 import { SearchStoreProvider } from "@/zustand/providers/search-store-provider";
-import { IntegrationsStoreProvider } from "@/zustand/providers/integrations-store-provider";
+import {
+	IntegrationsStoreProvider,
+	useIntegrationsStore,
+} from "@/zustand/providers/integrations-store-provider";
 import {
 	FinanceStoreProvider,
 	useFinanceStore,
 } from "@/zustand/providers/finance-store-provider";
+import {
+	AnalyticsStoreProvider,
+	useAnalyticsStore,
+} from "@/zustand/providers/analytics-store-provider";
+import { useCodeStore } from "@/zustand/providers/code-store-provider";
 
 export default function Page({
 	children,
@@ -27,6 +35,8 @@ export default function Page({
 	children: React.ReactNode;
 }>) {
 	const router = useRouter();
+	const { data: session, isPending } = authClient.useSession();
+	const { data: organizations } = authClient.useListOrganizations();
 	const {
 		setAdmin,
 		setOrganizations,
@@ -34,9 +44,12 @@ export default function Page({
 		setActiveOrganization,
 		updateSubscription,
 	} = useOrganizationStore((state) => state);
-	const { fetchFinanceData } = useFinanceStore((state) => state);
-	const { data: session, isPending } = authClient.useSession();
-	const { data: organizations } = authClient.useListOrganizations();
+	const fetchFinanceData = useFinanceStore((state) => state.fetchFinanceData);
+	const fetchAnalytics = useAnalyticsStore((state) => state.fetchAnalytics);
+	const fetchRepositories = useCodeStore((state) => state.fetchRepositories);
+	const fetchIntegrations = useIntegrationsStore(
+		(state) => state.fetchIntegrations
+	);
 
 	// Move the state update to useEffect to avoid calling it during render
 	useEffect(() => {
@@ -91,10 +104,19 @@ export default function Page({
 			if (!session?.user.id) return;
 
 			await fetchFinanceData();
+			await fetchAnalytics();
+			await fetchRepositories();
+			await fetchIntegrations();
 		};
 
 		fetchData();
-	}, [fetchFinanceData, session?.user.id]);
+	}, [
+		fetchAnalytics,
+		fetchFinanceData,
+		fetchIntegrations,
+		fetchRepositories,
+		session?.user.id,
+	]);
 
 	if (!session?.user.id && !isPending) {
 		router.push("/login"); // Redirect to login if not authenticated
@@ -105,26 +127,28 @@ export default function Page({
 		<SearchStoreProvider>
 			<IntegrationsStoreProvider>
 				<FinanceStoreProvider>
-					<SidebarProvider>
-						<AppSidebar />
-						<SidebarInset>
-							<header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-								<div className="flex items-center gap-2 px-4">
-									<SidebarTrigger className="-ml-1" />
-									<Separator
-										orientation="vertical"
-										className="mr-2 data-[orientation=vertical]:h-4"
-									/>
-									<div className="ml-auto">
-										<QuickActionsToolbar />
+					<AnalyticsStoreProvider>
+						<SidebarProvider>
+							<AppSidebar />
+							<SidebarInset>
+								<header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+									<div className="flex items-center gap-2 px-4">
+										<SidebarTrigger className="-ml-1" />
+										<Separator
+											orientation="vertical"
+											className="mr-2 data-[orientation=vertical]:h-4"
+										/>
+										<div className="ml-auto">
+											<QuickActionsToolbar />
+										</div>
 									</div>
+								</header>
+								<div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+									{children}
 								</div>
-							</header>
-							<div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-								{children}
-							</div>
-						</SidebarInset>
-					</SidebarProvider>
+							</SidebarInset>
+						</SidebarProvider>
+					</AnalyticsStoreProvider>
 				</FinanceStoreProvider>
 			</IntegrationsStoreProvider>
 		</SearchStoreProvider>

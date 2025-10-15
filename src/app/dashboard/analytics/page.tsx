@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import {
 	Card,
 	CardContent,
@@ -30,153 +29,20 @@ import {
 	Tooltip,
 	Legend,
 } from "recharts";
-import { AnalyticsEvent } from "@prisma/client";
-
-interface UserMetrics {
-	pageViews: number;
-	avgSessionDuration: number;
-	uniqueVisitors: number;
-}
-
-interface ErrorMetrics {
-	errorCount: number;
-	errorRate: number;
-}
-
-interface GeoMetrics {
-	location: string;
-	pageViews: number;
-}
-
-interface ChartData {
-	timestamp: string;
-	value: number;
-}
+import { useAnalyticsStore } from "@/zustand/providers/analytics-store-provider";
 
 export default function AnalyticsPage() {
-	const [timeRange, setTimeRange] = useState("7d");
-	const [userMetrics, setUserMetrics] = useState<UserMetrics | null>(null);
-	const [errorMetrics, setErrorMetrics] = useState<ErrorMetrics | null>(null);
-	const [geoMetrics, setGeoMetrics] = useState<GeoMetrics[]>([]);
-	const [pageViewTrends, setPageViewTrends] = useState<ChartData[]>([]);
-	const [sessionDurationTrends, setSessionDurationTrends] = useState<
-		ChartData[]
-	>([]);
-	const [errorTrends, setErrorTrends] = useState<ChartData[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-
-	useEffect(() => {
-		const fetchData = async () => {
-			setIsLoading(true);
-			try {
-				const response = await fetch(
-					`/api/analytics?range=${timeRange}`
-				);
-				const events: AnalyticsEvent[] = await response.json();
-
-				// Compute metrics from events
-				const pageViewEvents = events.filter(
-					(e) => e.eventType === "$pageview"
-				);
-				const pageLeaveEvents = events.filter(
-					(e) => e.eventType === "$pageleave"
-				);
-				const errorEvents = events.filter(
-					(e) => e.eventType === "$exception"
-				);
-
-				// User Metrics
-				const pageViews = pageViewEvents.length;
-				const avgSessionDuration =
-					pageLeaveEvents.length > 0
-						? pageLeaveEvents.reduce(
-								(sum, e) => sum + (e.duration || 0),
-								0
-							) / pageLeaveEvents.length
-						: 0;
-				const uniqueVisitors = new Set(events.map((e) => e.externalId))
-					.size;
-
-				setUserMetrics({
-					pageViews,
-					avgSessionDuration,
-					uniqueVisitors,
-				});
-
-				// Error Metrics
-				const errorCount = errorEvents.length;
-				const errorRate =
-					pageViews > 0 ? (errorCount / pageViews) * 100 : 0;
-				setErrorMetrics({ errorCount, errorRate });
-
-				// Geo Metrics
-				const geoMap = new Map<string, number>();
-				for (const e of pageViewEvents) {
-					const location = `${e.geoipCityName || "Unknown"}, ${e.geoipCountryName || "Unknown"}`;
-					geoMap.set(location, (geoMap.get(location) || 0) + 1);
-				}
-				const geoData = Array.from(geoMap.entries())
-					.map(([location, pageViews]) => ({ location, pageViews }))
-					.sort((a, b) => b.pageViews - a.pageViews);
-				setGeoMetrics(geoData);
-
-				// Helper to get date key
-				const getDateKey = (timestamp: Date): string => {
-					return timestamp.toISOString().split("T")[0];
-				};
-
-				// Page View Trends
-				const pvMap = new Map<string, number>();
-				for (const e of pageViewEvents) {
-					const key = getDateKey(e.timestamp);
-					pvMap.set(key, (pvMap.get(key) || 0) + 1);
-				}
-				const pvTrends = Array.from(pvMap.entries())
-					.map(([timestamp, value]) => ({ timestamp, value }))
-					.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-				setPageViewTrends(pvTrends);
-
-				// Session Duration Trends
-				const sdSumMap = new Map<string, number>();
-				const sdCountMap = new Map<string, number>();
-				for (const e of pageLeaveEvents) {
-					const key = getDateKey(e.timestamp);
-					sdSumMap.set(
-						key,
-						(sdSumMap.get(key) || 0) + (e.duration || 0)
-					);
-					sdCountMap.set(key, (sdCountMap.get(key) || 0) + 1);
-				}
-				const sdTrends = Array.from(sdSumMap.keys())
-					.map((key) => ({
-						timestamp: key,
-						value:
-							sdCountMap.get(key)! > 0
-								? sdSumMap.get(key)! / sdCountMap.get(key)!
-								: 0,
-					}))
-					.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-				setSessionDurationTrends(sdTrends);
-
-				// Error Trends
-				const errMap = new Map<string, number>();
-				for (const e of errorEvents) {
-					const key = getDateKey(e.timestamp);
-					errMap.set(key, (errMap.get(key) || 0) + 1);
-				}
-				const errTrends = Array.from(errMap.entries())
-					.map(([timestamp, value]) => ({ timestamp, value }))
-					.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-				setErrorTrends(errTrends);
-			} catch (error) {
-				console.error("[v0] Failed to fetch analytics data:", error);
-			} finally {
-				setIsLoading(false);
-			}
-		};
-
-		fetchData();
-	}, [timeRange]);
+	const {
+		timeRange,
+		userMetrics,
+		errorMetrics,
+		geoMetrics,
+		pageViewTrends,
+		sessionDurationTrends,
+		errorTrends,
+		isLoading,
+		setTimeRange,
+	} = useAnalyticsStore((state) => state);
 
 	return (
 		<div className="space-y-6">
