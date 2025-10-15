@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Stripe from "stripe";
 import { prisma } from "../prisma";
+import { getIntegration } from "@/server/integrations";
 
 // TypeScript interfaces matching your database schema
 interface NormalizedCustomer {
@@ -489,7 +490,7 @@ interface SyncResult {
 
 export async function syncStripe(
 	organizationId: string,
-	apiKey: string
+	apiKey?: string
 ): Promise<SyncResult> {
 	const result: SyncResult = {
 		success: false,
@@ -504,8 +505,17 @@ export async function syncStripe(
 	};
 
 	try {
+		let connector;
 		// Initialize Stripe connector
-		const connector = new StripeConnector(apiKey);
+		if (apiKey) {
+			connector = new StripeConnector(apiKey);
+		} else {
+			const integration = await getIntegration(organizationId, "stripe");
+			if (!integration?.account.apiKey) {
+				throw new Error("Stripe not integrated");
+			}
+			connector = new StripeConnector(integration.account.apiKey);
+		}
 
 		// 1. Sync Customers
 		console.log("Syncing customers...");
