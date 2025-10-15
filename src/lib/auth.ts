@@ -200,6 +200,11 @@ export const auth = betterAuth({
 							"calls:read", // Read workspace call information
 							"channels:history", // Read messages in public channels
 							"channels:read", // View basic public channel info
+							"conversations.connect:read",
+							"reminders:read",
+							"users.profile:read",
+							"users:read",
+							"users:read.email",
 							// "conversations.connect:read", // ❌ REMOVE: Slack Connect feature - rarely needed
 							"groups:read", // View basic private channel info
 							"im:read", // View basic direct message info
@@ -209,16 +214,6 @@ export const auth = betterAuth({
 							"team:read", // Read workspace info
 							"im:history", // Read DM message history
 							"mpim:history", // Read group DM history
-						].join(","),
-
-						// USER SCOPES: Individual user permissions (access via user token xoxp-)
-						// CRITICAL: These provide authed_user.id and authed_user.access_token
-						user_scope: [
-							"identify", // ✅ REQUIRED: Provides authed_user data
-							"users:read", // ✅ REQUIRED: Read user information
-							"users.profile:read", // ✅ REQUIRED: Read user profile details
-							"reminders:read", // Optional: Read user's personal reminders
-							"users:read.email",
 						].join(","),
 					},
 
