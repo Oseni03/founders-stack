@@ -97,22 +97,26 @@ model Organization {
   invitations     Invitation[]
 
   // Relations
-  integrations      Integration[] // Connected tools
-  tasks             Task[]
-  messageThreads    MessageThread[]
-  deploymentEvents  DeploymentEvent[]
-  transactions      Transaction[]
-  analytics         AnalyticsEvent[]
-  customers         Customer[]
-  alerts            Alert[]
-  repositories      Repository[]
-  commits           Commit[]
-  pullRequests      PullRequest[]
-  issues            Issue[]
-  branches          Branch[]
-  repositoryHealths RepositoryHealth[]
-  contributors      Contributor[]
-  projects          Project[]
+  integrations         Integration[] // Connected tools
+  tasks                Task[]
+  messageThreads       MessageThread[]
+  deploymentEvents     DeploymentEvent[]
+  transactions         Transaction[]
+  analytics            AnalyticsEvent[]
+  customers            Customer[]
+  alerts               Alert[]
+  repositories         Repository[]
+  commits              Commit[]
+  pullRequests         PullRequest[]
+  issues               Issue[]
+  branches             Branch[]
+  repositoryHealths    RepositoryHealth[]
+  contributors         Contributor[]
+  projects             Project[]
+  financeSubscriptions FinanceSubscription[]
+  invoices             Invoice[]
+  Balance              Balance[]
+  Event                Event[]
 
   @@unique([slug])
   @@map("organization")
@@ -399,24 +403,102 @@ model Transaction {
 
 // Supporting Entity for Finance (Customers)
 model Customer {
-  id             String  @id @default(cuid())
+  id             String   @id @default(cuid())
+  organizationId String
+  externalId     String
+  sourceTool     String // e.g., 'stripe'
+  email          String
+  name           String?
+  createdAt      DateTime
+  metadata       Json?
+
+  subscriptions FinanceSubscription[]
+  invoices      Invoice[]
+  organization  Organization          @relation(fields: [organizationId], references: [id])
+  Transaction   Transaction[]
+
+  @@unique([externalId, sourceTool])
+  @@index([organizationId])
+}
+
+model FinanceSubscription {
+  id              String    @id @default(cuid())
+  organizationId  String
+  externalId      String
+  sourceTool      String // e.g., 'stripe'
+  customerId      String
+  planId          String
+  status          String
+  amount          Float
+  billingCycle    String
+  startDate       DateTime
+  endDate         DateTime?
+  nextBillingDate DateTime?
+  metadata        Json?
+
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([externalId, sourceTool])
+  @@index([organizationId, customerId])
+}
+
+model Invoice {
+  id              String    @id @default(cuid())
+  organizationId  String
+  externalId      String
+  sourceTool      String // e.g., 'stripe'
+  customerId      String
+  subscriptionId  String?
+  amountDue       Float
+  amountPaid      Float
+  amountRemaining Float
+  status          String
+  issuedDate      DateTime
+  dueDate         DateTime?
+  pdfUrl          String?
+  metadata        Json?
+
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([externalId, sourceTool])
+  @@index([organizationId, customerId, subscriptionId])
+}
+
+model Balance {
+  id              String   @id @default(cuid())
+  organizationId  String
+  externalId      String? // Nullable, as Stripe Balance has no ID
+  sourceTool      String // e.g., 'stripe'
+  currency        String
+  availableAmount Float
+  pendingAmount   Float
+  updatedAt       DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, sourceTool])
+  @@index([organizationId])
+}
+
+model Event {
+  id             String       @id @default(cuid())
   organizationId String
   externalId     String
   sourceTool     String
-  name           String?
-  email          String?
-  planTier       String? // e.g., "basic"
-  attributes     Json?
-
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  type           String
+  category       String
+  status         String       @default("pending")
+  data           Json
+  previousData   Json?
+  processedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([externalId, sourceTool])
-  @@index([organizationId, email])
-  @@index([externalId, sourceTool])
+  @@index([organizationId, type, status])
+  @@index([createdAt])
 }
 
 // Feedback/Analytics Category
@@ -437,7 +519,7 @@ model AnalyticsEvent {
   geoipCountryCode      String?
   geoipContinentName    String?
   geoipContinentCode    String?
-  duration              Float?   // New: For $pageleave duration (seconds)
+  duration              Float? // New: For $pageleave duration (seconds)
 
   attributes Json?
   timestamp  DateTime

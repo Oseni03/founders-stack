@@ -60,10 +60,10 @@ export const createIntegrationsStore = () => {
 				) => {
 					set({ loading: true, error: null });
 					try {
-						if (toolName === "posthog" && credentials) {
-							// API key flow for PostHog
+						if (credentials) {
+							// API key flow
 							const resp = await fetch(
-								"/api/integrations/posthog/connect",
+								`/api/integrations/${toolName}/connect`,
 								{
 									method: "POST",
 									headers: {
@@ -73,9 +73,11 @@ export const createIntegrationsStore = () => {
 								}
 							);
 							if (!resp.ok) {
-								throw new Error("Failed to connect PostHog");
+								throw new Error(
+									`Failed to connect ${toolName}`
+								);
 							}
-							toast.success("PostHog connected successfully");
+							toast.success(`${toolName} connected successfully`);
 						} else {
 							// OAuth2 flow for other integrations
 							const resp = await fetch(

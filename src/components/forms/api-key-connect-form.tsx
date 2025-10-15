@@ -22,11 +22,29 @@ import {
 	FormMessage,
 } from "../ui/form";
 
-const formSchema = z.object({
-	apiKey: z.string().min(2),
-	projectId: z.string().min(2),
-	projectName: z.string().min(2),
-});
+// Define explicit type for form values to match connect function
+interface FormValues {
+	apiKey: string;
+	projectId?: string;
+	projectName?: string;
+}
+
+// Define dynamic schema with explicit string types
+const createFormSchema = (integrationId: string) => {
+	switch (integrationId) {
+		case "posthog":
+			return z.object({
+				apiKey: z.string().min(2),
+				projectId: z.string().min(2),
+				projectName: z.string().min(2),
+			});
+
+		default:
+			return z.object({
+				apiKey: z.string().min(2),
+			});
+	}
+};
 
 export const APIKeyConnectForm = ({
 	isOpen,
@@ -39,16 +57,19 @@ export const APIKeyConnectForm = ({
 }) => {
 	const { connect } = useIntegrationsStore((state) => state);
 
-	const form = useForm<z.infer<typeof formSchema>>({
-		resolver: zodResolver(formSchema),
+	// Initialize form with dynamic schema and explicit type
+	const form = useForm<FormValues>({
+		resolver: zodResolver(createFormSchema(integrationId)),
 		defaultValues: {
 			apiKey: "",
-			projectId: "",
-			projectName: "",
+			...(integrationId !== "stripe" && {
+				projectId: "",
+				projectName: "",
+			}),
 		},
 	});
 
-	async function onSubmit(values: z.infer<typeof formSchema>) {
+	async function onSubmit(values: FormValues) {
 		await connect(integrationId, values);
 		onClose();
 	}
@@ -56,6 +77,7 @@ export const APIKeyConnectForm = ({
 	const integration = INTEGRATIONS.find(
 		(integration) => integration.id === integrationId
 	);
+
 	return (
 		<Form {...form}>
 			<Dialog open={isOpen} onOpenChange={onClose}>
@@ -84,39 +106,43 @@ export const APIKeyConnectForm = ({
 							)}
 						/>
 
-						<FormField
-							control={form.control}
-							name="projectId"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Project ID</FormLabel>
-									<FormControl>
-										<Input
-											placeholder={`Enter your ${integration?.name} project ID`}
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
+						{integrationId !== "stripe" && (
+							<>
+								<FormField
+									control={form.control}
+									name="projectId"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Project ID</FormLabel>
+											<FormControl>
+												<Input
+													placeholder={`Enter your ${integration?.name} project ID`}
+													{...field}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
 
-						<FormField
-							control={form.control}
-							name="projectName"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Project Name</FormLabel>
-									<FormControl>
-										<Input
-											placeholder={`Enter your ${integration?.name} project name`}
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
+								<FormField
+									control={form.control}
+									name="projectName"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Project Name</FormLabel>
+											<FormControl>
+												<Input
+													placeholder={`Enter your ${integration?.name} project name`}
+													{...field}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</>
+						)}
 
 						<DialogFooter>
 							<Button type="submit">Connect</Button>
