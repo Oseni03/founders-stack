@@ -1,3 +1,5 @@
+"use state";
+
 import { useState } from "react";
 import Link from "next/link";
 import {
