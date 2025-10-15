@@ -71,7 +71,7 @@ export const createCodeStore = () => {
 						state.error.repositories = null;
 					});
 					try {
-						const response = await fetch(`/api/code/repositories`);
+						const response = await fetch(`/api/repositories`);
 						if (!response.ok)
 							throw new Error("Failed to fetch repositories");
 						const { data } = await response.json();
@@ -93,7 +93,7 @@ export const createCodeStore = () => {
 					});
 					try {
 						const response = await fetch(
-							`/api/code/repositories/${repoId}/branches`
+							`/api/repositories/${repoId}/branches`
 						);
 						if (!response.ok)
 							throw new Error("Failed to fetch branches");
@@ -116,7 +116,7 @@ export const createCodeStore = () => {
 					});
 					try {
 						const response = await fetch(
-							`/api/code/repositories/${repoId}/commits`
+							`/api/repositories/${repoId}/commits`
 						);
 						if (!response.ok)
 							throw new Error("Failed to fetch commits");
@@ -139,7 +139,7 @@ export const createCodeStore = () => {
 					});
 					try {
 						const response = await fetch(
-							`/api/code/repositories/${repoId}/contributors`
+							`/api/repositories/${repoId}/contributors`
 						);
 						if (!response.ok)
 							throw new Error("Failed to fetch contributors");
@@ -162,7 +162,7 @@ export const createCodeStore = () => {
 					});
 					try {
 						const response = await fetch(
-							`/api/code/repositories/${repoId}/issues`
+							`/api/repositories/${repoId}/issues`
 						); // Note: API route not yet created
 						if (!response.ok)
 							throw new Error("Failed to fetch issues");
@@ -226,7 +226,7 @@ export const createCodeStore = () => {
 					});
 					try {
 						const response = await fetch(
-							`/api/code/repositories/${repoId}/pull-requests`
+							`/api/repositories/${repoId}/pull-requests`
 						);
 						if (!response.ok)
 							throw new Error("Failed to fetch pull requests");
