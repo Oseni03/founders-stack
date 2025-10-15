@@ -7,7 +7,7 @@ export async function GET(
 	request: NextRequest,
 	{ params }: { params: Promise<{ toolName: string }> }
 ) {
-	return withAuth(request, async () => {
+	return withAuth(request, async (request, user, session) => {
 		const { toolName } = await params;
 		try {
 			// OAuth flow - redirect to provider's authorization URL
@@ -17,6 +17,18 @@ export async function GET(
 					providerId: toolName,
 					callbackURL: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/integrations/${toolName}/onboarding`,
 				},
+				use: [
+					async () => {
+						// The middleware receives a context object
+						// You need to return the session object with both session and user
+						return {
+							session: {
+								session: session, // Your session object
+								user: user, // Your user object
+							},
+						};
+					},
+				],
 				// This endpoint requires session cookies.
 				headers: await headers(),
 			});

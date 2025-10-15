@@ -30,7 +30,7 @@ export default function Page({
 		setActiveOrganization,
 		updateSubscription,
 	} = useOrganizationStore((state) => state);
-	const { data: session } = authClient.useSession();
+	const { data: session, isPending } = authClient.useSession();
 	const { data: organizations } = authClient.useListOrganizations();
 
 	// Move the state update to useEffect to avoid calling it during render
@@ -81,7 +81,7 @@ export default function Page({
 		updateSubscription,
 	]);
 
-	if (!session?.user.id) {
+	if (!session?.user.id && !isPending) {
 		router.push("/login"); // Redirect to login if not authenticated
 		return null; // Render nothing while redirecting
 	}
