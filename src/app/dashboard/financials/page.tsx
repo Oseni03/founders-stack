@@ -124,7 +124,7 @@ const InvoiceTable = ({ invoices }: { invoices: Invoice[] }) => {
 									</a>
 								</td>
 								<td className="px-6 py-4 text-sm">
-									{invoice.customerName || "N/A"}
+									{invoice.externalId || "N/A"}
 								</td>
 								<td className="px-6 py-4 text-sm">
 									{new Intl.NumberFormat("en-US", {

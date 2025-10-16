@@ -67,18 +67,14 @@ export class AsanaConnector {
 	): Promise<PaginatedResponse<ProjectData>> {
 		try {
 			const { page = 1, limit = 50, search = "" } = params;
-			const offset =
-				page > 1 ? ((page - 1) * limit).toString() : undefined;
 
 			const apiParams: Record<string, any> = {
 				limit,
-				offset,
 				opt_fields: [
 					"gid",
 					"name",
 					"notes",
 					"archived",
-					"color",
 					"public",
 					"owner.gid",
 					"workspace.gid",
@@ -106,7 +102,6 @@ export class AsanaConnector {
 					description: project.notes || "",
 					attributes: {
 						archived: project.archived,
-						color: project.color,
 						public: project.public,
 						ownerGid: project.owner?.gid,
 						workspaceGid: project.workspace?.gid,
