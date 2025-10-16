@@ -33,7 +33,7 @@ export async function GET(
 		const parsedParams = querySchema.safeParse({
 			page: searchParams.get("page"),
 			limit: searchParams.get("limit"),
-			search: searchParams.get("search"),
+			search: searchParams.get("search") || "",
 		});
 
 		if (!parsedParams.success) {

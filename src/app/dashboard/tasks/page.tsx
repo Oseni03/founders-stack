@@ -8,6 +8,7 @@ import { taskSourceColors } from "@/lib/oauth-utils";
 import { TasksFilters } from "@/components/tasks/tasks-filters";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface TaskCounts {
 	github: number;
@@ -50,6 +51,11 @@ export default function TasksPage() {
 				setFilteredTasks(data.tasks);
 				setTaskCounts(data.counts);
 			} catch (err) {
+				toast.error(
+					err instanceof Error
+						? err.message
+						: "Failed to fetch tasks."
+				);
 				setError(
 					err instanceof Error ? err.message : "An error occurred"
 				);

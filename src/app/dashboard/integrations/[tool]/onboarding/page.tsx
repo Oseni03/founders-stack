@@ -80,7 +80,11 @@ export default function IntegrationOnboardingPage() {
 			setTotalCount(pagination.total);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "An error occurred");
-			toast.error("Failed to load resources. Please try again.");
+			toast.error(
+				err instanceof Error
+					? err.message
+					: "Failed to load resources. Please try again."
+			);
 			if (!append) {
 				setResources([]);
 			}
@@ -139,7 +143,11 @@ export default function IntegrationOnboardingPage() {
 			setDialogOpen(false);
 			router.push("/dashboard");
 		} catch (error) {
-			toast.error(`Failed to add ${tool} resources`);
+			toast.error(
+				error instanceof Error
+					? error.message
+					: `Failed to add ${tool} resources`
+			);
 			console.error(`[SAVE_${tool?.toUpperCase()}]`, error);
 		}
 	};
