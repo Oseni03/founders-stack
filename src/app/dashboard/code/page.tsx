@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCodeStore } from "@/zustand/providers/code-store-provider";
 import {
@@ -40,15 +40,15 @@ export default function CodePage() {
 		},
 		error,
 		setActiveRepoId,
-		fetchData,
 		deleteRepository,
 	} = useCodeStore((state) => state);
-	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
 		const initialize = async () => {
 			if (repositories.length > 0 && !activeRepoId) {
 				setActiveRepoId(repositories[0].id);
+				// } else if (repositories.length > 0 && activeRepoId) {
+				// 	await fetchData(activeRepoId);
 			} else if (repositories.length === 0) {
 				toast.info("No repositories found", {
 					description: "Kindly integrate and add a repository",
@@ -61,17 +61,8 @@ export default function CodePage() {
 	const handleRepoChange = useCallback(
 		async (repoId: string) => {
 			setActiveRepoId(repoId);
-			setIsLoading(true);
-			try {
-				await fetchData(repoId);
-			} catch (error) {
-				console.error("Failed to fetch data for selected repo:", error);
-				toast.error("Failed to load repository data");
-			} finally {
-				setIsLoading(false);
-			}
 		},
-		[setActiveRepoId, fetchData]
+		[setActiveRepoId]
 	);
 
 	const handleDeleteRepository = useCallback(
@@ -101,8 +92,7 @@ export default function CodePage() {
 		commitsLoading ||
 		contributorsLoading ||
 		issuesLoading ||
-		prLoading ||
-		isLoading;
+		prLoading;
 
 	return (
 		<div className="space-y-6">
@@ -170,24 +160,24 @@ export default function CodePage() {
 			<div className="grid gap-6 lg:grid-cols-2">
 				<ContributorsCard
 					contributors={contributors}
-					isLoading={contributorsLoading || isLoading}
+					isLoading={isAnyLoading}
 					selectedRepoId={activeRepoId}
 				/>
 
 				<RepositoryHealthCard
-					isLoading={issuesLoading || prLoading || isLoading}
+					isLoading={isAnyLoading}
 					repoHealth={repoHealth}
 				/>
 			</div>
 
 			<CommitsCard
-				isLoading={commitsLoading || isLoading}
+				isLoading={isAnyLoading}
 				selectedRepoId={activeRepoId}
 				commits={commits}
 			/>
 
 			<BranchActivityCard
-				isLoading={branchesLoading || isLoading}
+				isLoading={isAnyLoading}
 				selectedRepoId={activeRepoId}
 				branches={branches}
 			/>

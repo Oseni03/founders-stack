@@ -100,6 +100,7 @@ export const createCodeStore = () => {
 							state.repositories = data;
 							state.loading.repositories = false;
 						});
+						get().setActiveRepoId(data[0].id);
 					} catch (error) {
 						set((state) => {
 							state.error = (error as Error).message;
@@ -360,10 +361,8 @@ export const createCodeStore = () => {
 					set((state) => {
 						state.activeRepoId = repoId;
 					});
-					if (repoId) {
-						// ✅ Call outside of set()
-						get().fetchData(repoId);
-					}
+					// ✅ Call outside of set()
+					get().fetchData(repoId);
 				},
 			})),
 			{ name: "code-store" }
