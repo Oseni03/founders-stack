@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2, Plug } from "lucide-react";
+import { CheckCircle2, Plug, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { INTEGRATIONS } from "@/lib/oauth-utils";
 import { ConnectedTab } from "@/components/integrations/connected-tab";
@@ -30,6 +30,30 @@ export default function IntegrationsPage() {
 		return integrations.filter((i) => i.status === "active");
 	}, [integrations]);
 
+	// FIX: Safely format date
+	const lastSyncTime = useMemo(() => {
+		if (connectedIntegrations.length === 0) return "N/A";
+
+		const lastSync = connectedIntegrations[0]?.lastSyncAt;
+		if (!lastSync) return "N/A";
+
+		try {
+			// Handle if lastSyncAt is a string or Date object
+			const date =
+				typeof lastSync === "string" ? new Date(lastSync) : lastSync;
+
+			// Validate date is valid
+			if (isNaN(date.getTime())) {
+				return "N/A";
+			}
+
+			return date.toLocaleString();
+		} catch (error) {
+			console.error("[DATE_FORMAT_ERROR]", error);
+			return "N/A";
+		}
+	}, [connectedIntegrations]);
+
 	return (
 		<div className="space-y-6">
 			{/* Header */}
@@ -43,7 +67,7 @@ export default function IntegrationsPage() {
 			</div>
 
 			{/* Stats */}
-			<div className="grid gap-4 md:grid-cols-2">
+			<div className="grid gap-4 md:grid-cols-3">
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<CardTitle className="text-sm font-medium">
@@ -74,6 +98,21 @@ export default function IntegrationsPage() {
 						</div>
 						<p className="text-xs text-muted-foreground mt-1">
 							Ready to connect
+						</p>
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+						<CardTitle className="text-sm font-medium">
+							Last Sync
+						</CardTitle>
+						<Clock className="h-4 w-4 text-muted-foreground" />
+					</CardHeader>
+					<CardContent>
+						<div className="text-2xl font-bold">{lastSyncTime}</div>
+						<p className="text-xs text-muted-foreground mt-1">
+							Most recent
 						</p>
 					</CardContent>
 				</Card>

@@ -23,6 +23,7 @@ import Link from "next/link";
 import { DisconnectAlertDialog } from "./disconnectAlertDialog";
 import { useState } from "react";
 import { APIKeyConnectForm } from "../forms/api-key-connect-form";
+import { formatDate } from "@/lib/date";
 
 export const IntegrationCard = ({
 	integration,
@@ -78,7 +79,7 @@ export const IntegrationCard = ({
 								Last sync:
 							</span>
 							<span className="font-medium">
-								{integration.lastSyncAt?.toLocaleDateString()}
+								{formatDate(integration.lastSyncAt)}
 							</span>
 						</div>
 						<div className="flex items-center justify-between">
@@ -209,8 +210,7 @@ export const UnconnectedIntegrationCard = ({
 									Last sync:
 								</span>
 								<span className="font-medium">
-									{integration.lastSyncAt?.toLocaleDateString() ??
-										"Never"}
+									{formatDate(integration.lastSyncAt)}
 								</span>
 							</div>
 							<div className="flex items-center justify-between">

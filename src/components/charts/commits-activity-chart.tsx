@@ -17,6 +17,7 @@ import {
 	ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Line, LineChart, XAxis, CartesianGrid } from "recharts";
+import { formatDate } from "@/lib/date";
 
 export interface CommitActivityChartProps {
 	commits: { repositoryId: string; committedAt: Date }[];
@@ -134,11 +135,7 @@ export function CommitActivityChart({
 								tickMargin={8}
 								minTickGap={32}
 								tickFormatter={(value) => {
-									const date = new Date(value);
-									return date.toLocaleDateString("en-US", {
-										month: "short",
-										day: "numeric",
-									});
+									return formatDate(value, true);
 								}}
 							/>
 							<ChartTooltip
@@ -147,13 +144,7 @@ export function CommitActivityChart({
 										className="w-[150px]"
 										nameKey="Commits"
 										labelFormatter={(value) => {
-											return new Date(
-												value
-											).toLocaleDateString("en-US", {
-												month: "short",
-												day: "numeric",
-												year: "numeric",
-											});
+											return formatDate(value, true);
 										}}
 									/>
 								}

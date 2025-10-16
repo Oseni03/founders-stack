@@ -39,6 +39,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Invoice } from "@prisma/client";
 import { useFinanceStore } from "@/zustand/providers/finance-store-provider";
+import { formatDate } from "@/lib/date";
 
 // MetricCard component
 const MetricCard = ({
@@ -167,9 +168,7 @@ const InvoiceTable = ({ invoices }: { invoices: Invoice[] }) => {
 									</span>
 								</td>
 								<td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-									{new Date(
-										invoice.issuedDate
-									).toLocaleDateString()}
+									{formatDate(invoice.issuedDate)}
 								</td>
 							</tr>
 						))}

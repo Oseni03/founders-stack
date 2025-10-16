@@ -22,6 +22,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Task } from "@prisma/client";
 import { taskSourceColors } from "@/lib/oauth-utils";
+import { formatDate } from "@/lib/date";
 
 const statusColors = {
 	open: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
@@ -42,15 +43,6 @@ const TasksTable = (props: {
 	loading: boolean;
 	error: string | null;
 }) => {
-	const formatDate = (date: Date | null) => {
-		if (!date) return "No due date";
-		return date.toLocaleDateString("en-US", {
-			month: "short",
-			day: "numeric",
-			year: "numeric",
-		});
-	};
-
 	return (
 		<Card>
 			<CardHeader>
@@ -149,7 +141,7 @@ const TasksTable = (props: {
 										<TableCell>
 											<div className="flex items-center gap-2 text-sm text-muted-foreground">
 												<Calendar className="h-3 w-3" />
-												{formatDate(task.dueDate)}
+												{formatDate(task.dueDate, true)}
 											</div>
 										</TableCell>
 										<TableCell>

@@ -7,6 +7,7 @@ import { SUBSCRIPTION_PLANS } from "@/lib/utils";
 import { toast } from "sonner";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { authClient } from "@/lib/auth-client";
+import { formatDate } from "@/lib/date";
 
 const SubscriptionCard = () => {
 	const { activeOrganization, isAdmin, subscription } = useOrganizationStore(
@@ -114,10 +115,10 @@ const SubscriptionCard = () => {
 									{subscription.currency.toLowerCase()}
 									{subscription.status === "active" &&
 										subscription.cancelAtPeriodEnd &&
-										` (Cancels on ${new Date(
+										` (Cancels on ${formatDate(
 											subscription.endsAt ||
 												subscription.currentPeriodEnd
-										).toLocaleDateString()})`}
+										)})`}
 								</>
 							) : (
 								"Free tier"
@@ -127,13 +128,11 @@ const SubscriptionCard = () => {
 							<>
 								<p className="text-xs text-muted-foreground mt-1">
 									Current period:{" "}
-									{new Date(
+									{formatDate(
 										subscription.currentPeriodStart
-									).toLocaleDateString()}{" "}
+									)}{" "}
 									-{" "}
-									{new Date(
-										subscription.currentPeriodEnd
-									).toLocaleDateString()}
+									{formatDate(subscription.currentPeriodEnd)}
 								</p>
 								{subscription.status === "active" &&
 									subscription.cancelAtPeriodEnd &&
