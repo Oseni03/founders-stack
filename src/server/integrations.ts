@@ -71,12 +71,12 @@ export async function getIntegration(organizationId: string, toolName: string) {
 }
 
 export async function getIntegrations(organizationId: string) {
-	const integration = await prisma.integration.findFirst({
+	const integrations = await prisma.integration.findMany({
 		where: {
 			organizationId,
 		},
 	});
-	return integration;
+	return integrations;
 }
 
 export async function createOAuthTemp(
@@ -191,7 +191,7 @@ export async function createAPIIntegration(
 		},
 		create: {
 			category: data.category,
-			status: data.status,
+			status: "active",
 			toolName: data.toolName,
 			type: IntegrationType.api_key,
 			organizationId,
