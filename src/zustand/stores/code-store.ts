@@ -15,7 +15,7 @@ import {
 // Configure axios with retries
 axiosRetry(axios, {
 	retries: 3,
-	retryDelay: (retryCount: number) => retryCount * 1000, // Exponential backoff
+	retryDelay: (retryCount: number) => retryCount * 1000,
 });
 
 export interface CodeState {
@@ -59,7 +59,7 @@ export const createCodeStore = () => {
 				issues: [],
 				loading: {},
 				error: null,
-				cache: new Map(), // In-memory cache
+				cache: new Map(),
 
 				fetchData: async (repoId: string) => {
 					set((state) => {
@@ -67,6 +67,7 @@ export const createCodeStore = () => {
 						state.error = null;
 					});
 					try {
+						// ✅ Call methods outside of set()
 						await Promise.all([
 							get().fetchBranches(repoId),
 							get().fetchCommits(repoId),
@@ -91,7 +92,7 @@ export const createCodeStore = () => {
 				fetchRepositories: async () => {
 					const cacheKey = "repositories";
 
-					// Check cache first, outside of any set() calls
+					// ✅ Get state BEFORE set() call
 					const currentState = get();
 					const cachedData = currentState.cache.get(cacheKey);
 
@@ -104,7 +105,6 @@ export const createCodeStore = () => {
 						return;
 					}
 
-					// Set loading state
 					set((state) => {
 						state.loading.repositories = true;
 						state.error = null;
@@ -132,19 +132,26 @@ export const createCodeStore = () => {
 				},
 
 				fetchBranches: async (repoId: string) => {
+					const cacheKey = `branches:${repoId}`;
+
+					// ✅ Get cache data BEFORE set() call
+					const currentState = get();
+					const cachedData = currentState.cache.get(cacheKey);
+
+					if (cachedData) {
+						set((state) => {
+							state.branches = cachedData;
+							state.loading.branches = false;
+						});
+						return;
+					}
+
 					set((state) => {
 						state.loading.branches = true;
 						state.error = null;
 					});
+
 					try {
-						const cacheKey = `branches:${repoId}`;
-						if (get().cache.has(cacheKey)) {
-							set((state) => {
-								state.branches = get().cache.get(cacheKey);
-								state.loading.branches = false;
-							});
-							return;
-						}
 						const response = await axios.get(
 							`/api/repositories/${repoId}/branches`
 						);
@@ -167,19 +174,26 @@ export const createCodeStore = () => {
 				},
 
 				fetchCommits: async (repoId: string) => {
+					const cacheKey = `commits:${repoId}`;
+
+					// ✅ Get cache data BEFORE set() call
+					const currentState = get();
+					const cachedData = currentState.cache.get(cacheKey);
+
+					if (cachedData) {
+						set((state) => {
+							state.commits = cachedData;
+							state.loading.commits = false;
+						});
+						return;
+					}
+
 					set((state) => {
 						state.loading.commits = true;
 						state.error = null;
 					});
+
 					try {
-						const cacheKey = `commits:${repoId}`;
-						if (get().cache.has(cacheKey)) {
-							set((state) => {
-								state.commits = get().cache.get(cacheKey);
-								state.loading.commits = false;
-							});
-							return;
-						}
 						const response = await axios.get(
 							`/api/repositories/${repoId}/commits`
 						);
@@ -202,19 +216,26 @@ export const createCodeStore = () => {
 				},
 
 				fetchContributors: async (repoId: string) => {
+					const cacheKey = `contributors:${repoId}`;
+
+					// ✅ Get cache data BEFORE set() call
+					const currentState = get();
+					const cachedData = currentState.cache.get(cacheKey);
+
+					if (cachedData) {
+						set((state) => {
+							state.contributors = cachedData;
+							state.loading.contributors = false;
+						});
+						return;
+					}
+
 					set((state) => {
 						state.loading.contributors = true;
 						state.error = null;
 					});
+
 					try {
-						const cacheKey = `contributors:${repoId}`;
-						if (get().cache.has(cacheKey)) {
-							set((state) => {
-								state.contributors = get().cache.get(cacheKey);
-								state.loading.contributors = false;
-							});
-							return;
-						}
 						const response = await axios.get(
 							`/api/repositories/${repoId}/contributors`
 						);
@@ -237,19 +258,26 @@ export const createCodeStore = () => {
 				},
 
 				fetchPullRequests: async (repoId: string) => {
+					const cacheKey = `pullRequests:${repoId}`;
+
+					// ✅ Get cache data BEFORE set() call
+					const currentState = get();
+					const cachedData = currentState.cache.get(cacheKey);
+
+					if (cachedData) {
+						set((state) => {
+							state.pullRequests = cachedData;
+							state.loading.pullRequests = false;
+						});
+						return;
+					}
+
 					set((state) => {
 						state.loading.pullRequests = true;
 						state.error = null;
 					});
+
 					try {
-						const cacheKey = `pullRequests:${repoId}`;
-						if (get().cache.has(cacheKey)) {
-							set((state) => {
-								state.pullRequests = get().cache.get(cacheKey);
-								state.loading.pullRequests = false;
-							});
-							return;
-						}
 						const response = await axios.get(
 							`/api/repositories/${repoId}/pull-requests`
 						);
@@ -272,19 +300,26 @@ export const createCodeStore = () => {
 				},
 
 				fetchIssues: async (repoId: string) => {
+					const cacheKey = `issues:${repoId}`;
+
+					// ✅ Get cache data BEFORE set() call
+					const currentState = get();
+					const cachedData = currentState.cache.get(cacheKey);
+
+					if (cachedData) {
+						set((state) => {
+							state.issues = cachedData;
+							state.loading.issues = false;
+						});
+						return;
+					}
+
 					set((state) => {
 						state.loading.issues = true;
 						state.error = null;
 					});
+
 					try {
-						const cacheKey = `issues:${repoId}`;
-						if (get().cache.has(cacheKey)) {
-							set((state) => {
-								state.issues = get().cache.get(cacheKey);
-								state.loading.issues = false;
-							});
-							return;
-						}
 						const response = await axios.get(
 							`/api/repositories/${repoId}/issues`
 						);
@@ -357,7 +392,9 @@ export const createCodeStore = () => {
 				},
 
 				computePRStatus: (repoId: string) => {
-					const filteredPRs = get().pullRequests.filter(
+					// ✅ Get state BEFORE set() call
+					const currentState = get();
+					const filteredPRs = currentState.pullRequests.filter(
 						(pr) => pr.repositoryId === repoId
 					);
 					const open = filteredPRs.filter(
@@ -369,16 +406,19 @@ export const createCodeStore = () => {
 					const draft = filteredPRs.filter(
 						(pr) => pr.status === "draft"
 					).length;
+
 					set((state) => {
 						state.prStatus = { open, merged, draft };
 					});
 				},
 
 				computeRepoHealth: (repoId: string) => {
-					const filteredPRs = get().pullRequests.filter(
+					// ✅ Get state BEFORE set() call
+					const currentState = get();
+					const filteredPRs = currentState.pullRequests.filter(
 						(pr) => pr.repositoryId === repoId
 					);
-					const filteredIssues = get().issues.filter(
+					const filteredIssues = currentState.issues.filter(
 						(issue) => issue.repositoryId === repoId
 					);
 					const filteredStalePRs = filteredPRs.filter(
@@ -403,6 +443,7 @@ export const createCodeStore = () => {
 							stalePRs * 5 -
 							(avgReviewTime > 24 ? 10 : 0)
 					);
+
 					set((state) => {
 						state.repoHealth = {
 							score: Math.round(score),
@@ -419,6 +460,7 @@ export const createCodeStore = () => {
 						state.activeRepoId = repoId;
 					});
 					if (repoId) {
+						// ✅ Call outside of set()
 						get().fetchData(repoId);
 					}
 				},
@@ -428,11 +470,11 @@ export const createCodeStore = () => {
 				partialize: (state) => ({
 					repositories: state.repositories,
 					activeRepoId: state.activeRepoId,
-					cache: Array.from(state.cache.entries()), // Serialize Map for persistence
+					cache: Array.from(state.cache.entries()),
 				}),
 				onRehydrateStorage: () => (state) => {
 					if (state?.cache) {
-						state.cache = new Map(state.cache); // Restore Map from serialized data
+						state.cache = new Map(state.cache);
 					}
 				},
 			}
