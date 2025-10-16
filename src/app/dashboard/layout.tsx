@@ -19,6 +19,7 @@ import { useIntegrationsStore } from "@/zustand/providers/integrations-store-pro
 import { useFinanceStore } from "@/zustand/providers/finance-store-provider";
 import { useAnalyticsStore } from "@/zustand/providers/analytics-store-provider";
 import { useCodeStore } from "@/zustand/providers/code-store-provider";
+import { useTaskStore } from "@/zustand/providers/tasks-store-provider";
 
 export default function Page({
 	children,
@@ -41,6 +42,7 @@ export default function Page({
 	const fetchIntegrations = useIntegrationsStore(
 		(state) => state.fetchIntegrations
 	);
+	const fetchTasks = useTaskStore((state) => state.fetchTasks);
 
 	// Move the state update to useEffect to avoid calling it during render
 	useEffect(() => {
@@ -98,6 +100,7 @@ export default function Page({
 			await fetchAnalytics();
 			await fetchRepositories();
 			await fetchIntegrations();
+			await fetchTasks();
 		};
 
 		fetchData();
@@ -106,6 +109,7 @@ export default function Page({
 		fetchFinanceData,
 		fetchIntegrations,
 		fetchRepositories,
+		fetchTasks,
 		session?.user.id,
 	]);
 

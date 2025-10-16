@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import TasksTable from "@/components/tasks/tasks-table";
-import { Task } from "@prisma/client";
 import { taskSourceColors } from "@/lib/oauth-utils";
 import { TasksFilters } from "@/components/tasks/tasks-filters";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useTaskStore } from "@/zustand/providers/tasks-store-provider";
 
 interface TaskCounts {
 	github: number;
@@ -18,114 +18,55 @@ interface TaskCounts {
 	total: number;
 }
 
-interface ProjectCounts {
-	[projectId: string]: number;
-}
-
 export default function TasksPage() {
-	const [tasks, setTasks] = useState<Task[]>([]);
-	const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
-	const [taskCounts, setTaskCounts] = useState<TaskCounts>({
-		github: 0,
-		jira: 0,
-		linear: 0,
-		asana: 0,
-		total: 0,
-	});
-	const [selectedSource, setSelectedSource] = useState<string>("all");
-	const [selectedProject, setSelectedProject] = useState<string | null>(null);
-	const [currentPage, setCurrentPage] = useState<number>(1);
-	const [itemsPerPage] = useState<number>(10);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
+	const {
+		filteredTasks,
+		taskCounts,
+		selectedSource,
+		selectedProject,
+		currentPage,
+		loading,
+		error,
+		uniqueProjects,
+		projectCounts,
+		itemsPerPage,
+		totalPages,
+		fetchTasks,
+		setSelectedSource,
+		setSelectedProject,
+		setCurrentPage,
+		isInitialized,
+	} = useTaskStore((state) => state);
 
-	// Fetch tasks
+	// Fetch tasks on mount
 	useEffect(() => {
-		const fetchTasks = async () => {
-			try {
-				setLoading(true);
-				const response = await fetch("/api/tasks");
-				if (!response.ok) throw new Error("Failed to fetch tasks");
-				const data = await response.json();
-				setTasks(data.tasks);
-				setFilteredTasks(data.tasks);
-				setTaskCounts(data.counts);
-			} catch (err) {
-				toast.error(
-					err instanceof Error
-						? err.message
-						: "Failed to fetch tasks."
-				);
-				setError(
-					err instanceof Error ? err.message : "An error occurred"
-				);
-			} finally {
-				setLoading(false);
-			}
-		};
+		if (!isInitialized) {
+			fetchTasks();
+		}
+	}, [isInitialized, fetchTasks]);
 
-		fetchTasks();
-	}, []);
-
-	// Compute baseTasks based on selectedSource and apply project filter
+	// Handle errors
 	useEffect(() => {
-		let temp = tasks;
-
-		if (selectedSource !== "all") {
-			temp = temp.filter(
-				(t) => t.sourceTool?.toLowerCase() === selectedSource
-			);
+		if (error) {
+			toast.error(error);
 		}
-
-		if (selectedProject) {
-			temp = temp.filter((t) => t.projectId === selectedProject);
-		}
-
-		setFilteredTasks(temp);
-		setCurrentPage(1); // Reset to page 1 when filters change
-	}, [tasks, selectedSource, selectedProject]);
-
-	// Compute unique projects and their counts from current baseTasks
-	const { uniqueProjects, projectCounts } = useMemo(() => {
-		const baseTasks =
-			selectedSource === "all"
-				? tasks
-				: tasks.filter(
-						(t) => t.sourceTool?.toLowerCase() === selectedSource
-					);
-
-		const counts: ProjectCounts = baseTasks.reduce(
-			(acc: ProjectCounts, t: Task) => {
-				if (t.projectId) {
-					acc[t.projectId] = (acc[t.projectId] || 0) + 1;
-				}
-				return acc;
-			},
-			{}
-		);
-
-		const uniques = Object.keys(counts).sort();
-
-		return { uniqueProjects: uniques, projectCounts: counts };
-	}, [tasks, selectedSource]);
+	}, [error]);
 
 	// Compute paginated tasks
-	const { paginatedTasks, totalPages } = useMemo(() => {
-		const startIndex = (currentPage - 1) * itemsPerPage;
-		const endIndex = startIndex + itemsPerPage;
-		return {
-			paginatedTasks: filteredTasks.slice(startIndex, endIndex),
-			totalPages: Math.ceil(filteredTasks.length / itemsPerPage),
-		};
-	}, [filteredTasks, currentPage, itemsPerPage]);
+	const paginatedTasks = filteredTasks.slice(
+		(currentPage - 1) * itemsPerPage,
+		currentPage * itemsPerPage
+	);
 
 	// Handle page change
 	const handlePageChange = (page: number) => {
-		if (page >= 1 && page <= totalPages) {
-			setCurrentPage(page);
-		}
+		setCurrentPage(page);
 	};
 
+	// Early returns for loading and empty states
+	if (loading) {
+		toast.info("Loading...");
+	}
 	return (
 		<div className="p-6 space-y-6">
 			{/* Header */}
@@ -305,11 +246,7 @@ export default function TasksPage() {
 			</div>
 
 			{/* Filters */}
-			<TasksFilters
-				tasks={tasks}
-				filteredTasks={filteredTasks}
-				setFilteredTasks={setFilteredTasks}
-			/>
+			<TasksFilters />
 
 			{/* Pagination Controls */}
 			<div className="flex items-center justify-between">

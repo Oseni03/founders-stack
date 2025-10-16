@@ -1,6 +1,5 @@
 "use client";
 
-import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -17,78 +16,27 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { useTaskStore } from "@/zustand/providers/tasks-store-provider";
 import { Filter, Search } from "lucide-react";
-import { Task } from "@prisma/client";
 
-export const TasksFilters = (props: {
-	tasks: Task[];
-	filteredTasks: Task[];
-	setFilteredTasks: Dispatch<SetStateAction<Task[]>>;
-}) => {
-	// Filter states
-	const [searchQuery, setSearchQuery] = useState("");
-	const [statusFilter, setStatusFilter] = useState<string>("all");
-	const [toolFilter, setToolFilter] = useState<string>("all");
-	const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
-	const [priorityFilter, setPriorityFilter] = useState<string>("all");
-
-	// Apply filters
-	useEffect(() => {
-		let filtered = [...props.tasks];
-
-		// Search filter
-		if (searchQuery) {
-			filtered = filtered.filter(
-				(task) =>
-					task.title
-						.toLowerCase()
-						.includes(searchQuery.toLowerCase()) ||
-					task.description
-						.toLowerCase()
-						.includes(searchQuery.toLowerCase())
-			);
-		}
-
-		// Status filter
-		if (statusFilter !== "all") {
-			filtered = filtered.filter((task) => task.status === statusFilter);
-		}
-
-		// Tool filter
-		if (toolFilter !== "all") {
-			filtered = filtered.filter(
-				(task) => task.sourceTool === toolFilter
-			);
-		}
-
-		// Assignee filter
-		if (assigneeFilter !== "all") {
-			filtered = filtered.filter(
-				(task) => task.assigneeId === assigneeFilter
-			);
-		}
-
-		// Priority filter
-		if (priorityFilter !== "all") {
-			filtered = filtered.filter(
-				(task) => task.priority === priorityFilter
-			);
-		}
-
-		props.setFilteredTasks(filtered);
-	}, [
+export const TasksFilters = () => {
+	const {
+		filteredTasks,
+		tasks,
+		selectedSource,
 		searchQuery,
 		statusFilter,
-		toolFilter,
 		assigneeFilter,
 		priorityFilter,
-		props,
-	]);
+		uniqueAssignees,
+		setSelectedSource,
+		setSearchQuery,
+		setStatusFilter,
+		setAssigneeFilter,
+		setPriorityFilter,
+		clearFilters,
+	} = useTaskStore((state) => state);
 
-	// Get unique assignees
-	const uniqueAssignees = Array.from(
-		new Set(props.tasks.map((task) => task.assigneeId).filter(Boolean))
-	);
 	return (
 		<Card>
 			<CardHeader>
@@ -135,7 +83,10 @@ export const TasksFilters = (props: {
 					</Select>
 
 					{/* Tool Filter */}
-					<Select value={toolFilter} onValueChange={setToolFilter}>
+					<Select
+						value={selectedSource}
+						onValueChange={setSelectedSource}
+					>
 						<SelectTrigger>
 							<SelectValue placeholder="Tool" />
 						</SelectTrigger>
@@ -178,7 +129,7 @@ export const TasksFilters = (props: {
 						<SelectContent>
 							<SelectItem value="all">All Assignees</SelectItem>
 							{uniqueAssignees.map((assignee) => (
-								<SelectItem key={assignee} value={assignee!}>
+								<SelectItem key={assignee} value={assignee}>
 									{assignee}
 								</SelectItem>
 							))}
@@ -189,24 +140,18 @@ export const TasksFilters = (props: {
 				{/* Active Filters Summary */}
 				{(searchQuery ||
 					statusFilter !== "all" ||
-					toolFilter !== "all" ||
+					selectedSource !== "all" ||
 					assigneeFilter !== "all" ||
 					priorityFilter !== "all") && (
 					<div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
 						<span>
-							Showing {props.filteredTasks.length} of{" "}
-							{props.tasks.length} tasks
+							Showing {filteredTasks.length} of {tasks.length}{" "}
+							tasks
 						</span>
 						<Button
 							variant="ghost"
 							size="sm"
-							onClick={() => {
-								setSearchQuery("");
-								setStatusFilter("all");
-								setToolFilter("all");
-								setAssigneeFilter("all");
-								setPriorityFilter("all");
-							}}
+							onClick={clearFilters}
 						>
 							Clear filters
 						</Button>
