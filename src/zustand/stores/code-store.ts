@@ -366,13 +366,7 @@ export const createCodeStore = () => {
 					}
 				},
 			})),
-			{
-				name: "code-store",
-				partialize: (state) => ({
-					repositories: state.repositories,
-					activeRepoId: state.activeRepoId,
-				}),
-			}
+			{ name: "code-store" }
 		)
 	);
 };
