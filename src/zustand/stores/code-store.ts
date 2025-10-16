@@ -44,7 +44,7 @@ export interface CodeState {
 	setActiveRepoId: (repoId: string) => void;
 }
 
-export const createCodeState = () => {
+export const createCodeStore = () => {
 	return create<CodeState>()(
 		persist(
 			immer((set, get) => ({
