@@ -49,8 +49,9 @@ export default function IntegrationOnboardingPage() {
 				limit: "50",
 			});
 
-			if (searchTerm) {
-				params.set("search", searchTerm);
+			// Implementation - only add search param if it has a value
+			if (searchTerm && searchTerm.trim()) {
+				params.set("search", searchTerm.trim());
 			}
 
 			const response = await fetch(
