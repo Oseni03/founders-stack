@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { persist } from "zustand/middleware";
@@ -30,7 +29,6 @@ export interface CodeState {
 	issues: Issue[];
 	loading: { [key: string]: boolean };
 	error: string | null;
-	cache: Map<string, any>;
 	fetchData: (repoId: string) => Promise<void>;
 	fetchRepositories: () => Promise<void>;
 	fetchBranches: (repoId: string) => Promise<void>;
@@ -59,7 +57,6 @@ export const createCodeStore = () => {
 				issues: [],
 				loading: {},
 				error: null,
-				cache: new Map(),
 
 				fetchData: async (repoId: string) => {
 					set((state) => {
@@ -90,21 +87,6 @@ export const createCodeStore = () => {
 				},
 
 				fetchRepositories: async () => {
-					const cacheKey = "repositories";
-
-					// ✅ Get state BEFORE set() call
-					const currentState = get();
-					const cachedData = currentState.cache.get(cacheKey);
-
-					if (cachedData) {
-						set((state) => {
-							state.repositories = cachedData;
-							state.loading.repositories = false;
-							state.error = null;
-						});
-						return;
-					}
-
 					set((state) => {
 						state.loading.repositories = true;
 						state.error = null;
@@ -117,7 +99,6 @@ export const createCodeStore = () => {
 						set((state) => {
 							state.repositories = data;
 							state.loading.repositories = false;
-							state.cache.set(cacheKey, data);
 						});
 					} catch (error) {
 						set((state) => {
@@ -132,20 +113,6 @@ export const createCodeStore = () => {
 				},
 
 				fetchBranches: async (repoId: string) => {
-					const cacheKey = `branches:${repoId}`;
-
-					// ✅ Get cache data BEFORE set() call
-					const currentState = get();
-					const cachedData = currentState.cache.get(cacheKey);
-
-					if (cachedData) {
-						set((state) => {
-							state.branches = cachedData;
-							state.loading.branches = false;
-						});
-						return;
-					}
-
 					set((state) => {
 						state.loading.branches = true;
 						state.error = null;
@@ -159,7 +126,6 @@ export const createCodeStore = () => {
 						set((state) => {
 							state.branches = data;
 							state.loading.branches = false;
-							state.cache.set(cacheKey, data);
 						});
 					} catch (error) {
 						set((state) => {
@@ -174,20 +140,6 @@ export const createCodeStore = () => {
 				},
 
 				fetchCommits: async (repoId: string) => {
-					const cacheKey = `commits:${repoId}`;
-
-					// ✅ Get cache data BEFORE set() call
-					const currentState = get();
-					const cachedData = currentState.cache.get(cacheKey);
-
-					if (cachedData) {
-						set((state) => {
-							state.commits = cachedData;
-							state.loading.commits = false;
-						});
-						return;
-					}
-
 					set((state) => {
 						state.loading.commits = true;
 						state.error = null;
@@ -201,7 +153,6 @@ export const createCodeStore = () => {
 						set((state) => {
 							state.commits = data;
 							state.loading.commits = false;
-							state.cache.set(cacheKey, data);
 						});
 					} catch (error) {
 						set((state) => {
@@ -216,20 +167,6 @@ export const createCodeStore = () => {
 				},
 
 				fetchContributors: async (repoId: string) => {
-					const cacheKey = `contributors:${repoId}`;
-
-					// ✅ Get cache data BEFORE set() call
-					const currentState = get();
-					const cachedData = currentState.cache.get(cacheKey);
-
-					if (cachedData) {
-						set((state) => {
-							state.contributors = cachedData;
-							state.loading.contributors = false;
-						});
-						return;
-					}
-
 					set((state) => {
 						state.loading.contributors = true;
 						state.error = null;
@@ -243,7 +180,6 @@ export const createCodeStore = () => {
 						set((state) => {
 							state.contributors = data;
 							state.loading.contributors = false;
-							state.cache.set(cacheKey, data);
 						});
 					} catch (error) {
 						set((state) => {
@@ -258,20 +194,6 @@ export const createCodeStore = () => {
 				},
 
 				fetchPullRequests: async (repoId: string) => {
-					const cacheKey = `pullRequests:${repoId}`;
-
-					// ✅ Get cache data BEFORE set() call
-					const currentState = get();
-					const cachedData = currentState.cache.get(cacheKey);
-
-					if (cachedData) {
-						set((state) => {
-							state.pullRequests = cachedData;
-							state.loading.pullRequests = false;
-						});
-						return;
-					}
-
 					set((state) => {
 						state.loading.pullRequests = true;
 						state.error = null;
@@ -285,7 +207,6 @@ export const createCodeStore = () => {
 						set((state) => {
 							state.pullRequests = data;
 							state.loading.pullRequests = false;
-							state.cache.set(cacheKey, data);
 						});
 					} catch (error) {
 						set((state) => {
@@ -300,20 +221,6 @@ export const createCodeStore = () => {
 				},
 
 				fetchIssues: async (repoId: string) => {
-					const cacheKey = `issues:${repoId}`;
-
-					// ✅ Get cache data BEFORE set() call
-					const currentState = get();
-					const cachedData = currentState.cache.get(cacheKey);
-
-					if (cachedData) {
-						set((state) => {
-							state.issues = cachedData;
-							state.loading.issues = false;
-						});
-						return;
-					}
-
 					set((state) => {
 						state.loading.issues = true;
 						state.error = null;
@@ -327,7 +234,6 @@ export const createCodeStore = () => {
 						set((state) => {
 							state.issues = data;
 							state.loading.issues = false;
-							state.cache.set(cacheKey, data);
 						});
 					} catch (error) {
 						set((state) => {
@@ -373,11 +279,6 @@ export const createCodeStore = () => {
 									contributor.repositoryId !== repoId
 							);
 							state.loading.deleteRepository = false;
-							state.cache.delete(`branches:${repoId}`);
-							state.cache.delete(`commits:${repoId}`);
-							state.cache.delete(`contributors:${repoId}`);
-							state.cache.delete(`pullRequests:${repoId}`);
-							state.cache.delete(`issues:${repoId}`);
 						});
 					} catch (error) {
 						set((state) => {
@@ -470,13 +371,7 @@ export const createCodeStore = () => {
 				partialize: (state) => ({
 					repositories: state.repositories,
 					activeRepoId: state.activeRepoId,
-					cache: Array.from(state.cache.entries()),
 				}),
-				onRehydrateStorage: () => (state) => {
-					if (state?.cache) {
-						state.cache = new Map(state.cache);
-					}
-				},
 			}
 		)
 	);
