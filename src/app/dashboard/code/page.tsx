@@ -58,6 +58,12 @@ export default function CodePage() {
 		initialize();
 	}, [repositories, activeRepoId, setActiveRepoId]);
 
+	useEffect(() => {
+		if (error) {
+			toast.error(error);
+		}
+	}, [error]);
+
 	const handleRepoChange = useCallback(
 		async (repoId: string) => {
 			setActiveRepoId(repoId);

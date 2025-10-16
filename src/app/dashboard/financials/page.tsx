@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
 	LineChart,
@@ -40,6 +40,7 @@ import { Button } from "@/components/ui/button";
 import { Invoice } from "@prisma/client";
 import { useFinanceStore } from "@/zustand/providers/finance-store-provider";
 import { formatDate } from "@/lib/date";
+import { toast } from "sonner";
 
 // MetricCard component
 const MetricCard = ({
@@ -190,11 +191,21 @@ export default function FinancePage() {
 		customerActivity,
 		revenueByPlan,
 		subscriptionStatus,
+		error: stateError,
 		syncFinanceData,
 	} = useFinanceStore((state) => state);
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [timeRange, setTimeRange] = useState("6m");
 	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (error) {
+			toast.error(error);
+		}
+		if (stateError) {
+			toast.error(stateError);
+		}
+	}, [error, stateError]);
 
 	const handleRefresh = async () => {
 		setIsRefreshing(true);

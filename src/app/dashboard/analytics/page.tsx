@@ -30,6 +30,8 @@ import {
 	Legend,
 } from "recharts";
 import { useAnalyticsStore } from "@/zustand/providers/analytics-store-provider";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 export default function AnalyticsPage() {
 	const {
@@ -41,8 +43,15 @@ export default function AnalyticsPage() {
 		sessionDurationTrends,
 		errorTrends,
 		isLoading,
+		error,
 		setTimeRange,
 	} = useAnalyticsStore((state) => state);
+
+	useEffect(() => {
+		if (error) {
+			toast.error(error);
+		}
+	}, [error]);
 
 	return (
 		<div className="space-y-6">
