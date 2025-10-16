@@ -41,14 +41,12 @@ export default function CodePage() {
 		error,
 		setActiveRepoId,
 		fetchData,
-		fetchRepositories,
 		deleteRepository,
 	} = useCodeStore((state) => state);
 	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
 		const initialize = async () => {
-			await fetchRepositories();
 			if (repositories.length > 0 && !activeRepoId) {
 				setActiveRepoId(repositories[0].id);
 			} else if (repositories.length === 0) {
@@ -58,7 +56,7 @@ export default function CodePage() {
 			}
 		};
 		initialize();
-	}, [fetchRepositories, repositories, activeRepoId, setActiveRepoId]);
+	}, [repositories, activeRepoId, setActiveRepoId]);
 
 	const handleRepoChange = useCallback(
 		async (repoId: string) => {
@@ -75,10 +73,6 @@ export default function CodePage() {
 		},
 		[setActiveRepoId, fetchData]
 	);
-
-	const handleRepoSuccess = useCallback(async () => {
-		await fetchRepositories();
-	}, [fetchRepositories]);
 
 	const handleDeleteRepository = useCallback(
 		async (repoId: string) => {

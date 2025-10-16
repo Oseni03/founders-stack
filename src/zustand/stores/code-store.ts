@@ -89,21 +89,31 @@ export const createCodeStore = () => {
 				},
 
 				fetchRepositories: async () => {
+					const cacheKey = "repositories";
+
+					// Check cache first, outside of any set() calls
+					const currentState = get();
+					const cachedData = currentState.cache.get(cacheKey);
+
+					if (cachedData) {
+						set((state) => {
+							state.repositories = cachedData;
+							state.loading.repositories = false;
+							state.error = null;
+						});
+						return;
+					}
+
+					// Set loading state
 					set((state) => {
 						state.loading.repositories = true;
 						state.error = null;
 					});
+
 					try {
-						const cacheKey = "repositories";
-						if (get().cache.has(cacheKey)) {
-							set((state) => {
-								state.repositories = get().cache.get(cacheKey);
-								state.loading.repositories = false;
-							});
-							return;
-						}
 						const response = await axios.get(`/api/repositories`);
 						const { data } = response.data;
+
 						set((state) => {
 							state.repositories = data;
 							state.loading.repositories = false;
