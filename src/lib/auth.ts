@@ -192,38 +192,30 @@ export const auth = betterAuth({
 					userInfoUrl:
 						"https://slack.com/api/openid.connect.userInfo",
 					authorizationUrlParams: {
-						scope: [
-							"calls:read",
-							"channels:history",
+						// ✅ Only user scopes - no bot token, cleaner flow
+						user_scope: [
 							"channels:read",
 							"groups:read",
 							"im:read",
 							"mpim:read",
-							"metadata.message:read",
-							"pins:read",
-							"team:read",
+							"channels:history",
+							"groups:history",
 							"im:history",
 							"mpim:history",
+							"openid",
+							"email",
+							"profile",
 						].join(","),
-						user_scope: ["openid", "email", "profile"].join(","),
 					},
-					// ✅ Add this to extract the user token
-					pkce: false,
-
 					getUserInfo: async (tokens) => {
 						console.log("Slack tokens:", tokens);
 
-						// Cast to any to access Slack's custom structure
-						const slackTokens = tokens as any;
-						const userToken =
-							slackTokens.authed_user?.access_token ||
-							slackTokens.access_token;
-
+						// With only user_scope, tokens.accessToken will be the user token
 						const response = await fetch(
 							"https://slack.com/api/openid.connect.userInfo",
 							{
 								headers: {
-									Authorization: `Bearer ${userToken}`,
+									Authorization: `Bearer ${tokens.accessToken}`,
 								},
 							}
 						);
@@ -231,24 +223,20 @@ export const auth = betterAuth({
 						const data = await response.json();
 						console.log("Slack user info:", data);
 
-						if (!data.ok && data.error) {
+						if (data.ok === false && data.error) {
 							throw new Error(`Slack API error: ${data.error}`);
 						}
 
-						return data;
-					},
-
-					mapProfileToUser: (data) => {
-						console.log("Slack OAuth profile:", data);
-
+						// ✅ Return in OAuth2UserInfo format
 						return {
 							id:
 								data.sub ||
 								data["https://slack.com/user_id"] ||
 								"",
-							email: data.email || "",
 							name: data.name || "Unknown",
-							image: data.picture || null,
+							email: data.email || null,
+							image: data.picture || undefined,
+							emailVerified: data.email_verified || false,
 						};
 					},
 				},
