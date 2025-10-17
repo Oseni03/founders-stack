@@ -189,7 +189,8 @@ export const auth = betterAuth({
 					clientSecret: process.env.SLACK_CLIENT_SECRET!,
 					authorizationUrl: "https://slack.com/oauth/v2/authorize",
 					tokenUrl: "https://slack.com/api/oauth.v2.access",
-					userInfoUrl: "https://slack.com/api/users.identity",
+					userInfoUrl:
+						"https://slack.com/api/openid.connect.userInfo", // ✅ Changed
 					authorizationUrlParams: {
 						scope: [
 							"calls:read",
@@ -205,27 +206,25 @@ export const auth = betterAuth({
 							"mpim:history",
 						].join(","),
 						user_scope: [
-							"identity.basic",
-							"identity.email",
-							"identity.avatar",
-							"identity.team",
+							"openid", // ✅ Required for OpenID Connect
+							"email", // ✅ Changed from identity.email
+							"profile", // ✅ Changed from identity.basic, identity.avatar
 						].join(","),
 					},
 					mapProfileToUser: (data) => {
-						// Map Slack's users.identity response to BetterAuth's expected format
+						console.log("Slack OAuth profile: ", data);
+
+						// OpenID Connect userInfo response structure
 						return {
-							id: data.user.id,
-							email: data.user.email,
-							name:
-								data.user.name ||
-								data.user.real_name ||
-								"Unknown",
-							image:
-								data.user.image_512 ||
-								data.user.image_192 ||
-								null,
-							teamId: data.team.id,
-							teamName: data.team.name,
+							id:
+								data.sub ||
+								data["https://slack.com/user_id"] ||
+								"",
+							email: data.email || "",
+							name: data.name || "Unknown",
+							image: data.picture || null,
+							teamId: data["https://slack.com/team_id"] || "",
+							teamName: data["https://slack.com/team_name"] || "",
 						};
 					},
 				},
