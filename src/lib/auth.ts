@@ -187,47 +187,46 @@ export const auth = betterAuth({
 					providerId: "slack",
 					clientId: process.env.SLACK_CLIENT_ID!,
 					clientSecret: process.env.SLACK_CLIENT_SECRET!,
-
-					// 1. Authorization URL: Send user here
 					authorizationUrl: "https://slack.com/oauth/v2/authorize",
-
-					// 2. Token URL: Exchange code for token
 					tokenUrl: "https://slack.com/api/oauth.v2.access",
-
-					// userInfoUrl: "https://slack.com/api/users.identity",
-					userInfoUrl: "https://slack.com/api/users.profile.get",
-
+					userInfoUrl: "https://slack.com/api/users.identity",
 					authorizationUrlParams: {
-						// BOT SCOPES: Workspace-level permissions (access via bot token xoxb-)
 						scope: [
-							"calls:read", // Read workspace call information
-							"channels:history", // Read messages in public channels
-							"channels:read", // View basic public channel info
-							"conversations.connect:read",
-							"reminders:read",
-							"users.profile:read",
-							"users:read",
-							"users:read.email",
-							// "conversations.connect:read", // ❌ REMOVE: Slack Connect feature - rarely needed
-							"groups:read", // View basic private channel info
-							"im:read", // View basic direct message info
-							"mpim:read", // View basic group DM info
-							"metadata.message:read", // Read message metadata
-							"pins:read", // View pinned items
-							"team:read", // Read workspace info
-							"im:history", // Read DM message history
-							"mpim:history", // Read group DM history
+							"calls:read",
+							"channels:history",
+							"channels:read",
+							"groups:read",
+							"im:read",
+							"mpim:read",
+							"metadata.message:read",
+							"pins:read",
+							"team:read",
+							"im:history",
+							"mpim:history",
 						].join(","),
-
 						user_scope: [
-							// for user info
-							"openid",
-							"email",
-							"profile",
-							"identity.email",
 							"identity.basic",
+							"identity.email",
 							"identity.avatar",
+							"identity.team",
 						].join(","),
+					},
+					mapProfileToUser: (data) => {
+						// Map Slack's users.identity response to BetterAuth's expected format
+						return {
+							id: data.user.id,
+							email: data.user.email,
+							name:
+								data.user.name ||
+								data.user.real_name ||
+								"Unknown",
+							image:
+								data.user.image_512 ||
+								data.user.image_192 ||
+								null,
+							teamId: data.team.id,
+							teamName: data.team.name,
+						};
 					},
 				},
 				{
