@@ -190,7 +190,7 @@ export const auth = betterAuth({
 					authorizationUrl: "https://slack.com/oauth/v2/authorize",
 					tokenUrl: "https://slack.com/api/oauth.v2.access",
 					userInfoUrl:
-						"https://slack.com/api/openid.connect.userInfo", // ✅ Changed
+						"https://slack.com/api/openid.connect.userInfo",
 					authorizationUrlParams: {
 						scope: [
 							"calls:read",
@@ -205,16 +205,42 @@ export const auth = betterAuth({
 							"im:history",
 							"mpim:history",
 						].join(","),
-						user_scope: [
-							"openid", // ✅ Required for OpenID Connect
-							"email", // ✅ Changed from identity.email
-							"profile", // ✅ Changed from identity.basic, identity.avatar
-						].join(","),
+						user_scope: ["openid", "email", "profile"].join(","),
 					},
-					mapProfileToUser: (data) => {
-						console.log("Slack OAuth profile: ", data);
+					// ✅ Add this to extract the user token
+					pkce: false,
 
-						// OpenID Connect userInfo response structure
+					getUserInfo: async (tokens) => {
+						console.log("Slack tokens:", tokens);
+
+						// Cast to any to access Slack's custom structure
+						const slackTokens = tokens as any;
+						const userToken =
+							slackTokens.authed_user?.access_token ||
+							slackTokens.access_token;
+
+						const response = await fetch(
+							"https://slack.com/api/openid.connect.userInfo",
+							{
+								headers: {
+									Authorization: `Bearer ${userToken}`,
+								},
+							}
+						);
+
+						const data = await response.json();
+						console.log("Slack user info:", data);
+
+						if (!data.ok && data.error) {
+							throw new Error(`Slack API error: ${data.error}`);
+						}
+
+						return data;
+					},
+
+					mapProfileToUser: (data) => {
+						console.log("Slack OAuth profile:", data);
+
 						return {
 							id:
 								data.sub ||
@@ -223,8 +249,6 @@ export const auth = betterAuth({
 							email: data.email || "",
 							name: data.name || "Unknown",
 							image: data.picture || null,
-							teamId: data["https://slack.com/team_id"] || "",
-							teamName: data["https://slack.com/team_name"] || "",
 						};
 					},
 				},
