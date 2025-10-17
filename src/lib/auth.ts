@@ -194,8 +194,8 @@ export const auth = betterAuth({
 					// 2. Token URL: Exchange code for token
 					tokenUrl: "https://slack.com/api/oauth.v2.access",
 
-					// userInfoUrl: "https://slack.com/api/users.identity",
-					userInfoUrl: "https://slack.com/api/users.profile.get",
+					userInfoUrl: "https://slack.com/api/users.identity",
+					// userInfoUrl: "https://slack.com/api/users.profile.get",
 
 					authorizationUrlParams: {
 						// BOT SCOPES: Workspace-level permissions (access via bot token xoxb-)
