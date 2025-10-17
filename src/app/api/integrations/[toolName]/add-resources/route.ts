@@ -3,6 +3,10 @@ import { withAuth } from "@/lib/middleware";
 import { z } from "zod";
 import { saveRepositories } from "@/server/code";
 import { RepoData } from "@/lib/connectors/github";
+import { saveProjects } from "@/server/tasks";
+import { ProjectData } from "@/lib/connectors/asana";
+import { saveChannels } from "@/server/messages";
+import { ChannelData } from "@/lib/connectors/slack";
 
 const ResourcesSchema = z.array(
 	z
@@ -98,9 +102,36 @@ export async function POST(
 					);
 				}
 
-				await saveRepositories(
+				await saveProjects(
 					user.organizationId,
-					selected as RepoData[]
+					selected as ProjectData[]
+				);
+			} else if (toolName === "slack") {
+				const channelSchema = z.array(
+					z.object({
+						externalId: z.string().min(1),
+						name: z.string().min(1),
+						description: z.string().nullable(),
+						attributes: z.any(),
+					})
+				);
+
+				try {
+					channelSchema.parse(selected);
+				} catch (validationError) {
+					console.error("[SLACK_VALIDATION]", validationError);
+					return NextResponse.json(
+						{
+							error: "Invalid request data",
+							details: validationError,
+						},
+						{ status: 400 }
+					);
+				}
+
+				await saveChannels(
+					user.organizationId,
+					selected as ChannelData[]
 				);
 			}
 
