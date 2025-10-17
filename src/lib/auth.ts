@@ -197,32 +197,38 @@ export const auth = betterAuth({
 					// userInfoUrl: "https://slack.com/api/users.identity",
 					userInfoUrl: "https://slack.com/api/users.profile.get",
 
-					scopes: [
-						"calls:read", // Read workspace call information
-						"channels:history", // Read messages in public channels
-						"channels:read", // View basic public channel info
-						"conversations.connect:read",
-						"reminders:read",
-						"users.profile:read",
-						"users:read",
-						"users:read.email",
-						// "conversations.connect:read", // ❌ REMOVE: Slack Connect feature - rarely needed
-						"groups:read", // View basic private channel info
-						"im:read", // View basic direct message info
-						"mpim:read", // View basic group DM info
-						"metadata.message:read", // Read message metadata
-						"pins:read", // View pinned items
-						"team:read", // Read workspace info
-						"im:history", // Read DM message history
-						"mpim:history", // Read group DM history
-						// for user info
-						"openid",
-						"email",
-						"profile",
-						"identity.email",
-						"identity.basic",
-						"identity.avatar",
-					],
+					authorizationUrlParams: {
+						// BOT SCOPES: Workspace-level permissions (access via bot token xoxb-)
+						scope: [
+							"calls:read", // Read workspace call information
+							"channels:history", // Read messages in public channels
+							"channels:read", // View basic public channel info
+							"conversations.connect:read",
+							"reminders:read",
+							"users.profile:read",
+							"users:read",
+							"users:read.email",
+							// "conversations.connect:read", // ❌ REMOVE: Slack Connect feature - rarely needed
+							"groups:read", // View basic private channel info
+							"im:read", // View basic direct message info
+							"mpim:read", // View basic group DM info
+							"metadata.message:read", // Read message metadata
+							"pins:read", // View pinned items
+							"team:read", // Read workspace info
+							"im:history", // Read DM message history
+							"mpim:history", // Read group DM history
+						].join(","),
+
+						user_scope: [
+							// for user info
+							"openid",
+							"email",
+							"profile",
+							"identity.email",
+							"identity.basic",
+							"identity.avatar",
+						].join(","),
+					},
 				},
 				{
 					providerId: "github",
