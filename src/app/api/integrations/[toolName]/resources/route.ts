@@ -99,7 +99,9 @@ export async function GET(
 				};
 			} else if (toolName === "asana") {
 				const connector = new AsanaConnector(
-					integration.account.accessToken
+					integration.account.accessToken,
+					integration.account.refreshToken,
+					user.organizationId
 				);
 
 				const result = await connector.fetchProjects({

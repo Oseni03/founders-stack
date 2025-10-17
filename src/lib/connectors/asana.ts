@@ -27,15 +27,88 @@ export interface TaskData {
 
 export class AsanaConnector {
 	private accessToken: string;
+	private refreshTokenValue: string | null;
+	private organizationId: string | null;
 	private baseUrl: string = "https://app.asana.com/api/1.0";
+	private oauthUrl: string = "https://app.asana.com/-/oauth_token";
 
-	constructor(accessToken: string) {
+	constructor(
+		accessToken: string,
+		refreshToken: string | null,
+		organizationId: string | null
+	) {
 		this.accessToken = accessToken;
+		this.refreshTokenValue = refreshToken;
+		this.organizationId = organizationId;
+	}
+
+	private async refreshToken(): Promise<{
+		accessToken: string;
+		refreshToken: string;
+	}> {
+		try {
+			if (!this.refreshTokenValue || !this.organizationId) {
+				throw new Error("Missing refresh token or organization ID");
+			}
+
+			const response = await fetch(this.oauthUrl, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/x-www-form-urlencoded",
+					Accept: "application/json",
+				},
+				body: new URLSearchParams({
+					grant_type: "refresh_token",
+					client_id: process.env.ASANA_CLIENT_ID || "",
+					client_secret: process.env.ASANA_CLIENT_SECRET || "",
+					refresh_token: this.refreshTokenValue,
+				}),
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(
+					`Token refresh failed: ${response.status} - ${errorData.message || "Unknown error"}`
+				);
+			}
+
+			const data = await response.json();
+			const newAccessToken = data.access_token;
+			const newRefreshToken =
+				data.refresh_token || this.refreshTokenValue; // Asana may not return a new refresh token
+
+			// Update UserIntegration
+			const integration = await getIntegration(
+				this.organizationId,
+				"asana"
+			);
+
+			await prisma.account.update({
+				where: { id: integration?.account.id },
+				data: {
+					accessToken: newAccessToken,
+					refreshToken: newRefreshToken,
+				},
+			});
+
+			this.accessToken = newAccessToken;
+			this.refreshTokenValue = newRefreshToken;
+
+			return {
+				accessToken: newAccessToken,
+				refreshToken: newRefreshToken,
+			};
+		} catch (error) {
+			throw new Error(
+				`Failed to refresh Asana token: ${error instanceof Error ? error.message : "Unknown error"}`
+			);
+		}
 	}
 
 	private async apiRequest(
 		endpoint: string,
-		params: Record<string, any> = {}
+		params: Record<string, any> = {},
+		retryCount: number = 0
 	): Promise<any> {
 		const url = new URL(`${this.baseUrl}/${endpoint}`);
 		Object.entries(params).forEach(([key, value]) => {
@@ -51,6 +124,22 @@ export class AsanaConnector {
 				Accept: "application/json",
 			},
 		});
+
+		if (response.status === 401 && retryCount < 1) {
+			const errorData = await response.json().catch(() => ({}));
+			if (
+				errorData.errors?.some(
+					(e: any) => e.message === "Not Authorized"
+				)
+			) {
+				try {
+					await this.refreshToken();
+					return this.apiRequest(endpoint, params, retryCount + 1);
+				} catch (refreshError) {
+					throw refreshError;
+				}
+			}
+		}
 
 		if (!response.ok) {
 			const errorData = await response.json().catch(() => ({}));
@@ -252,7 +341,11 @@ export async function syncAsana(organizationId: string, projs: Project[] = []) {
 
 	if (projects.length === 0) return;
 
-	const connector = new AsanaConnector(integration.account.accessToken);
+	const connector = new AsanaConnector(
+		integration.account.accessToken,
+		integration.account.refreshToken,
+		organizationId
+	);
 
 	const syncPromises = projects.map((project) => async () => {
 		try {
