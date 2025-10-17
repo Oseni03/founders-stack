@@ -205,7 +205,7 @@ export const auth = betterAuth({
 							"openid",
 							"email",
 							"profile",
-						].join(","),
+						].join(" "),
 					},
 					getUserInfo: async (tokens) => {
 						console.log("Slack tokens:", tokens);
