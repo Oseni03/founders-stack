@@ -26,7 +26,6 @@ model User {
   members       Member[]
   invitations   Invitation[]
   integrations  Integration[]
-  alerts        Alert[]
   OAuthTemp     OAuthTemp[]
 
   @@unique([email])
@@ -100,10 +99,8 @@ model Organization {
   integrations         Integration[] // Connected tools
   tasks                Task[]
   deploymentEvents     DeploymentEvent[]
-  transactions         Transaction[]
   analytics            AnalyticsEvent[]
   customers            Customer[]
-  alerts               Alert[]
   repositories         Repository[]
   commits              Commit[]
   pullRequests         PullRequest[]
@@ -214,14 +211,6 @@ enum TaskPriority {
   medium
   high
   urgent
-}
-
-enum TransactionStatus {
-  pending
-  completed
-  failed
-  refunded
-  cancelled
 }
 
 model Integration {
@@ -370,33 +359,6 @@ model DeploymentEvent {
   @@index([externalId, sourceTool])
 }
 
-// Finance Category
-model Transaction {
-  id             String            @id @default(cuid())
-  organizationId String
-  externalId     String
-  sourceTool     String // e.g., "stripe"
-  amount         Float
-  type           String // e.g., "subscription"
-  customerId     String? // Link to Customer
-  status         TransactionStatus
-  date           DateTime
-  currency       String            @default("USD")
-  refundReason   String?
-  attributes     Json?
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  customer     Customer?    @relation(fields: [customerId], references: [id])
-
-  lastSyncedAt DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@unique([externalId, sourceTool])
-  @@index([organizationId, date, status])
-  @@index([externalId, sourceTool])
-}
-
 // Supporting Entity for Finance (Customers)
 model Customer {
   id             String   @id @default(cuid())
@@ -411,7 +373,6 @@ model Customer {
   subscriptions FinanceSubscription[]
   invoices      Invoice[]
   organization  Organization          @relation(fields: [organizationId], references: [id])
-  Transaction   Transaction[]
 
   @@unique([externalId, sourceTool])
   @@index([organizationId])
@@ -530,27 +491,6 @@ model AnalyticsEvent {
   @@unique([organizationId])
   @@unique([externalId, sourceTool])
   @@index([externalId, sourceTool])
-}
-
-// Alerts System (For Phase 2: Configurable notifications)
-model Alert {
-  id                String  @id @default(cuid())
-  organizationId    String
-  type              String // e.g., "churn_threshold"
-  threshold         Float? // e.g., 5% churn
-  status            String // e.g., "triggered"
-  message           String
-  relatedEntityId   String? // Generic link to Task/Transaction ID
-  relatedEntityType String? // e.g., "Task"
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  User      User?    @relation(fields: [userId], references: [id])
-  userId    String?
-
-  @@index([organizationId, type])
 }
 
 model Repository {

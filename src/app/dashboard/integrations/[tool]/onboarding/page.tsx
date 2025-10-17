@@ -50,6 +50,8 @@ export default function IntegrationOnboardingPage() {
 				return "Select Linear Projects";
 			case "asana":
 				return "Select Asana Projects";
+			case "slack":
+				return "Select Slack Channels";
 			default:
 				return `Select ${tool.charAt(0).toUpperCase() + tool.slice(1)} Resources`;
 		}
