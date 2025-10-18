@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
 						client_id: process.env.SLACK_CLIENT_ID!,
 						client_secret: process.env.SLACK_CLIENT_SECRET!,
 						code,
-						redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/slack/callback`,
+						redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/slack`,
 					}),
 				}
 			);
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
 			console.error("Slack OAuth error:", error);
 			return NextResponse.redirect(
 				new URL(
-					`/dashboard?error=${encodeURIComponent(error as string)}`,
+					`/dashboard/integrations?error=${encodeURIComponent(error as string)}`,
 					request.url
 				)
 			);
