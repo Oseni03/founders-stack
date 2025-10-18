@@ -497,13 +497,19 @@ model AnalyticsEvent {
 }
 
 model Repository {
-  id             String @id @default(cuid())
+  id             String  @id @default(cuid())
   organizationId String
   name           String
   owner          String
   externalId     String
   sourceTool     String // e.g., "github"
   attributes     Json?
+  fullName       String? // e.g., "facebook/react" - used for display/search
+  description    String? @db.Text // Already there, good!
+  isPrivate      Boolean @default(false) // Privacy is critical info
+  defaultBranch  String? // e.g., "main" - needed for git operations
+  language       String? // Primary language - useful for filtering
+  isArchived     Boolean @default(false) // Status field
 
   organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   commits      Commit[]
@@ -536,6 +542,9 @@ model Commit {
   committedAt    DateTime
   message        String
   url            String?
+  sha            String?  @db.VarChar(40) // Git SHA - used for lookups
+  branch         String? // Which branch - useful for filtering
+  authorEmail    String? // Contact info
   attributes     Json?
 
   organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -563,6 +572,12 @@ model PullRequest {
   authorId       String? // Link to User
   reviewerIds    String[] // Array of reviewer IDs
   avgReviewTime  Float? // Hours
+  number         Int // PR number - used in references/links
+  url            String? // Direct link
+  baseBranch     String? // Target branch
+  headBranch     String? // Source branch
+  isDraft        Boolean   @default(false) // Status indicator
+  closedAt       DateTime? // Lifecycle tracking
   attributes     Json?
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -577,7 +592,7 @@ model PullRequest {
 }
 
 model Issue {
-  id             String  @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
   repositoryId   String
   externalId     String
@@ -585,6 +600,13 @@ model Issue {
   title          String
   status         String // e.g., "open", "closed"
   authorId       String? // Link to User
+  number         Int // Issue number - used in references
+  url            String? // Direct link
+  body           String?   @db.Text // Issue description
+  labels         String[] // Frequently filtered by labels
+  assigneeIds    String[] // Who's working on it
+  commentsCount  Int       @default(0) // Activity indicator
+  closedAt       DateTime? // Resolution tracking
   attributes     Json?
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -609,6 +631,9 @@ model Branch {
   status         String // e.g., "active", "stale"
   commitsAhead   Int       @default(0)
   commitsBehind  Int       @default(0)
+  sha            String?   @db.VarChar(40) // Latest commit SHA
+  isProtected    Boolean   @default(false) // Branch protection
+  createdBy      String? // Creator username
   attributes     Json?
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -624,14 +649,18 @@ model Branch {
 
 // Contributor model
 model Contributor {
-  id             String @id @default(cuid())
-  organizationId String
-  repositoryId   String
-  externalId     String // GitHub user ID
-  sourceTool     String // e.g., "github"
-  login          String // GitHub username
-  contributions  Int    @default(0) // Number of contributions (e.g., commits, PRs)
-  attributes     Json? // Flexible tool-specific data (e.g., avatar URL)
+  id                String    @id @default(cuid())
+  organizationId    String
+  repositoryId      String
+  externalId        String // GitHub user ID
+  sourceTool        String // e.g., "github"
+  login             String // GitHub username
+  contributions     Int       @default(0) // Number of contributions (e.g., commits, PRs)
+  name              String? // Display name
+  email             String? // Contact info
+  avatarUrl         String? // Profile picture
+  lastContributedAt DateTime? // Activity tracking
+  attributes        Json? // Flexible tool-specific data (e.g., avatar URL)
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   repository   Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)

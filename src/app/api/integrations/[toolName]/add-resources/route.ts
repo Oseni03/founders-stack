@@ -55,10 +55,15 @@ export async function POST(
 						fullName: z.string().min(1),
 						owner: z.string().min(1),
 						url: z.url(),
-						defaultBranch: z.string(),
-						openIssuesCount: z.number().nonnegative(),
-						visibility: z.string().nullable(),
 						description: z.string().nullable(),
+						defaultBranch: z.string(),
+						language: z.string().nullable(),
+						isPrivate: z.boolean(),
+						isArchived: z.boolean(),
+						openIssuesCount: z.number().nonnegative(),
+						forksCount: z.number().nonnegative(),
+						stargazersCount: z.number().nonnegative(),
+						attributes: z.record(z.string(), z.any()).optional(),
 					})
 				);
 
