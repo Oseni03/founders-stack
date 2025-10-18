@@ -191,20 +191,20 @@ export const auth = betterAuth({
 					tokenUrl: "https://slack.com/api/oauth.v2.access",
 					userInfoUrl:
 						"https://slack.com/api/openid.connect.userInfo",
-					authorizationUrlParams: {
-						scope: [
-							"channels:history",
-							"channels:read",
-							"groups:read",
-							"im:read",
-							"mpim:read",
-							"pins:read",
-							"team:read",
-							"im:history",
-							"mpim:history",
-						].join(","),
-						user_scope: ["openid", "email", "profile"].join(","),
-					},
+					scopes: [
+						"openid",
+						"email",
+						"profile",
+						"channels:history",
+						"channels:read",
+						"groups:read",
+						"im:read",
+						"mpim:read",
+						"pins:read",
+						"team:read",
+						"im:history",
+						"mpim:history",
+					],
 					getUserInfo: async (tokens) => {
 						console.log("Slack tokens:", tokens);
 

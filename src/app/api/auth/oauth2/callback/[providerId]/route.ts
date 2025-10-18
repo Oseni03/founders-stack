@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
 	request: NextRequest,
@@ -9,7 +9,7 @@ export async function GET(
 	const searchParams = request.nextUrl.searchParams;
 
 	try {
-		const response = await auth.api.oAuth2Callback({
+		const { response: result, headers } = await auth.api.oAuth2Callback({
 			query: {
 				code: searchParams.get("code") || undefined,
 				error: searchParams.get("error") || undefined,
@@ -20,15 +20,24 @@ export async function GET(
 			params: {
 				providerId,
 			},
-			asResponse: true,
+			returnHeaders: true, // Get headers instead of Response object
 		});
 
-		const data = response.json();
-		console.log(`OAuth callback response for ${providerId}: `, data);
+		console.log("OAuth callback completed");
+		console.log("OAuth result: ", result);
+		console.log("Response headers:", Object.fromEntries(headers.entries()));
 
-		return response;
+		// The callback handler typically redirects, so we need to follow that
+		const location = headers.get("location");
+		if (location) {
+			return NextResponse.redirect(location);
+		}
+
+		// If no redirect, return success
+		return NextResponse.json({ success: true });
 	} catch (error) {
 		console.error("OAuth callback error:", error);
-		return new Response("Authentication failed", { status: 500 });
+
+		return NextResponse.redirect(new URL(`/auth/error`, request.url));
 	}
 }
