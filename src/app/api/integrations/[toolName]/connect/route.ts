@@ -53,7 +53,7 @@ export async function GET(
 						userId: user.id,
 						provider: "slack",
 						state,
-                        expiresAt: new Date()
+						expiresAt: new Date(),
 					},
 				});
 
@@ -86,7 +86,7 @@ export async function GET(
 				);
 				slackAuthUrl.searchParams.set("state", state);
 
-				return NextResponse.redirect(slackAuthUrl.toString());
+				return NextResponse.json({ url: slackAuthUrl.toString() });
 			}
 		} catch (error) {
 			console.error(`Failed to connect ${toolName}`, error);
