@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
 			console.log("Slack integration saved:", integration);
 
 			return NextResponse.redirect(
-				new URL("/dashboard/integration/slack/onboarding", request.url)
+				new URL("/dashboard/integrations/slack/onboarding", request.url)
 			);
 		} catch (error) {
 			console.error("Slack OAuth error:", error);

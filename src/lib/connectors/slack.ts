@@ -16,7 +16,7 @@ export interface MessageData {
 	externalId: string;
 	text: string;
 	user: string;
-	ts: string;
+	timestamp: Date;
 	attributes: Record<string, any>;
 }
 
@@ -248,7 +248,7 @@ export class SlackConnector {
 					externalId: message.ts,
 					text: message.text,
 					user: message.user,
-					ts: message.ts,
+					timestamp: new Date(parseFloat(message.ts) * 1000),
 					attributes: {
 						subtype: message.subtype,
 						attachments: message.attachments || [],
@@ -313,8 +313,8 @@ export async function syncSlack(organizationId: string, projs: Project[] = []) {
 			);
 
 			await prisma.message.createMany({
-				data: messages.map((task) => ({
-					...task,
+				data: messages.map((message) => ({
+					...message,
 					organizationId,
 					channelId: project.id,
 					sourceTool: "slack",

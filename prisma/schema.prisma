@@ -320,6 +320,7 @@ model Message {
   channelId      String // References Channel.id
   sourceTool     String // e.g., "slack"
   organizationId String // Links to organization
+  timestamp      DateTime
   attributes     Json? // Slack-specific metadata (e.g., { thread_ts: string, reactions: array })
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
