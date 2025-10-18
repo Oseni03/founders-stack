@@ -184,61 +184,6 @@ export const auth = betterAuth({
 		genericOAuth({
 			config: [
 				{
-					providerId: "slack",
-					clientId: process.env.SLACK_CLIENT_ID!,
-					clientSecret: process.env.SLACK_CLIENT_SECRET!,
-					authorizationUrl: "https://slack.com/oauth/v2/authorize",
-					tokenUrl: "https://slack.com/api/oauth.v2.access",
-					userInfoUrl:
-						"https://slack.com/api/openid.connect.userInfo",
-					scopes: [
-						"openid",
-						"email",
-						"profile",
-						"channels:history",
-						"channels:read",
-						"groups:read",
-						"im:read",
-						"mpim:read",
-						"pins:read",
-						"team:read",
-						"im:history",
-						"mpim:history",
-					],
-					getUserInfo: async (tokens) => {
-						console.log("Slack tokens:", tokens);
-
-						// With only user_scope, tokens.accessToken will be the user token
-						const response = await fetch(
-							"https://slack.com/api/openid.connect.userInfo",
-							{
-								headers: {
-									Authorization: `Bearer ${tokens.accessToken}`,
-								},
-							}
-						);
-
-						const data = await response.json();
-						console.log("Slack user info:", data);
-
-						if (data.ok === false && data.error) {
-							throw new Error(`Slack API error: ${data.error}`);
-						}
-
-						// ✅ Return in OAuth2UserInfo format
-						return {
-							id:
-								data.sub ||
-								data["https://slack.com/user_id"] ||
-								"",
-							name: data.name || "Unknown",
-							email: data.email || null,
-							image: data.picture || undefined,
-							emailVerified: data.email_verified || false,
-						};
-					},
-				},
-				{
 					providerId: "github",
 					clientId: process.env.GITHUB_CLIENT_ID!,
 					clientSecret: process.env.GITHUB_CLIENT_SECRET!,

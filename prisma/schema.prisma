@@ -245,12 +245,14 @@ model OAuthTemp {
   id               String   @id @default(cuid())
   userId           String
   provider         String
-  oauthToken       String
-  oauthTokenSecret String
+  oauthToken       String?
+  oauthTokenSecret String?
+  state            String?
   expiresAt        DateTime
   createdAt        DateTime @default(now())
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, provider])
   @@index([userId, provider])
   @@map("oauth_temp")
 }
