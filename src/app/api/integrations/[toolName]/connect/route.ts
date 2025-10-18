@@ -82,7 +82,7 @@ export async function GET(
 				);
 				slackAuthUrl.searchParams.set(
 					"redirect_uri",
-					`${process.env.NEXT_PUBLIC_APP_URL}/api/oauth2/callback/slack`
+					`${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/slack`
 				);
 				slackAuthUrl.searchParams.set("state", state);
 
