@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getIntegration } from "@/server/integrations";
 import { withAuth } from "@/lib/middleware";
-import { GitHubConnector, RepoData } from "@/lib/connectors/github";
+import { GitHubConnector } from "@/lib/connectors/github";
+import { RepoData } from "@/types/code";
 import { PaginatedResponse, Resources } from "@/types/connector";
 import { z } from "zod";
 import { AsanaConnector } from "@/lib/connectors/asana";

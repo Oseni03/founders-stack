@@ -4,6 +4,7 @@ import { syncGitHub } from "@/lib/connectors/github";
 import { syncAsana } from "@/lib/connectors/asana";
 import { syncPostHog } from "@/lib/connectors/posthog";
 import { syncStripe } from "@/lib/connectors/stripe";
+import { syncSlack } from "@/lib/connectors/slack";
 
 export async function POST(
 	req: NextRequest,
@@ -21,6 +22,8 @@ export async function POST(
 				await syncPostHog(user.organizationId);
 			} else if (toolName === "stripe") {
 				await syncStripe(user.organizationId);
+			} else if (toolName === "slack") {
+				await syncSlack(user.organizationId);
 			}
 
 			return NextResponse.json({

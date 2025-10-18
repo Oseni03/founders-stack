@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/middleware";
 import { z } from "zod";
 import { saveRepositories } from "@/server/code";
-import { RepoData } from "@/lib/connectors/github";
+import { RepoData } from "@/types/code";
 import { saveProjects } from "@/server/tasks";
 import { ProjectData } from "@/lib/connectors/asana";
 import { saveChannels } from "@/server/messages";
