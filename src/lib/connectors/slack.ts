@@ -4,6 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { getIntegration } from "@/server/integrations";
 import { Project } from "@prisma/client";
+import {
+	createMessage,
+	deleteMessage,
+	updateMessage,
+	updateProject,
+} from "@/server/messages";
 
 export interface ChannelData {
 	externalId: string;
@@ -336,4 +342,346 @@ export async function syncSlack(organizationId: string, projs: Project[] = []) {
 	}
 
 	console.log(`✅ Slack sync completed for organization: ${organizationId}`);
+}
+
+// Main event processor
+export async function processSlackEvent(payload: any) {
+	const event = payload.event;
+	const teamId = payload.team_id;
+
+	console.log("Processing Slack event:", event.type, "for team:", teamId);
+
+	const project = await prisma.project.findUnique({
+		where: {
+			externalId_sourceTool: {
+				externalId: event.channel,
+				sourceTool: "slack",
+			},
+		},
+	});
+	if (!project) {
+		console.log("Channel not registered:", event.channel);
+		return;
+	}
+
+	try {
+		switch (event.type) {
+			// Message events
+			case "message":
+				await handleMessageEvent(
+					event,
+					project.id,
+					project.organizationId
+				);
+				break;
+
+			// Channel events
+			case "channel_deleted":
+				await handleChannelDeleted(event);
+				break;
+
+			case "channel_left":
+				await handleChannelLeft(event);
+				break;
+
+			case "channel_rename":
+				await handleChannelRename(event);
+				break;
+
+			// Private channel (group) events
+			case "group_deleted":
+				await handleGroupDeleted(event);
+				break;
+
+			case "group_left":
+				await handleGroupLeft(event);
+				break;
+
+			case "group_rename":
+				await handleGroupRename(event);
+				break;
+
+			default:
+				console.log("Unhandled event type:", event.type);
+		}
+	} catch (error) {
+		console.error(`Error handling event ${event.type}:`, error);
+		throw error;
+	}
+}
+
+// ============================================================================
+// MESSAGE EVENT HANDLERS
+// ============================================================================
+
+async function handleMessageEvent(
+	event: any,
+	projectId: string,
+	organizationId: string
+) {
+	// Skip bot messages, message changes, and deletes (handle them separately if needed)
+	if (
+		event.subtype &&
+		!["message_changed", "message_deleted"].includes(event.subtype)
+	) {
+		console.log("Skipping message subtype:", event.subtype);
+		return;
+	}
+
+	// Handle new messages
+	if (!event.subtype) {
+		await handleNewMessage(event, projectId, organizationId);
+	}
+	// Handle message updates
+	else if (event.subtype === "message_changed") {
+		await handleMessageUpdate(event);
+	}
+	// Handle message deletions
+	else if (event.subtype === "message_deleted") {
+		await handleMessageDelete(event);
+	}
+}
+
+async function handleNewMessage(
+	event: any,
+	projectId: string,
+	organizationId: string
+) {
+	const channelId = event.channel;
+	const messageTs = event.ts;
+	const text = event.text || "";
+	const userId = event.user;
+
+	console.log("New message:", { channelId, messageTs, userId });
+
+	// Determine channel type
+	const channelType = event.channel_type || "channel"; // channel, group, im, mpim
+
+	// Create message
+	await createMessage({
+		externalId: messageTs,
+		text,
+		user: userId,
+		channelId: projectId,
+		sourceTool: "slack",
+		organizationId,
+		timestamp: messageTs,
+		attributes: {
+			channel_type: channelType,
+			thread_ts: event.thread_ts,
+			team: event.team,
+			event_ts: event.event_ts,
+		},
+	});
+
+	console.log("Message stored successfully");
+}
+
+async function handleMessageUpdate(event: any) {
+	const { message, previous_message } = event;
+
+	if (!message || !message.ts) {
+		console.log("Invalid message update event");
+		return;
+	}
+
+	console.log("Updating message:", message.ts);
+
+	try {
+		await updateMessage({
+			externalId: message.ts,
+			sourceTool: "slack",
+			text: message.text || "",
+			attributes: {
+				...(previous_message
+					? { previous_text: previous_message.text }
+					: {}),
+				edited: true,
+				edit_timestamp: new Date().toISOString(),
+			},
+		});
+
+		console.log("Message updated successfully");
+	} catch (error) {
+		console.error("Error updating message:", error);
+	}
+}
+
+async function handleMessageDelete(event: any) {
+	const deletedTs = event.deleted_ts;
+
+	if (!deletedTs) {
+		console.log("Invalid message delete event");
+		return;
+	}
+
+	console.log("Deleting message:", deletedTs);
+
+	try {
+		await deleteMessage(deletedTs, "slack");
+
+		console.log("Message deleted successfully");
+	} catch (error) {
+		console.error("Error deleting message:", error);
+	}
+}
+
+// ============================================================================
+// CHANNEL EVENT HANDLERS
+// ============================================================================
+
+async function handleChannelDeleted(event: any) {
+	const channelId = event.channel;
+
+	console.log("Channel deleted:", channelId);
+
+	try {
+		await updateProject({
+			externalId: channelId,
+			sourceTool: "slack",
+			data: {
+				status: "archived",
+				attributes: {
+					deleted: true,
+					deleted_at: new Date().toISOString(),
+				},
+			},
+		});
+
+		console.log("Channel marked as deleted");
+	} catch (error) {
+		console.error("Error marking channel as deleted:", error);
+	}
+}
+
+async function handleChannelLeft(event: any) {
+	const channelId = event.channel;
+
+	console.log("Left channel:", channelId);
+
+	try {
+		await updateProject({
+			externalId: channelId,
+			sourceTool: "slack",
+			data: {
+				status: "archived",
+				attributes: {
+					left: true,
+					left_at: new Date().toISOString(),
+					user_id: event.user,
+				},
+			},
+		});
+
+		console.log("Channel marked as left");
+	} catch (error) {
+		console.error("Error marking channel as left:", error);
+	}
+}
+
+async function handleChannelRename(event: any) {
+	const channelId = event.channel.id;
+	const newName = event.channel.name;
+
+	console.log("Channel renamed:", channelId, "to", newName);
+
+	try {
+		await updateProject({
+			externalId: channelId,
+			sourceTool: "slack",
+			data: {
+				name: newName,
+				attributes: {
+					renamed: true,
+					renamed_at: new Date().toISOString(),
+					created: event.channel.created,
+				},
+			},
+		});
+
+		console.log("Channel renamed successfully");
+	} catch (error) {
+		console.error("Error renaming channel:", error);
+	}
+}
+
+// ============================================================================
+// PRIVATE CHANNEL (GROUP) EVENT HANDLERS
+// ============================================================================
+
+async function handleGroupDeleted(event: any) {
+	const channelId = event.channel;
+
+	console.log("Private channel deleted:", channelId);
+
+	try {
+		await updateProject({
+			externalId: channelId,
+			sourceTool: "slack",
+			data: {
+				status: "archived",
+				attributes: {
+					deleted: true,
+					deleted_at: new Date().toISOString(),
+					channel_type: "group",
+				},
+			},
+		});
+
+		console.log("Private channel marked as deleted");
+	} catch (error) {
+		console.error("Error marking private channel as deleted:", error);
+	}
+}
+
+async function handleGroupLeft(event: any) {
+	const channelId = event.channel;
+
+	console.log("Left private channel:", channelId);
+
+	try {
+		await updateProject({
+			externalId: channelId,
+			sourceTool: "slack",
+			data: {
+				status: "archived",
+				attributes: {
+					left: true,
+					left_at: new Date().toISOString(),
+					user_id: event.user,
+					channel_type: "group",
+				},
+			},
+		});
+
+		console.log("Private channel marked as left");
+	} catch (error) {
+		console.error("Error marking private channel as left:", error);
+	}
+}
+
+async function handleGroupRename(event: any) {
+	const channelId = event.channel.id;
+	const newName = event.channel.name;
+
+	console.log("Private channel renamed:", channelId, "to", newName);
+
+	try {
+		await updateProject({
+			externalId: channelId,
+			sourceTool: "slack",
+			data: {
+				name: newName,
+				attributes: {
+					renamed: true,
+					renamed_at: new Date().toISOString(),
+					channel_type: "group",
+				},
+			},
+		});
+
+		console.log("Private channel renamed successfully");
+	} catch (error) {
+		console.error("Error renaming private channel:", error);
+	}
 }
