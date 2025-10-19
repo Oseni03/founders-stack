@@ -7,10 +7,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: Promise<{ provider: string }> }
+	{ params }: { params: Promise<{ providerId: string }> }
 ) {
 	return withAuth(request, async (request, user) => {
-		const { provider } = await params;
+		const { providerId: provider } = await params;
 		const searchParams = request.nextUrl.searchParams;
 		const code = searchParams.get("code");
 		const state = searchParams.get("state");
