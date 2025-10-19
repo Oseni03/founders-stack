@@ -299,8 +299,9 @@ async function handleDefaultAPIIntegration(
 	if (toolName === "stripe") {
 		await syncStripe(user.organizationId, apiKey);
 	} else if (toolName === "asana") {
+		const origin = new URL(request.url).origin;
 		return NextResponse.redirect(
-			new URL(`/dashboard/integrations/${toolName}/onboarding`)
+			new URL(`/dashboard/integrations/${toolName}/onboarding`, origin)
 		);
 	}
 
