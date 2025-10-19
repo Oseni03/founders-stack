@@ -62,7 +62,7 @@ export const APIKeyConnectForm = ({
 		resolver: zodResolver(createFormSchema(integrationId)),
 		defaultValues: {
 			apiKey: "",
-			...(integrationId !== "stripe" && {
+			...(integrationId === "posthog" && {
 				projectId: "",
 				projectName: "",
 			}),
@@ -106,7 +106,7 @@ export const APIKeyConnectForm = ({
 							)}
 						/>
 
-						{integrationId !== "stripe" && (
+						{integrationId === "posthog" && (
 							<>
 								<FormField
 									control={form.control}

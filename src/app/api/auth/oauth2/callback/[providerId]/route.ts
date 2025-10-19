@@ -121,8 +121,20 @@ export async function GET(
 				},
 			});
 
-			const integration = await prisma.integration.create({
-				data: {
+			const integration = await prisma.integration.upsert({
+				where: {
+					organizationId_toolName: {
+						organizationId: user.organizationId,
+						toolName: provider,
+					},
+				},
+				update: {
+					status: "active",
+					type: "oauth2",
+					accountId: account.id,
+					category: config.category,
+				},
+				create: {
 					category: config.category,
 					status: "active",
 					toolName: provider,
