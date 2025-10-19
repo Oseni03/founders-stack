@@ -61,10 +61,10 @@ export async function GET(req: NextRequest) {
 					createdAt: ev.createdAt.toISOString(),
 				})),
 				notConnected:
-					subscriptions.length < 0 ||
-					invoices.length < 0 ||
-					!!balance ||
-					events.length < 0,
+					subscriptions.length === 0 &&
+					invoices.length === 0 &&
+					!balance &&
+					events.length === 0,
 			};
 			return NextResponse.json(response);
 		} catch (error) {
