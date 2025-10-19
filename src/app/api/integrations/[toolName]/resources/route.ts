@@ -61,7 +61,10 @@ export async function GET(
 				toolName
 			);
 
-			if (!integration?.account.accessToken) {
+			if (
+				!integration?.account.accessToken ||
+				!integration.account.apiKey
+			) {
 				return NextResponse.json(
 					{
 						error: `${toolName.charAt(0).toUpperCase() + toolName.slice(1)} not connected`,
@@ -101,9 +104,7 @@ export async function GET(
 				};
 			} else if (toolName === "asana") {
 				const connector = new AsanaConnector(
-					integration.account.accessToken,
-					integration.account.refreshToken,
-					user.organizationId
+					integration.account.apiKey
 				);
 
 				const result = await connector.fetchProjects({

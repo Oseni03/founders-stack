@@ -111,6 +111,7 @@ export async function POST(
 				default:
 					// Default API key integration handler (like Stripe)
 					return await handleDefaultAPIIntegration(
+						request,
 						body,
 						user,
 						toolName
@@ -265,6 +266,7 @@ async function handlePostHogIntegration(body: any, user: any) {
 
 // Default API key integration handler (Stripe, etc.)
 async function handleDefaultAPIIntegration(
+	request: NextRequest,
 	body: any,
 	user: any,
 	toolName: string
@@ -296,6 +298,10 @@ async function handleDefaultAPIIntegration(
 	// Run tool-specific sync if function exists
 	if (toolName === "stripe") {
 		await syncStripe(user.organizationId, apiKey);
+	} else if (toolName === "asana") {
+		return NextResponse.redirect(
+			new URL(`/dashboard/integrations/${toolName}/onboarding`)
+		);
 	}
 
 	return NextResponse.json(

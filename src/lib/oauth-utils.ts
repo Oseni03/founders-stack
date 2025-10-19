@@ -116,7 +116,7 @@ export const INTEGRATIONS: Integration[] = [
 		category: "project_management",
 		logo: "/asana-logo.png",
 		status: "inactive",
-		authType: "oauth2",
+		authType: "api_key",
 		lastSyncAt: new Date(),
 		docsUrl: "https://developers.asana.com/docs",
 	},
