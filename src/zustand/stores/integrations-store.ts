@@ -18,7 +18,7 @@ export interface IntegrationsState {
 			projectName?: string;
 		}
 	) => Promise<void>;
-	disconnect: (integrationId: string) => Promise<void>;
+	disconnect: (toolName: string) => Promise<void>;
 	sync: (integrationId: string) => Promise<void>;
 }
 
@@ -107,14 +107,14 @@ export const createIntegrationsStore = () => {
 						toast.error(`Failed to connect ${toolName}`);
 					}
 				},
-				disconnect: async (integrationId) => {
+				disconnect: async (toolName) => {
 					set((state) => {
 						state.loading = true;
 						state.error = null;
 					});
 					try {
 						const response = await fetch(
-							`/api/integrations/${integrationId}/disconnect`,
+							`/api/integrations/${toolName}/disconnect`,
 							{
 								method: "POST",
 							}
@@ -123,7 +123,7 @@ export const createIntegrationsStore = () => {
 						if (response.ok) {
 							set((state) => {
 								state.integrations = state.integrations.filter(
-									(item) => item.id !== integrationId
+									(item) => item.toolName !== toolName
 								);
 								state.loading = false;
 							});

@@ -43,7 +43,7 @@ export const DisconnectAlertDialog = ({
 				<AlertDialogFooter>
 					<AlertDialogCancel>Cancel</AlertDialogCancel>
 					<AlertDialogAction
-						onClick={() => disconnect(integration.id)}
+						onClick={() => disconnect(integration.toolName)}
 					>
 						Disconnect
 					</AlertDialogAction>
