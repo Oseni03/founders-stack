@@ -1,6 +1,6 @@
 import { IntegrationCategory, IntegrationStatus } from "@prisma/client";
 
-export interface Integration {
+interface Integration {
 	id: string;
 	name: string;
 	description: string;
@@ -11,6 +11,80 @@ export interface Integration {
 	lastSyncAt: Date;
 	docsUrl: string;
 }
+
+// OAuth configuration types
+type OAuthConfigBase = {
+	providerId: string;
+	clientId: string;
+	clientSecret: string;
+	authorizationUrl: string;
+	tokenUrl: string;
+	redirectURI: string;
+	category: IntegrationCategory;
+};
+
+type StandardOAuthConfig = OAuthConfigBase & {
+	scopes: string[];
+};
+
+type SlackOAuthConfig = OAuthConfigBase & {
+	userScopes: string[];
+};
+
+export type OAuthConfig = StandardOAuthConfig | SlackOAuthConfig;
+
+// OAuth configuration for different providers
+export const OAUTH_CONFIG: Record<string, OAuthConfig> = {
+	github: {
+		providerId: "github",
+		clientId: process.env.GITHUB_CLIENT_ID!,
+		clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+		authorizationUrl: "https://github.com/login/oauth/authorize",
+		tokenUrl: "https://github.com/login/oauth/access_token",
+		scopes: [
+			"repo",
+			"read:discussion",
+			"project",
+			"read:user",
+			"user:email",
+		],
+		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/github`,
+		category: "version_control",
+	},
+	asana: {
+		providerId: "asana",
+		clientId: process.env.ASANA_CLIENT_ID!,
+		clientSecret: process.env.ASANA_CLIENT_SECRET!,
+		authorizationUrl: "https://app.asana.com/-/oauth_authorize",
+		tokenUrl: "https://app.asana.com/-/oauth_token",
+		scopes: ["tasks:read", "projects:read", "users:read"],
+		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/asana`,
+		category: "project_management",
+	},
+	slack: {
+		providerId: "slack",
+		clientId: process.env.SLACK_CLIENT_ID!,
+		clientSecret: process.env.SLACK_CLIENT_SECRET!,
+		authorizationUrl: "https://slack.com/oauth/v2/authorize",
+		tokenUrl: "https://slack.com/api/oauth.v2.access",
+		userScopes: [
+			"channels:history",
+			"channels:read",
+			"chat:write",
+			"groups:read",
+			"im:read",
+			"mpim:read",
+			"im:history",
+			"mpim:history",
+			"users:read",
+			"users:read.email",
+		],
+		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/slack`,
+		category: "communication",
+	},
+};
+
+export type ToolName = keyof typeof OAUTH_CONFIG;
 
 export const INTEGRATIONS: Integration[] = [
 	{
