@@ -94,7 +94,7 @@ export async function GET(
 				code
 			);
 
-			if (!tokenResponse.ok) {
+			if (!tokenResponse) {
 				throw new Error(
 					tokenResponse.error || "Failed to exchange code for tokens"
 				);
@@ -179,10 +179,10 @@ async function exchangeCodeForTokens(
 		redirect_uri: config.redirectURI,
 	};
 
-	// // Add grant_type for standard OAuth2 providers
-	// if (provider !== "slack") {
-	// 	tokenParams.grant_type = "authorization_code";
-	// }
+	// Add grant_type for standard OAuth2 providers
+	if (provider !== "slack") {
+		tokenParams.grant_type = "authorization_code";
+	}
 
 	const response = await fetch(config.tokenUrl, {
 		method: "POST",
