@@ -34,85 +34,15 @@ const paramsSchema = z.object({
 
 export class SlackConnector {
 	private accessToken: string;
-	private refreshTokenValue: string | null;
-	private organizationId: string | null;
 	private baseUrl: string = "https://slack.com/api";
 
-	constructor(
-		accessToken: string,
-		refreshToken: string | null,
-		organizationId: string | null
-	) {
+	constructor(accessToken: string) {
 		this.accessToken = accessToken;
-		this.refreshTokenValue = refreshToken;
-		this.organizationId = organizationId;
-	}
-
-	private async refreshToken(): Promise<{
-		accessToken: string;
-		refreshToken: string;
-	}> {
-		try {
-			if (!this.refreshTokenValue || !this.organizationId) {
-				throw new Error("Missing refresh token or organization ID");
-			}
-
-			const response = await fetch(`${this.baseUrl}/oauth.v2.access`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/x-www-form-urlencoded",
-					Accept: "application/json",
-				},
-				body: new URLSearchParams({
-					client_id: process.env.SLACK_CLIENT_ID || "",
-					client_secret: process.env.SLACK_CLIENT_SECRET || "",
-					refresh_token: this.refreshTokenValue,
-				}),
-			});
-
-			const data = await response.json();
-			if (!data.ok) {
-				throw new Error(
-					`Token refresh failed: ${data.error || "Unknown error"}`
-				);
-			}
-
-			const newAccessToken = data.access_token;
-			const newRefreshToken =
-				data.refresh_token || this.refreshTokenValue;
-
-			// Update UserIntegration
-			const integration = await getIntegration(
-				this.organizationId,
-				"slack"
-			);
-
-			await prisma.account.update({
-				where: { id: integration?.account.id },
-				data: {
-					accessToken: newAccessToken,
-					refreshToken: newRefreshToken,
-				},
-			});
-
-			this.accessToken = newAccessToken;
-			this.refreshTokenValue = newRefreshToken;
-
-			return {
-				accessToken: newAccessToken,
-				refreshToken: newRefreshToken,
-			};
-		} catch (error) {
-			throw new Error(
-				`Failed to refresh Slack token: ${error instanceof Error ? error.message : "Unknown error"}`
-			);
-		}
 	}
 
 	private async apiRequest(
 		endpoint: string,
-		params: Record<string, any> = {},
-		retryCount: number = 0
+		params: Record<string, any> = {}
 	): Promise<any> {
 		const url = new URL(`${this.baseUrl}/${endpoint}`);
 		Object.entries(params).forEach(([key, value]) => {
@@ -130,14 +60,6 @@ export class SlackConnector {
 		});
 
 		const data = await response.json().catch(() => ({}));
-		if (data.error === "token_expired" && retryCount < 1) {
-			try {
-				await this.refreshToken();
-				return this.apiRequest(endpoint, params, retryCount + 1);
-			} catch (refreshError) {
-				throw refreshError;
-			}
-		}
 
 		if (!data.ok) {
 			throw new Error(
@@ -302,11 +224,7 @@ export async function syncSlack(organizationId: string, projs: Project[] = []) {
 
 	if (projects.length === 0) return;
 
-	const connector = new SlackConnector(
-		integration.account.accessToken,
-		integration.account.refreshToken,
-		organizationId
-	);
+	const connector = new SlackConnector(integration.account.accessToken);
 
 	const syncPromises = projects.map((project) => async () => {
 		try {

@@ -236,7 +236,7 @@ export class AsanaConnector {
 
 export async function syncAsana(organizationId: string, projs: Project[] = []) {
 	const integration = await getIntegration(organizationId, "asana");
-	if (!integration?.account.accessToken) {
+	if (!integration?.account.apiKey) {
 		throw new Error("Integration not connected");
 	}
 
@@ -252,7 +252,7 @@ export async function syncAsana(organizationId: string, projs: Project[] = []) {
 
 	if (projects.length === 0) return;
 
-	const connector = new AsanaConnector(integration.account.accessToken);
+	const connector = new AsanaConnector(integration.account.apiKey);
 
 	const syncPromises = projects.map((project) => async () => {
 		try {

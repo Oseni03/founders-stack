@@ -62,8 +62,8 @@ export async function GET(
 			);
 
 			if (
-				!integration?.account.accessToken ||
-				!integration.account.apiKey
+				!integration?.account.accessToken &&
+				!integration?.account.apiKey
 			) {
 				return NextResponse.json(
 					{
@@ -84,7 +84,7 @@ export async function GET(
 
 			if (toolName === "github") {
 				const connector = new GitHubConnector(
-					integration.account.accessToken
+					integration.account.accessToken!
 				);
 				const result: PaginatedResponse<RepoData> =
 					await connector.fetchRepositories({
@@ -104,7 +104,7 @@ export async function GET(
 				};
 			} else if (toolName === "asana") {
 				const connector = new AsanaConnector(
-					integration.account.apiKey
+					integration.account.apiKey!
 				);
 
 				const result = await connector.fetchProjects({
@@ -123,9 +123,7 @@ export async function GET(
 				};
 			} else if (toolName === "slack") {
 				const connector = new SlackConnector(
-					integration.account.accessToken,
-					integration.account.refreshToken,
-					user.organizationId
+					integration.account.accessToken!
 				);
 
 				const result = await connector.fetchChannels({
