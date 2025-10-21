@@ -101,10 +101,8 @@ export async function GET(
 			}
 
 			// Extract tokens based on provider
-			const { accessToken, refreshToken, scope } = extractTokens(
-				provider,
-				tokenResponse
-			);
+			const { accessToken, refreshToken, scope, resourceServer } =
+				extractTokens(provider, tokenResponse);
 
 			// Store the account and integration in database
 			const accountId = createId();
@@ -133,6 +131,9 @@ export async function GET(
 					type: "oauth2",
 					accountId: account.id,
 					category: config.category,
+					attributes: {
+						baseUrl: resourceServer,
+					},
 				},
 				create: {
 					category: config.category,
@@ -141,6 +142,9 @@ export async function GET(
 					type: "oauth2",
 					organizationId: user.organizationId,
 					accountId: account.id,
+					attributes: {
+						baseUrl: resourceServer,
+					},
 				},
 			});
 
@@ -218,20 +222,12 @@ function extractTokens(provider: string, tokenResponse: any) {
 				scope: tokenResponse.authed_user.scope,
 				ok: tokenResponse.ok,
 			};
-
-		case "github":
+		case "jira":
 			return {
 				accessToken: tokenResponse.access_token,
 				refreshToken: tokenResponse.refresh_token,
 				scope: tokenResponse.scope,
-				ok: !!tokenResponse.access_token,
-			};
-
-		case "asana":
-			return {
-				accessToken: tokenResponse.access_token,
-				refreshToken: tokenResponse.refresh_token,
-				scope: tokenResponse.scope,
+				resourceServer: tokenResponse.resource_server,
 				ok: !!tokenResponse.access_token,
 			};
 

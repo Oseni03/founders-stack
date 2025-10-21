@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { getIntegration } from "@/server/integrations";
 import { withAuth } from "@/lib/middleware";
@@ -7,6 +8,7 @@ import { PaginatedResponse, Resources } from "@/types/connector";
 import { z } from "zod";
 import { AsanaConnector } from "@/lib/connectors/asana";
 import { SlackConnector } from "@/lib/connectors/slack";
+import { JiraConnector } from "@/lib/connectors/jira";
 
 // Input validation schema
 const querySchema = z.object({
@@ -139,6 +141,25 @@ export async function GET(
 					total: result.total,
 					totalPages: result.totalPages,
 					hasMore: result.hasMore,
+				};
+			} else if (toolName === "jira") {
+				const attributes = integration.attributes as Record<
+					string,
+					any
+				>;
+				const baseUrl = attributes.baseUrl;
+				const connector = new JiraConnector(
+					integration.account.accessToken!,
+					baseUrl
+				);
+				const data = await connector.getProjects();
+				resources = data.resources;
+				pagination = {
+					page: data.page,
+					limit: data.limit,
+					total: data.total,
+					totalPages: data.totalPages,
+					hasMore: data.hasMore,
 				};
 			} else {
 				// Fallback for unsupported tools

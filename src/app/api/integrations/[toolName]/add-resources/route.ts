@@ -4,9 +4,9 @@ import { z } from "zod";
 import { saveRepositories } from "@/server/code";
 import { RepoData } from "@/types/code";
 import { saveProjects } from "@/server/tasks";
-import { ProjectData } from "@/lib/connectors/asana";
 import { saveChannels } from "@/server/messages";
 import { ChannelData } from "@/lib/connectors/slack";
+import { ProjectData } from "@/types/connector";
 
 const ResourcesSchema = z.array(
 	z
@@ -109,6 +109,7 @@ export async function POST(
 
 				await saveProjects(
 					user.organizationId,
+					toolName,
 					selected as ProjectData[]
 				);
 			} else if (toolName === "slack") {
@@ -137,6 +138,33 @@ export async function POST(
 				await saveChannels(
 					user.organizationId,
 					selected as ChannelData[]
+				);
+			} else if (toolName === "jira") {
+				const projectSchema = z.array(
+					z.object({
+						externalId: z.string().min(1),
+						name: z.string().min(1),
+						Description: z.string().nullable(),
+					})
+				);
+
+				try {
+					projectSchema.parse(selected);
+				} catch (validationError) {
+					console.error("[JIRA_VALIDATION]", validationError);
+					return NextResponse.json(
+						{
+							error: "Invalid request data",
+							details: validationError,
+						},
+						{ status: 400 }
+					);
+				}
+
+				await saveProjects(
+					user.organizationId,
+					"jira",
+					selected as ProjectData[]
 				);
 			}
 

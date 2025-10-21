@@ -222,6 +222,7 @@ model Integration {
   type           IntegrationType     @default(oauth2)
   lastSyncStatus String?
   syncInterval   Int? // Minutes, e.g., 15
+  attributes     Json?
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
@@ -287,7 +288,7 @@ model Task {
   externalId     String // From source tool
   sourceTool     String // e.g., "jira", "asana"
   title          String
-  description    String
+  description    String?
   status         TaskStatus // Normalized: "open", "in_progress", "done"
   assignee       String? //  Assignee name
   assigneeId     String? // External assignee ID

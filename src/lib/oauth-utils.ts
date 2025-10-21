@@ -61,6 +61,16 @@ export const OAUTH_CONFIG: Record<string, OAuthConfig> = {
 		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/asana`,
 		category: "project_management",
 	},
+	jira: {
+		providerId: "jira",
+		clientId: process.env.JIRA_CLIENT_ID!,
+		clientSecret: process.env.JIRA_CLIENT_SECRET!,
+		authorizationUrl: "https://auth.atlassian.com/authorize",
+		tokenUrl: "https://auth.atlassian.com/oauth/token",
+		scopes: ["tasks:read", "projects:read", "users:read"],
+		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/jira`,
+		category: "project_management",
+	},
 	slack: {
 		providerId: "slack",
 		clientId: process.env.SLACK_CLIENT_ID!,

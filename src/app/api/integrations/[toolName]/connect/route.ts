@@ -60,6 +60,11 @@ export async function GET(
 			authUrl.searchParams.set("redirect_uri", config.redirectURI);
 			authUrl.searchParams.set("state", state);
 			authUrl.searchParams.set("response_type", "code");
+			authUrl.searchParams.set("prompt", "consent");
+
+			if (toolName === "jira") {
+				authUrl.searchParams.set("audience", "api.atlassian.com");
+			}
 
 			// Handle provider-specific parameters
 			if (toolName === "slack" && "userScopes" in config) {

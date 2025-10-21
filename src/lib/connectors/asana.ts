@@ -1,15 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { getIntegration } from "@/server/integrations";
-import { PaginatedResponse, PaginationOptions } from "@/types/connector";
+import {
+	PaginatedResponse,
+	PaginationOptions,
+	ProjectData,
+} from "@/types/connector";
 import { prisma } from "../prisma";
 import { Project } from "@prisma/client";
-
-export interface ProjectData {
-	externalId: string;
-	name: string;
-	description: string;
-	attributes: Record<string, any>;
-}
 
 export interface TaskData {
 	externalId: string;

@@ -1,12 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
-import {
-	customSession,
-	organization,
-	magicLink,
-	genericOAuth,
-} from "better-auth/plugins";
+import { customSession, organization, magicLink } from "better-auth/plugins";
 import { admin, member } from "./auth/permissions";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma";
@@ -180,81 +174,6 @@ export const auth = betterAuth({
 					react: MagicLinkEmail({ email, magicLink: url }),
 				});
 			},
-		}),
-		genericOAuth({
-			config: [
-				{
-					providerId: "github",
-					clientId: process.env.GITHUB_CLIENT_ID!,
-					clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-					authorizationUrl:
-						"https://github.com/login/oauth/authorize",
-					tokenUrl: "https://github.com/login/oauth/access_token",
-					userInfoUrl: "https://api.github.com/user",
-					scopes: [
-						"repo",
-						"read:discussion",
-						"project",
-						"read:user",
-						"user:email",
-					],
-					authorizationUrlParams: {
-						scope: "repo read:discussion project read:user user:email",
-					},
-					redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/github`,
-					mapProfileToUser: async (profile) => {
-						console.log("GitHub OAuth profile: ", profile);
-						let email = profile.email;
-
-						if (!email) {
-							const emailsResponse = await fetch(
-								"https://api.github.com/user/emails",
-								{
-									headers: {
-										Authorization: `Bearer ${profile.access_token}`,
-										Accept: "application/vnd.github.v3+json",
-									},
-								}
-							);
-
-							if (emailsResponse.ok) {
-								const emails = await emailsResponse.json();
-								const primaryEmail = emails.find(
-									(e: any) => e.primary && e.verified
-								);
-								email = primaryEmail?.email || emails[0]?.email;
-								console.log("Github email generated: ", email);
-							}
-						}
-
-						return {
-							id: profile.id.toString(),
-							email: email || `${profile.login}@github.local`,
-							emailVerified: !!profile.email,
-							name: profile.name || profile.login,
-							image: profile.avatar_url,
-						};
-					},
-				},
-				{
-					providerId: "asana",
-					clientId: process.env.ASANA_CLIENT_ID!,
-					clientSecret: process.env.ASANA_CLIENT_SECRET!,
-					authorizationUrl: "https://app.asana.com/-/oauth_authorize",
-					tokenUrl: "https://app.asana.com/-/oauth_token",
-					userInfoUrl:
-						"https://app.asana.com/api/1.0/openid_connect/userinfo",
-					scopes: [
-						"tasks:read",
-						"projects:read",
-						"users:read",
-						"openid",
-						"email",
-						"profile",
-					],
-					redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/asana`,
-				},
-			],
 		}),
 	],
 });

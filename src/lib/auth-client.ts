@@ -2,7 +2,6 @@ import {
 	customSessionClient,
 	organizationClient,
 	magicLinkClient,
-	genericOAuthClient,
 } from "better-auth/client/plugins";
 import { polarClient } from "@polar-sh/better-auth";
 import { createAuthClient } from "better-auth/react";
@@ -14,6 +13,5 @@ export const authClient = createAuthClient({
 		customSessionClient<typeof auth>(),
 		polarClient(),
 		magicLinkClient(),
-		genericOAuthClient(),
 	],
 });
