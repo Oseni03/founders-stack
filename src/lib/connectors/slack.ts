@@ -243,6 +243,7 @@ export async function syncSlack(organizationId: string, projs: Project[] = []) {
 					channelId: project.id,
 					sourceTool: "slack",
 				})),
+				skipDuplicates: true,
 			});
 		} catch (error) {
 			console.error(

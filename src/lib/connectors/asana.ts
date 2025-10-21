@@ -268,6 +268,7 @@ export async function syncAsana(organizationId: string, projs: Project[] = []) {
 					projectId: project.id,
 					sourceTool: "asana",
 				})),
+				skipDuplicates: true,
 			});
 		} catch (error) {
 			console.error(

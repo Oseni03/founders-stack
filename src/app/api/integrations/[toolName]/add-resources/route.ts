@@ -4,7 +4,6 @@ import { z } from "zod";
 import { saveRepositories } from "@/server/code";
 import { RepoData } from "@/types/code";
 import { saveProjects } from "@/server/tasks";
-import { saveChannels } from "@/server/messages";
 import { ChannelData } from "@/lib/connectors/slack";
 import { ProjectData } from "@/types/connector";
 
@@ -135,8 +134,9 @@ export async function POST(
 					);
 				}
 
-				await saveChannels(
+				await saveProjects(
 					user.organizationId,
+					"slack",
 					selected as ChannelData[]
 				);
 			} else if (toolName === "jira") {
@@ -144,7 +144,8 @@ export async function POST(
 					z.object({
 						externalId: z.string().min(1),
 						name: z.string().min(1),
-						Description: z.string().nullable(),
+						description: z.string().nullable(),
+						attributes: z.any(),
 					})
 				);
 
@@ -164,6 +165,34 @@ export async function POST(
 				await saveProjects(
 					user.organizationId,
 					"jira",
+					selected as ProjectData[]
+				);
+			} else if (toolName === "canny") {
+				const projectSchema = z.array(
+					z.object({
+						externalId: z.string().min(1),
+						name: z.string().min(1),
+						description: z.string().nullable(),
+						attributes: z.any(),
+					})
+				);
+
+				try {
+					projectSchema.parse(selected);
+				} catch (validationError) {
+					console.error("[CANNY_VALIDATION]", validationError);
+					return NextResponse.json(
+						{
+							error: "Invalid request data",
+							details: validationError,
+						},
+						{ status: 400 }
+					);
+				}
+
+				await saveProjects(
+					user.organizationId,
+					"canny",
 					selected as ProjectData[]
 				);
 			}

@@ -301,21 +301,25 @@ async function handleDefaultAPIIntegration(
 	);
 
 	// Run tool-specific sync if function exists
-	if (toolName === "stripe") {
-		await syncStripe(user.organizationId, apiKey);
-	} else if (toolName === "asana") {
-		const origin = new URL(request.url).origin;
-		return NextResponse.redirect(
-			new URL(`/dashboard/integrations/${toolName}/onboarding`, origin)
-		);
-	}
+	switch (toolName) {
+		case "stripe":
+			await syncStripe(user.organizationId, apiKey);
+			return NextResponse.json(
+				{
+					success: true,
+					integration: integration,
+					message: `${toolName.charAt(0).toUpperCase() + toolName.slice(1)} connected successfully`,
+				},
+				{ status: 201 }
+			);
 
-	return NextResponse.json(
-		{
-			success: true,
-			integration: integration,
-			message: `${toolName.charAt(0).toUpperCase() + toolName.slice(1)} connected successfully`,
-		},
-		{ status: 201 }
-	);
+		default:
+			const origin = new URL(request.url).origin;
+			return NextResponse.redirect(
+				new URL(
+					`/dashboard/integrations/${toolName}/onboarding`,
+					origin
+				)
+			);
+	}
 }

@@ -131,6 +131,18 @@ export const INTEGRATIONS: Integration[] = [
 		docsUrl: "https://developers.asana.com/docs",
 	},
 	{
+		id: "canny",
+		name: "Canny",
+		description:
+			"Track product and web analytics like page views and funnels",
+		category: "feedback",
+		logo: "/canny-logo.png",
+		status: "inactive",
+		authType: "api_key",
+		lastSyncAt: new Date(),
+		docsUrl: "https://posthog.com/docs/api",
+	},
+	{
 		id: "posthog",
 		name: "PostHog",
 		description:
@@ -170,6 +182,8 @@ export const getProviderLogo = (providerId: string) => {
 			return "/jira-logo.png";
 		case "linear":
 			return "/linear-logo.png";
+		case "canny":
+			return "/canny-logo.png";
 		default:
 			return "/placeholder.svg";
 	}
@@ -187,6 +201,10 @@ export const getIntegrationCategory = (providerId: string) => {
 			return IntegrationCategory.analytics;
 		case "stripe":
 			return IntegrationCategory.payment;
+		case "canny":
+			return IntegrationCategory.feedback;
+		case "jira":
+			return IntegrationCategory.project_management;
 		default:
 			return IntegrationCategory.other;
 	}

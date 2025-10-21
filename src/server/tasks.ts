@@ -2,6 +2,7 @@
 
 import { syncAsana } from "@/lib/connectors/asana";
 import { syncJira } from "@/lib/connectors/jira";
+import { syncSlack } from "@/lib/connectors/slack";
 import { prisma } from "@/lib/prisma";
 import { ProjectData } from "@/types/connector";
 
@@ -36,6 +37,10 @@ export async function saveProjects(
 			await syncAsana(organizationId, projs);
 		} else if (sourceTool === "jira") {
 			await syncJira(organizationId, projs);
+		} else if (sourceTool === "slack") {
+			await syncSlack(organizationId, projs);
+		} else if (sourceTool === "canny") {
+			await syncSlack(organizationId, projs);
 		} else {
 			console.error("Sync function not available for ", sourceTool);
 		}

@@ -245,6 +245,7 @@ export async function syncJira(organizationId: string, projs: Project[] = []) {
 					projectId: project.id,
 					sourceTool: "jira",
 				})),
+				skipDuplicates: true,
 			});
 		} catch (error) {
 			console.error(
