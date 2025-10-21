@@ -188,6 +188,7 @@ enum IntegrationCategory {
   project_management
   payment
   analytics
+  feedback
   version_control
   communication
   crm
@@ -272,6 +273,7 @@ model Project {
   tasks        Task[]
   messages     Message[]
   analytics    AnalyticsEvent[]
+  feeds        Feed[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -301,6 +303,7 @@ model Task {
   organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   deploymentEvents DeploymentEvent[]
+  feeds            Feed[]
 
   lastSyncedAt DateTime?
   createdAt    DateTime  @default(now())
@@ -332,6 +335,65 @@ model Message {
   @@unique([externalId, sourceTool])
   @@index([externalId, sourceTool, organizationId]) // Optimize lookups
   @@index([channelId]) // Optimize message queries by channel
+}
+
+// Enum for Feedback severity levels (extensible for future refinements)
+enum Severity {
+  Low
+  Medium
+  High
+}
+
+// Enum for sentiment analysis (derived from NLP in integration engine)
+enum Sentiment {
+  Positive
+  Negative
+  Neutral
+}
+
+// Enum for resolution status (tracks triage progress)
+enum Status {
+  Open
+  InProgress
+  Resolved
+}
+
+model Feed {
+  id             String   @id @default(cuid())
+  organizationId String
+  externalId     String
+  sourceTool     String // e.g., "github"
+  title          String // Raw feedback text (e.g., "App crashes on login")
+  description    String?
+  author         String?
+  authorId       String?
+  owner          String?
+  ownerId        String?
+  category       String?
+  url            String?
+  tags           String[]
+  score          Int?
+  commentsCount  Int?
+  status         String // Tracks status
+  attributes     Json? // Flexible JSONB for extras like customer info
+  projectId      String // Required relation to Project (board)
+  taskId         String? // Optional link to a Task for triage
+
+  //  severity       Severity  @default(Medium) // Enum for prioritization
+  //  sentiment      Sentiment @default(Neutral) // Derived from integration
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade) // Delete feedback if project deleted
+  task    Task?   @relation(fields: [taskId], references: [id]) // Optional triage link
+  //  @@index([severity])
+
+  @@unique([externalId, sourceTool])
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([status])
 }
 
 // Code/CI Category

@@ -9,6 +9,7 @@ import { z } from "zod";
 import { AsanaConnector } from "@/lib/connectors/asana";
 import { SlackConnector } from "@/lib/connectors/slack";
 import { JiraConnector } from "@/lib/connectors/jira";
+import { CannyConnector } from "@/lib/connectors/canny";
 
 // Input validation schema
 const querySchema = z.object({
@@ -160,6 +161,25 @@ export async function GET(
 					total: data.total,
 					totalPages: data.totalPages,
 					hasMore: data.hasMore,
+				};
+			} else if (toolName === "canny") {
+				const connector = new CannyConnector(
+					integration.account.accessToken!
+				);
+
+				const result = await connector.getBoards({
+					page,
+					limit,
+					search,
+				});
+
+				resources = result.resources;
+				pagination = {
+					page: result.page,
+					limit: result.limit,
+					total: result.total,
+					totalPages: result.totalPages,
+					hasMore: result.hasMore,
 				};
 			} else {
 				// Fallback for unsupported tools
