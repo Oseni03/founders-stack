@@ -319,7 +319,8 @@ async function handleDefaultAPIIntegration(
 				new URL(
 					`/dashboard/integrations/${toolName}/onboarding`,
 					origin
-				)
+				),
+				303 // This forces a GET redirect
 			);
 	}
 }
