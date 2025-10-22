@@ -131,6 +131,17 @@ export const INTEGRATIONS: Integration[] = [
 		docsUrl: "https://developers.asana.com/docs",
 	},
 	{
+		id: "jira",
+		name: "Jira",
+		description: "Sync tasks and project updates",
+		category: "project_management",
+		logo: "/jira-logo.png",
+		status: "inactive",
+		authType: "oauth2",
+		lastSyncAt: new Date(),
+		docsUrl: "https://developers.jira.com/docs",
+	},
+	{
 		id: "canny",
 		name: "Canny",
 		description:
