@@ -53,8 +53,6 @@ export class CannyConnector {
 				},
 				body: JSON.stringify({
 					apiKey: this.apiKey,
-					limit,
-					skip: page,
 				}),
 			});
 

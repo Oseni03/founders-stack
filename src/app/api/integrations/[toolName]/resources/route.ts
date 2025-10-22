@@ -164,7 +164,7 @@ export async function GET(
 				};
 			} else if (toolName === "canny") {
 				const connector = new CannyConnector(
-					integration.account.accessToken!
+					integration.account.apiKey!
 				);
 
 				const result = await connector.getBoards({
