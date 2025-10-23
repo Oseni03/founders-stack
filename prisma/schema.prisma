@@ -524,7 +524,7 @@ model Event {
   @@index([createdAt])
 }
 
-// Feedback/Analytics Category
+// Analytics Category
 model AnalyticsEvent {
   id                    String  @id @default(cuid())
   sourceTool            String // e.g., "postHog", "amplitude", "google-analytics"

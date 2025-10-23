@@ -7,6 +7,7 @@ import {
 	DollarSign,
 	FileText,
 	Plug,
+	Send,
 	Settings,
 	Settings2,
 	User,
@@ -22,6 +23,7 @@ import {
 	SidebarRail,
 } from "@/components/ui/sidebar";
 import { usePathname } from "next/navigation";
+import { NavSecondary } from "./nav-secondary";
 
 // This is sample data.
 const dashboardItems = [
@@ -84,6 +86,14 @@ const accountItems = [
 	},
 ];
 
+const navSecondary = [
+	{
+		title: "Feedback",
+		url: "/feedback",
+		icon: Send,
+	},
+];
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const pathname = usePathname();
 	const isAccountPage = pathname.includes("/dashboard/account");
@@ -98,6 +108,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 			</SidebarContent>
 			<SidebarFooter>
 				<NavUser />
+				<NavSecondary items={navSecondary} className="mt-auto" />
 			</SidebarFooter>
 			<SidebarRail />
 		</Sidebar>
