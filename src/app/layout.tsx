@@ -7,7 +7,6 @@ import { OrganizationStoreProvider } from "@/zustand/providers/organization-stor
 import { CodeStoreProvider } from "@/zustand/providers/code-store-provider";
 import { IntegrationsStoreProvider } from "@/zustand/providers/integrations-store-provider";
 import { FinanceStoreProvider } from "@/zustand/providers/finance-store-provider";
-import { AnalyticsStoreProvider } from "@/zustand/providers/analytics-store-provider";
 import { TaskStoreProvider } from "@/zustand/providers/tasks-store-provider";
 
 const geistSans = Geist({
@@ -40,11 +39,9 @@ export default function RootLayout({
 						<IntegrationsStoreProvider>
 							<FinanceStoreProvider>
 								<TaskStoreProvider>
-									<AnalyticsStoreProvider>
-										<CodeStoreProvider>
-											{children}
-										</CodeStoreProvider>
-									</AnalyticsStoreProvider>
+									<CodeStoreProvider>
+										{children}
+									</CodeStoreProvider>
 								</TaskStoreProvider>
 							</FinanceStoreProvider>
 						</IntegrationsStoreProvider>

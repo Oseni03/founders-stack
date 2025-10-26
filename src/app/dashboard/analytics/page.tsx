@@ -1,5 +1,17 @@
+// app/analytics/page.tsx
 "use client";
 
+import { useEffect, useMemo } from "react";
+import Link from "next/link";
+import {
+	ArrowLeft,
+	Eye,
+	Smartphone,
+	Globe,
+	Globe2,
+	MessageSquare,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -7,288 +19,457 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, AlertTriangle } from "lucide-react";
-import {
-	AreaChart,
-	Area,
-	BarChart,
-	Bar,
+	LineChart,
+	Line,
+	PieChart,
+	Pie,
+	Cell,
 	XAxis,
 	YAxis,
 	CartesianGrid,
-	ResponsiveContainer,
 	Tooltip,
-	Legend,
+	ResponsiveContainer,
 } from "recharts";
 import { useAnalyticsStore } from "@/zustand/providers/analytics-store-provider";
-import { useEffect } from "react";
-import { toast } from "sonner";
 
 export default function AnalyticsPage() {
-	const {
-		timeRange,
-		userMetrics,
-		errorMetrics,
-		geoMetrics,
-		pageViewTrends,
-		sessionDurationTrends,
-		errorTrends,
-		isLoading,
-		error,
-		setTimeRange,
-	} = useAnalyticsStore((state) => state);
+	const { data, loading, timeRange, setData, setLoading, setTimeRange } =
+		useAnalyticsStore((state) => state);
 
 	useEffect(() => {
-		if (error) {
-			toast.error(error);
-		}
-	}, [error]);
+		fetchMetrics();
+	}, [timeRange]);
 
-	return (
-		<div className="space-y-6">
-			{/* Header */}
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="text-3xl font-bold tracking-tight">
-						Analytics
-					</h1>
-					<p className="text-muted-foreground mt-1">
-						Monitor user activity, errors, and geolocation
+	const fetchMetrics = async () => {
+		try {
+			setLoading(true);
+			const response = await fetch(`/api/analytics?range=${timeRange}`);
+
+			if (!response.ok) throw new Error("Failed to fetch metrics");
+
+			const fetchedData = await response.json();
+			setData(fetchedData);
+		} catch (err) {
+			console.error("[Analytics] Fetch error:", err);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const COLORS = useMemo(
+		() => [
+			"var(--chart-1)",
+			"var(--chart-2)",
+			"var(--chart-3)",
+			"var(--chart-4)",
+			"var(--chart-5)",
+		],
+		[]
+	);
+
+	if (loading) {
+		return (
+			<div className="flex h-screen items-center justify-center">
+				<div className="text-center">
+					<div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-border border-t-primary" />
+					<p className="text-muted-foreground">
+						Loading analytics...
 					</p>
 				</div>
-				<Select value={timeRange} onValueChange={setTimeRange}>
-					<SelectTrigger className="w-[180px]">
-						<SelectValue placeholder="Select time range" />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="24h">Last 24 hours</SelectItem>
-						<SelectItem value="7d">Last 7 days</SelectItem>
-						<SelectItem value="30d">Last 30 days</SelectItem>
-						<SelectItem value="90d">Last 90 days</SelectItem>
-					</SelectContent>
-				</Select>
 			</div>
+		);
+	}
 
-			{/* Key Metrics */}
-			<div className="grid gap-4 md:grid-cols-3">
-				{isLoading ? (
-					<>
-						<Skeleton className="h-32" />
-						<Skeleton className="h-32" />
-						<Skeleton className="h-32" />
-					</>
-				) : (
-					<>
-						{/* Page Views */}
-						{userMetrics && (
-							<Card>
-								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-									<CardTitle className="text-sm font-medium">
-										Page Views
-									</CardTitle>
-									<Users className="h-4 w-4 text-muted-foreground" />
-								</CardHeader>
-								<CardContent>
-									<div className="text-2xl font-bold">
-										{userMetrics.pageViews.toLocaleString()}
-									</div>
-									<p className="text-xs text-muted-foreground mt-2">
-										{userMetrics.uniqueVisitors} unique
-										visitors
-									</p>
-								</CardContent>
-							</Card>
-						)}
-
-						{/* Session Duration */}
-						{userMetrics && (
-							<Card>
-								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-									<CardTitle className="text-sm font-medium">
-										Avg Session Duration
-									</CardTitle>
-									<Users className="h-4 w-4 text-muted-foreground" />
-								</CardHeader>
-								<CardContent>
-									<div className="text-2xl font-bold">
-										{userMetrics.avgSessionDuration.toFixed(
-											1
-										)}
-										s
-									</div>
-									<p className="text-xs text-muted-foreground mt-2">
-										Average time per session
-									</p>
-								</CardContent>
-							</Card>
-						)}
-
-						{/* Error Count */}
-						{errorMetrics && (
-							<Card>
-								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-									<CardTitle className="text-sm font-medium">
-										Errors
-									</CardTitle>
-									<AlertTriangle className="h-4 w-4 text-muted-foreground" />
-								</CardHeader>
-								<CardContent>
-									<div className="text-2xl font-bold">
-										{errorMetrics.errorCount}
-									</div>
-									<p className="text-xs text-muted-foreground mt-2">
-										{errorMetrics.errorRate.toFixed(2)}%
-										error rate
-									</p>
-								</CardContent>
-							</Card>
-						)}
-					</>
-				)}
+	if (!data) {
+		return (
+			<div className="flex h-screen items-center justify-center">
+				<div className="text-center">
+					<p className="mb-4 text-lg font-semibold text-destructive">
+						Failed to load analytics data
+					</p>
+					<Link href="/dashboard">
+						<Button>Back to Dashboard</Button>
+					</Link>
+				</div>
 			</div>
+		);
+	}
 
-			{/* Charts */}
-			<Tabs defaultValue="users" className="space-y-4">
-				<TabsList>
-					<TabsTrigger value="users">User Analytics</TabsTrigger>
-					<TabsTrigger value="errors">Error Trends</TabsTrigger>
-					<TabsTrigger value="geolocation">Geolocation</TabsTrigger>
-				</TabsList>
+	return (
+		<main className="min-h-screen bg-background">
+			<div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+				{/* Header with Back Button */}
+				<div className="mb-8 flex items-center gap-4">
+					<Link href="/dashboard">
+						<Button variant="ghost" size="icon">
+							<ArrowLeft className="h-5 w-5" />
+						</Button>
+					</Link>
+					<div className="flex-1">
+						<h1 className="text-3xl font-bold text-foreground">
+							Analytics
+						</h1>
+						<p className="mt-1 text-muted-foreground">
+							Event tracking and user behavior analysis
+						</p>
+					</div>
+					<div className="flex gap-2">
+						<Button
+							variant={timeRange === "7d" ? "default" : "outline"}
+							size="sm"
+							onClick={() => setTimeRange("7d")}
+						>
+							7d
+						</Button>
+						<Button
+							variant={
+								timeRange === "30d" ? "default" : "outline"
+							}
+							size="sm"
+							onClick={() => setTimeRange("30d")}
+						>
+							30d
+						</Button>
+						<Button
+							variant={
+								timeRange === "90d" ? "default" : "outline"
+							}
+							size="sm"
+							onClick={() => setTimeRange("90d")}
+						>
+							90d
+						</Button>
+					</div>
+				</div>
 
-				<TabsContent value="users" className="space-y-4">
+				<div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 					<Card>
-						<CardHeader>
-							<CardTitle>Page Views Over Time</CardTitle>
-							<CardDescription>
-								Total page views by date
-							</CardDescription>
+						<CardHeader className="pb-3">
+							<CardTitle className="flex items-center gap-2 text-sm font-medium">
+								<Eye className="h-4 w-4 text-chart-1" />
+								Total Events
+							</CardTitle>
 						</CardHeader>
-						<CardContent className="pl-2">
-							{isLoading ? (
-								<Skeleton className="h-[300px] w-full" />
-							) : (
-								<ResponsiveContainer width="100%" height={300}>
-									<AreaChart data={pageViewTrends}>
-										<CartesianGrid strokeDasharray="3 3" />
-										<XAxis dataKey="timestamp" />
-										<YAxis />
-										<Tooltip />
-										<Area
-											type="monotone"
-											dataKey="value"
-											stroke="#3b82f6"
-											fill="#3b82f6"
-											name="Page Views"
-										/>
-									</AreaChart>
-								</ResponsiveContainer>
-							)}
+						<CardContent>
+							<p className="text-3xl font-bold">
+								{data.summary.totalEvents.toLocaleString()}
+							</p>
+							<p className="mt-1 text-xs text-muted-foreground">
+								All tracked events
+							</p>
 						</CardContent>
 					</Card>
 
 					<Card>
-						<CardHeader>
-							<CardTitle>Session Duration Over Time</CardTitle>
-							<CardDescription>
-								Average session duration by date
-							</CardDescription>
+						<CardHeader className="pb-3">
+							<CardTitle className="flex items-center gap-2 text-sm font-medium">
+								<Eye className="h-4 w-4 text-chart-2" />
+								Page Views
+							</CardTitle>
 						</CardHeader>
-						<CardContent className="pl-2">
-							{isLoading ? (
-								<Skeleton className="h-[300px] w-full" />
-							) : (
-								<ResponsiveContainer width="100%" height={300}>
-									<AreaChart data={sessionDurationTrends}>
-										<CartesianGrid strokeDasharray="3 3" />
-										<XAxis dataKey="timestamp" />
-										<YAxis />
-										<Tooltip />
-										<Area
-											type="monotone"
-											dataKey="value"
-											stroke="#3b82f6"
-											fill="#3b82f6"
-											name="Session Duration (s)"
-										/>
-									</AreaChart>
-								</ResponsiveContainer>
-							)}
+						<CardContent>
+							<p className="text-3xl font-bold">
+								{data.summary.totalPageviews.toLocaleString()}
+							</p>
+							<p className="mt-1 text-xs text-muted-foreground">
+								$pageview events
+							</p>
 						</CardContent>
 					</Card>
-				</TabsContent>
 
-				<TabsContent value="errors" className="space-y-4">
+					<Card>
+						<CardHeader className="pb-3">
+							<CardTitle className="flex items-center gap-2 text-sm font-medium">
+								<Globe className="h-4 w-4 text-chart-3" />
+								Unique Visitors
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<p className="text-3xl font-bold">
+								{data.summary.uniqueVisitors.toLocaleString()}
+							</p>
+							<p className="mt-1 text-xs text-muted-foreground">
+								Unique users
+							</p>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader className="pb-3">
+							<CardTitle className="flex items-center gap-2 text-sm font-medium">
+								<MessageSquare className="h-4 w-4 text-chart-4" />
+								Avg Duration
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<p className="text-3xl font-bold">
+								{data.summary.avgSessionDuration.toFixed(1)}s
+							</p>
+							<p className="mt-1 text-xs text-muted-foreground">
+								Average session
+							</p>
+						</CardContent>
+					</Card>
+				</div>
+
+				<div className="mb-8 grid gap-6 lg:grid-cols-2">
+					{/* Event Types Distribution */}
 					<Card>
 						<CardHeader>
-							<CardTitle>Error Count Over Time</CardTitle>
+							<CardTitle>Event Types Distribution</CardTitle>
 							<CardDescription>
-								Number of errors by date
+								Breakdown of tracked event types
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="pl-2">
-							{isLoading ? (
-								<Skeleton className="h-[300px] w-full" />
-							) : (
-								<ResponsiveContainer width="100%" height={300}>
-									<AreaChart data={errorTrends}>
-										<CartesianGrid strokeDasharray="3 3" />
-										<XAxis dataKey="timestamp" />
-										<YAxis />
-										<Tooltip />
-										<Area
-											type="monotone"
-											dataKey="value"
-											stroke="#ef4444"
-											fill="#ef4444"
-											name="Error Count"
+						<CardContent>
+							<div className="h-80 w-full">
+								<ResponsiveContainer width="100%" height="100%">
+									<PieChart>
+										<Pie
+											data={data.eventTypes}
+											dataKey="count"
+											nameKey="name"
+											cx="50%"
+											cy="50%"
+											outerRadius={100}
+											label={({ name, percentage }) =>
+												`${name} ${percentage}%`
+											}
+										>
+											{data.eventTypes.map((_, index) => (
+												<Cell
+													key={`cell-${index}`}
+													fill={
+														COLORS[
+															index %
+																COLORS.length
+														]
+													}
+												/>
+											))}
+										</Pie>
+										<Tooltip
+											formatter={(value) =>
+												`${value} events`
+											}
 										/>
-									</AreaChart>
+									</PieChart>
 								</ResponsiveContainer>
-							)}
+							</div>
 						</CardContent>
 					</Card>
-				</TabsContent>
 
-				<TabsContent value="geolocation" className="space-y-4">
+					{/* Device Types Distribution */}
 					<Card>
 						<CardHeader>
-							<CardTitle>Page Views by Location</CardTitle>
+							<CardTitle>Device Types</CardTitle>
 							<CardDescription>
-								Distribution of page views by location
+								Traffic by device type
 							</CardDescription>
 						</CardHeader>
-						<CardContent className="pl-2">
-							{isLoading ? (
-								<Skeleton className="h-[300px] w-full" />
-							) : (
-								<ResponsiveContainer width="100%" height={300}>
-									<BarChart data={geoMetrics}>
-										<CartesianGrid strokeDasharray="3 3" />
-										<XAxis dataKey="location" />
-										<YAxis />
-										<Tooltip />
-										<Legend />
-										<Bar
-											dataKey="pageViews"
-											fill="#3b82f6"
-											name="Page Views"
-										/>
-									</BarChart>
-								</ResponsiveContainer>
-							)}
+						<CardContent>
+							<div className="space-y-3">
+								{data.deviceTypes.map((device, index) => (
+									<div
+										key={index}
+										className="flex items-center justify-between rounded-lg border border-border p-3"
+									>
+										<div className="flex items-center gap-2">
+											<Smartphone className="h-4 w-4 text-muted-foreground" />
+											<span className="font-medium">
+												{device.name}
+											</span>
+										</div>
+										<div className="text-right">
+											<p className="font-semibold">
+												{device.count.toLocaleString()}
+											</p>
+											<p className="text-xs text-muted-foreground">
+												{device.percentage}%
+											</p>
+										</div>
+									</div>
+								))}
+							</div>
 						</CardContent>
 					</Card>
-				</TabsContent>
-			</Tabs>
-		</div>
+				</div>
+
+				{/* Event Trends */}
+				<Card className="mb-8">
+					<CardHeader>
+						<CardTitle>Event Trends</CardTitle>
+						<CardDescription>
+							Events and page views over time
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className="h-80 w-full">
+							<ResponsiveContainer width="100%" height="100%">
+								<LineChart data={data.eventTrends}>
+									<CartesianGrid
+										strokeDasharray="3 3"
+										stroke="var(--border)"
+									/>
+									<XAxis
+										dataKey="timestamp"
+										stroke="var(--muted-foreground)"
+										style={{ fontSize: "12px" }}
+									/>
+									<YAxis stroke="var(--muted-foreground)" />
+									<Tooltip
+										contentStyle={{
+											backgroundColor: "var(--card)",
+											border: "1px solid var(--border)",
+											borderRadius: "var(--radius)",
+										}}
+									/>
+									<Line
+										type="monotone"
+										dataKey="pageviews"
+										stroke="var(--chart-1)"
+										strokeWidth={2}
+										dot={false}
+										name="Page Views"
+									/>
+									<Line
+										type="monotone"
+										dataKey="events"
+										stroke="var(--chart-2)"
+										strokeWidth={2}
+										dot={false}
+										name="Events"
+									/>
+								</LineChart>
+							</ResponsiveContainer>
+						</div>
+					</CardContent>
+				</Card>
+
+				<div className="mb-8 grid gap-6 lg:grid-cols-2">
+					{/* Top Pages */}
+					<Card>
+						<CardHeader>
+							<CardTitle>Top Pages</CardTitle>
+							<CardDescription>
+								Most visited pages
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<div className="space-y-3">
+								{data.topPages.map((page, index) => (
+									<div
+										key={index}
+										className="flex items-center justify-between rounded-lg border border-border p-3"
+									>
+										<div className="flex-1">
+											<p className="font-medium text-foreground">
+												{page.pathname}
+											</p>
+											<p className="text-xs text-muted-foreground">
+												Avg duration: {page.avgDuration}
+												s
+											</p>
+										</div>
+										<div className="text-right">
+											<p className="font-semibold">
+												{page.pageviews.toLocaleString()}
+											</p>
+											<p className="text-xs text-muted-foreground">
+												views
+											</p>
+										</div>
+									</div>
+								))}
+							</div>
+						</CardContent>
+					</Card>
+
+					{/* Top Referrers */}
+					<Card>
+						<CardHeader>
+							<CardTitle>Top Referrers</CardTitle>
+							<CardDescription>Traffic sources</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<div className="space-y-3">
+								{data.topReferrers.map((referrer, index) => (
+									<div
+										key={index}
+										className="flex items-center justify-between rounded-lg border border-border p-3"
+									>
+										<div className="flex-1">
+											<p className="font-medium text-foreground">
+												{referrer.referringDomain}
+											</p>
+										</div>
+										<div className="text-right">
+											<p className="font-semibold">
+												{referrer.count.toLocaleString()}
+											</p>
+											<p className="text-xs text-muted-foreground">
+												{referrer.percentage}%
+											</p>
+										</div>
+									</div>
+								))}
+							</div>
+						</CardContent>
+					</Card>
+				</div>
+
+				{/* Geographic Distribution */}
+				<Card className="mb-8">
+					<CardHeader>
+						<CardTitle>Geographic Distribution</CardTitle>
+						<CardDescription>Visitors by country</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className="space-y-3">
+							{data.geoMetrics.map((geo, index) => (
+								<div
+									key={index}
+									className="flex items-center justify-between rounded-lg border border-border p-3"
+								>
+									<div className="flex items-center gap-2">
+										<Globe2 className="h-4 w-4 text-muted-foreground" />
+										<div>
+											<p className="font-medium text-foreground">
+												{geo.geoipCountryName}
+											</p>
+											<p className="text-xs text-muted-foreground">
+												{geo.geoipCountryCode}
+											</p>
+										</div>
+									</div>
+									<div className="text-right">
+										<p className="font-semibold">
+											{geo.count.toLocaleString()}
+										</p>
+										<p className="text-xs text-muted-foreground">
+											{geo.percentage}%
+										</p>
+									</div>
+								</div>
+							))}
+						</div>
+					</CardContent>
+				</Card>
+
+				{/* Insights */}
+				<Card>
+					<CardHeader>
+						<CardTitle>Key Insights</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900">
+							<p className="font-medium">Analysis:</p>
+							<p className="mt-2">{data.insight}</p>
+						</div>
+					</CardContent>
+				</Card>
+			</div>
+		</main>
 	);
 }

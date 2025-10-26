@@ -17,7 +17,6 @@ import { QuickActionsToolbar } from "@/components/dashboard/quick-actions-toolba
 import { SearchStoreProvider } from "@/zustand/providers/search-store-provider";
 import { useIntegrationsStore } from "@/zustand/providers/integrations-store-provider";
 import { useFinanceStore } from "@/zustand/providers/finance-store-provider";
-import { useAnalyticsStore } from "@/zustand/providers/analytics-store-provider";
 import { useCodeStore } from "@/zustand/providers/code-store-provider";
 import { useTaskStore } from "@/zustand/providers/tasks-store-provider";
 
@@ -37,7 +36,6 @@ export default function Page({
 		updateSubscription,
 	} = useOrganizationStore((state) => state);
 	const fetchFinanceData = useFinanceStore((state) => state.fetchFinanceData);
-	const fetchAnalytics = useAnalyticsStore((state) => state.fetchAnalytics);
 	const fetchRepositories = useCodeStore((state) => state.fetchRepositories);
 	const fetchIntegrations = useIntegrationsStore(
 		(state) => state.fetchIntegrations
@@ -97,7 +95,6 @@ export default function Page({
 			if (!session?.user.id) return;
 
 			await fetchFinanceData();
-			await fetchAnalytics();
 			await fetchRepositories();
 			await fetchIntegrations();
 			await fetchTasks();
@@ -105,7 +102,6 @@ export default function Page({
 
 		fetchData();
 	}, [
-		fetchAnalytics,
 		fetchFinanceData,
 		fetchIntegrations,
 		fetchRepositories,

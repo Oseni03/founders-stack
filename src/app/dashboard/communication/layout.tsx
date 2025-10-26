@@ -1,6 +1,6 @@
 import { CommunicationStoreProvider } from "@/zustand/providers/communication-store-provider";
 
-export default function Page({
+export default function CommunicationLayout({
 	children,
 }: Readonly<{
 	children: React.ReactNode;
