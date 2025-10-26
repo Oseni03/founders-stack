@@ -135,3 +135,71 @@ export interface RepositoryHealthData {
 	avgReviewTime: number; // Average in hours
 	testCoverage?: number; // Optional, if available from external tools
 }
+
+// types/code.ts
+export interface Repository {
+	id: string;
+	name: string;
+	owner: string;
+	fullName?: string;
+	language?: string;
+	isPrivate: boolean;
+	defaultBranch?: string;
+	description?: string;
+}
+
+export interface Commit {
+	id: string;
+	message: string;
+	authorName: string;
+	avatarUrl?: string;
+	additions: number;
+	deletions: number;
+	committedAt: string;
+}
+
+export interface PullRequest {
+	id: string;
+	number: number;
+	title: string;
+	status: string;
+	authorName: string;
+	reviewerCount: number;
+	avgReviewTime: number;
+}
+
+export interface Contributor {
+	login: string;
+	name?: string;
+	avatarUrl?: string;
+	contributions: number;
+}
+
+export interface Deployment {
+	id: string;
+	environment: string;
+	status: string;
+	timestamp: string;
+}
+
+export interface RepositoryHealth {
+	healthScore: number;
+	openIssues: number;
+	stalePrs: number;
+	avgReviewTime: number;
+	testCoverage: number;
+}
+
+export interface CodeCIMetrics {
+	repositories: Repository[];
+	commits: number;
+	prs: number;
+	buildStatus: string;
+	buildSuccessRate: number;
+	repositoryHealth: RepositoryHealth;
+	recentCommits: Commit[];
+	recentPullRequests: PullRequest[];
+	topContributors: Contributor[];
+	recentDeploys: Deployment[];
+	insight: string;
+}
