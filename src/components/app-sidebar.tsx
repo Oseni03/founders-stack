@@ -34,10 +34,10 @@ const dashboardItems = [
 		url: "/dashboard",
 	},
 	{
-		id: "tasks",
-		label: "Tasks",
+		id: "project-health",
+		label: "Project Health",
 		icon: CheckSquare,
-		url: "/dashboard/tasks",
+		url: "/dashboard/project-health",
 	},
 	{
 		id: "financials",
