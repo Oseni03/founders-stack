@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
 			}).length;
 
 			// Calculate sentiment (simplified - in production, use NLP analysis)
-			const sentiment = calculateSentiment(messages);
+			const sentiment = await calculateSentiment(messages);
 
 			// Get recent threads with mentions
 			const recentThreads = messages
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
 				});
 
 			// Generate insight
-			const insight = generateInsight(
+			const insight = await generateInsight(
 				messageVolume,
 				unreadMentions,
 				sentiment,

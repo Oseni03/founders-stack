@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
 			};
 
 			// Generate insight
-			const insight = generateFinancialInsight({
+			const insight = await generateFinancialInsight({
 				mrr,
 				churnRate,
 				activeSubscriptions: activeSubscriptions.length,

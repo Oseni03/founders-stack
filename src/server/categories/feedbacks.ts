@@ -19,13 +19,13 @@ export async function updateFeedbackStatus(data: {
 	return feedback;
 }
 
-export function generateFeedbackInsight(metrics: {
+export async function generateFeedbackInsight(metrics: {
 	totalFeedback: number;
 	averageScore: number;
 	topStatus?: string;
 	topCategory?: string;
 	openCount: number;
-}): string {
+}): Promise<string> {
 	const insights = [];
 
 	if (metrics.totalFeedback > 100) {

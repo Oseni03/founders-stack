@@ -41,13 +41,13 @@ export async function updateBalance(data: any) {
 	return balance;
 }
 
-export function generateFinancialInsight(metrics: {
+export async function generateFinancialInsight(metrics: {
 	mrr: number;
 	churnRate: number;
 	activeSubscriptions: number;
 	overdueInvoices: number;
 	balance: number;
-}): string {
+}): Promise<string> {
 	const insights = [];
 
 	if (metrics.mrr > 10000) {

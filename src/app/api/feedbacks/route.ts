@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
 			}));
 
 			// Generate insight
-			const insight = generateFeedbackInsight({
+			const insight = await generateFeedbackInsight({
 				totalFeedback,
 				averageScore,
 				topStatus: feedbackByStatus[0]?.name,

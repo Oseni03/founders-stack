@@ -182,7 +182,7 @@ export async function syncMessages(data: any) {
 	return await Promise.all(upsertPromises);
 }
 
-export function calculateSentiment(messages: any[]): number {
+export async function calculateSentiment(messages: any[]): Promise<number> {
 	if (messages.length === 0) return 0.5;
 
 	// Simplified sentiment analysis
@@ -220,12 +220,12 @@ export function calculateSentiment(messages: any[]): number {
 	return Math.max(0, Math.min(1, normalized));
 }
 
-export function generateInsight(
+export async function generateInsight(
 	messageVolume: number,
 	unreadMentions: number,
 	sentiment: number,
 	channelCount: number
-): string {
+): Promise<string> {
 	const insights = [];
 
 	if (messageVolume > 1000) {
