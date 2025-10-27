@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { OrganizationStoreProvider } from "@/zustand/providers/organization-store-provider";
 import { IntegrationsStoreProvider } from "@/zustand/providers/integrations-store-provider";
+import { DashboardStoreProvider } from "@/zustand/providers/dashboard-store-provider";
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -34,7 +35,9 @@ export default function RootLayout({
 				<ThemeProvider>
 					<OrganizationStoreProvider>
 						<IntegrationsStoreProvider>
-							{children}
+							<DashboardStoreProvider>
+								{children}
+							</DashboardStoreProvider>
 						</IntegrationsStoreProvider>
 					</OrganizationStoreProvider>
 					<Toaster />

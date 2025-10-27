@@ -15,6 +15,7 @@ import { Member, Organization } from "@/types";
 import { useRouter } from "next/navigation";
 import { SearchStoreProvider } from "@/zustand/providers/search-store-provider";
 import { useIntegrationsStore } from "@/zustand/providers/integrations-store-provider";
+import { useDashboardStore } from "@/zustand/providers/dashboard-store-provider";
 
 export default function Page({
 	children,
@@ -34,6 +35,10 @@ export default function Page({
 	const fetchIntegrations = useIntegrationsStore(
 		(state) => state.fetchIntegrations
 	);
+	const { fetchMetrics, searchQuery } = useDashboardStore((state) => ({
+		fetchMetrics: state.fetchData,
+		searchQuery: state.searchQuery,
+	}));
 
 	// Move the state update to useEffect to avoid calling it during render
 	useEffect(() => {
@@ -87,10 +92,11 @@ export default function Page({
 		const fetchData = async () => {
 			if (!session?.user.id) return;
 			await fetchIntegrations();
+			await fetchMetrics();
 		};
 
 		fetchData();
-	}, [fetchIntegrations, session?.user.id]);
+	}, [fetchIntegrations, searchQuery, fetchMetrics, session?.user.id]);
 
 	if (!session?.user.id && !isPending) {
 		router.push("/login"); // Redirect to login if not authenticated
