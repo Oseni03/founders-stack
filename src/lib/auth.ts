@@ -25,6 +25,7 @@ const polarClient = new Polar({
 });
 
 export const auth = betterAuth({
+	trustedOrigins: ["http://localhost:3000"],
 	appName: "Founders' Stack",
 	baseURL: process.env.NEXT_PUBLIC_APP_URL,
 	session: {

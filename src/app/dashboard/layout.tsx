@@ -1,4 +1,3 @@
-// Layout page
 "use client";
 
 import { useEffect } from "react";
@@ -40,9 +39,18 @@ export default function Page({
 		searchQuery: state.searchQuery,
 	}));
 
-	// Move the state update to useEffect to avoid calling it during render
+	// Handle authentication redirect
+	useEffect(() => {
+		if (!session?.user.id && !isPending) {
+			router.push("/login");
+		}
+	}, [session?.user.id, isPending, router]);
+
+	// Fetch active organization
 	useEffect(() => {
 		const fetchActiveOrg = async () => {
+			if (!session?.user.id) return; // Don't fetch if no session
+
 			const { data, error } =
 				await authClient.organization.getFullOrganization();
 
@@ -98,9 +106,13 @@ export default function Page({
 		fetchData();
 	}, [fetchIntegrations, searchQuery, fetchMetrics, session?.user.id]);
 
-	if (!session?.user.id && !isPending) {
-		router.push("/login"); // Redirect to login if not authenticated
-		return null; // Render nothing while redirecting
+	// Show loading state while checking auth or redirecting
+	if (isPending || !session?.user.id) {
+		return (
+			<div className="flex items-center justify-center min-h-screen">
+				<div className="animate-pulse">Loading...</div>
+			</div>
+		);
 	}
 
 	return (

@@ -1,6 +1,12 @@
 "use client";
 
-import { type ReactNode, createContext, useRef, useContext } from "react";
+import {
+	type ReactNode,
+	createContext,
+	useRef,
+	useContext,
+	useCallback,
+} from "react";
 import { useStore } from "zustand";
 import {
 	DashboardState,
@@ -43,5 +49,8 @@ export const useDashboardStore = <T,>(
 		);
 	}
 
-	return useStore(dashboardStoreContext, selector);
+	// Memoize the selector to prevent infinite loops
+	const memoizedSelector = useCallback(selector, [selector]);
+
+	return useStore(dashboardStoreContext, memoizedSelector);
 };
