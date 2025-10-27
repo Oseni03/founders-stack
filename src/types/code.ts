@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Commit, Contributor } from "@prisma/client";
+// import { Commit, Contributor } from "@prisma/client";
 
 export interface PRStatus {
 	open: number;
