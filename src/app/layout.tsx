@@ -6,7 +6,6 @@ import { ThemeProvider } from "@/components/theme/theme-provider";
 import { OrganizationStoreProvider } from "@/zustand/providers/organization-store-provider";
 import { CodeStoreProvider } from "@/zustand/providers/code-store-provider";
 import { IntegrationsStoreProvider } from "@/zustand/providers/integrations-store-provider";
-import { FinanceStoreProvider } from "@/zustand/providers/finance-store-provider";
 import { TaskStoreProvider } from "@/zustand/providers/tasks-store-provider";
 
 const geistSans = Geist({
@@ -37,13 +36,11 @@ export default function RootLayout({
 				<ThemeProvider>
 					<OrganizationStoreProvider>
 						<IntegrationsStoreProvider>
-							<FinanceStoreProvider>
-								<TaskStoreProvider>
-									<CodeStoreProvider>
-										{children}
-									</CodeStoreProvider>
-								</TaskStoreProvider>
-							</FinanceStoreProvider>
+							<TaskStoreProvider>
+								<CodeStoreProvider>
+									{children}
+								</CodeStoreProvider>
+							</TaskStoreProvider>
 						</IntegrationsStoreProvider>
 					</OrganizationStoreProvider>
 					<Toaster />
