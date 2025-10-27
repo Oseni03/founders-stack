@@ -63,7 +63,7 @@ export default function CodeCIPage() {
 			setSelectedRepository(firstId);
 			fetchData(firstId);
 		}
-	}, [selectedRepositoryId, repositories, fetchData, setSelectedRepository]);
+	}, [selectedRepositoryId, repositories]);
 
 	const handleAddRepository = (
 		name: string,

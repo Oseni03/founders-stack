@@ -36,7 +36,7 @@ export default function DashboardContent() {
 
 	useEffect(() => {
 		fetchData();
-	}, [range, searchQuery, fetchData]);
+	}, [range, searchQuery]);
 
 	if (loading) {
 		return (

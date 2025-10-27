@@ -45,7 +45,7 @@ export default function TasksPage() {
 
 	useEffect(() => {
 		fetchData(range);
-	}, [range, fetchData]);
+	}, [range]);
 
 	if (loading) {
 		return (
