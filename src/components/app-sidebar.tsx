@@ -114,8 +114,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				<NavMain items={items} isAccountPage={isAccountPage} />
 			</SidebarContent>
 			<SidebarFooter>
+				<NavSecondary items={navSecondary} />
 				<NavUser />
-				<NavSecondary items={navSecondary} className="mt-auto" />
 			</SidebarFooter>
 			<SidebarRail />
 		</Sidebar>

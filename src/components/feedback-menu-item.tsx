@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
 	Dialog,
+	DialogClose,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
@@ -20,6 +21,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useFeedbackForm } from "@/hooks/use-feedback-form";
+import { SidebarMenuButton } from "./ui/sidebar";
+import { Send } from "lucide-react";
 
 export function FeedbackMenuItem() {
 	const [open, setOpen] = React.useState(false);
@@ -27,18 +30,15 @@ export function FeedbackMenuItem() {
 
 	const handleSubmit = async (values: { title: string; details: string }) => {
 		await onSubmit(values);
-		setOpen(false);
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={setOpen}>
+		<Dialog>
 			<DialogTrigger asChild>
-				<Button
-					className="w-full text-left px-3 py-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
-					onClick={() => setOpen(true)}
-				>
+				<SidebarMenuButton asChild size="sm">
+					<Send />
 					Feedback
-				</Button>
+				</SidebarMenuButton>
 			</DialogTrigger>
 
 			<DialogContent className="sm:max-w-md">
@@ -88,13 +88,11 @@ export function FeedbackMenuItem() {
 						/>
 
 						<div className="flex justify-end space-x-2 pt-2">
-							<Button
-								type="button"
-								variant="outline"
-								onClick={() => setOpen(false)}
-							>
-								Cancel
-							</Button>
+							<DialogClose>
+								<Button type="button" variant="outline">
+									Cancel
+								</Button>
+							</DialogClose>
 							<Button type="submit" disabled={loading}>
 								{loading ? "Submitting..." : "Submit"}
 							</Button>
