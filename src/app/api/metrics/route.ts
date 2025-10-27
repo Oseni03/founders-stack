@@ -6,7 +6,7 @@ import { withAuth } from "@/lib/middleware";
 
 const querySchema = z.object({
 	range: z.enum(["7d", "30d", "90d"]).default("7d"),
-	q: z.string().optional(),
+	q: z.string().optional().nullable(),
 });
 
 // const redis =
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 		const { searchParams } = new URL(req.url);
 		const parsed = querySchema.safeParse({
 			range: searchParams.get("range"),
-			q: searchParams.get("q"),
+			q: searchParams.get("q") || "",
 		});
 		if (!parsed.success) {
 			return NextResponse.json(
