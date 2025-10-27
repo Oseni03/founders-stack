@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/middleware";
-import { deleteRepository, getRepository } from "@/server/code";
+import { deleteRepository, getRepository } from "@/server/categories/code";
 
 export async function GET(
 	request: NextRequest,

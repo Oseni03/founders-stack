@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { withAuth } from "@/lib/middleware";
-import { getEvents } from "@/server/analytics";
+import { getEvents } from "@/server/categories/analytics";
 
 // Define query parameter schema for validation
 const QuerySchema = z.object({

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/middleware";
 import { z } from "zod";
-import { saveRepositories } from "@/server/code";
+import { saveRepositories } from "@/server/categories/code";
 import { RepoData } from "@/types/code";
-import { saveProjects } from "@/server/tasks";
+import { saveProjects } from "@/server/categories/tasks";
 import { ChannelData } from "@/lib/connectors/slack";
 import { ProjectData } from "@/types/connector";
 

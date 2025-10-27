@@ -6,7 +6,7 @@ import {
 	deleteChannel,
 	generateInsight,
 	syncMessages,
-} from "@/server/communication";
+} from "@/server/categories/communication";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/middleware";
 

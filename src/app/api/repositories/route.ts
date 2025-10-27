@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/middleware";
-import { getRepositories } from "@/server/code";
+import { getRepositories } from "@/server/categories/code";
 
 export async function GET(request: NextRequest) {
 	return withAuth(request, async (request, user) => {

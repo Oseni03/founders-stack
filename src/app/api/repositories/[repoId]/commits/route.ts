@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/middleware";
-import { getCommits } from "@/server/code";
+import { getCommits } from "@/server/categories/code";
 
 export async function GET(
 	request: NextRequest,

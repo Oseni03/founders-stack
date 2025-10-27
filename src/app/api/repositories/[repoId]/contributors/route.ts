@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/middleware";
-import { getContributors } from "@/server/code";
+import { getContributors } from "@/server/categories/code";
 
 export async function GET(
 	request: NextRequest,

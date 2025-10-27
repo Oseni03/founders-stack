@@ -1,5 +1,5 @@
 import { withAuth } from "@/lib/middleware";
-import { getTasks } from "@/server/tasks";
+import { getTasks } from "@/server/categories/tasks";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {

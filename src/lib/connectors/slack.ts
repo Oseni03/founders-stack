@@ -9,7 +9,7 @@ import {
 	deleteMessage,
 	updateMessage,
 	updateProject,
-} from "@/server/communication";
+} from "@/server/categories/communication";
 
 export interface ChannelData {
 	externalId: string;
