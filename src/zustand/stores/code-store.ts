@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // lib/stores/useCodeStore.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
