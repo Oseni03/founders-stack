@@ -13,11 +13,8 @@ import { authClient } from "@/lib/auth-client";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { Member, Organization } from "@/types";
 import { useRouter } from "next/navigation";
-import { QuickActionsToolbar } from "@/components/dashboard/quick-actions-toolbar";
 import { SearchStoreProvider } from "@/zustand/providers/search-store-provider";
 import { useIntegrationsStore } from "@/zustand/providers/integrations-store-provider";
-import { useFinanceStore } from "@/zustand/providers/finance-store-provider";
-import { useCodeStore } from "@/zustand/providers/code-store-provider";
 import { useTaskStore } from "@/zustand/providers/tasks-store-provider";
 
 export default function Page({
@@ -35,8 +32,6 @@ export default function Page({
 		setActiveOrganization,
 		updateSubscription,
 	} = useOrganizationStore((state) => state);
-	const fetchFinanceData = useFinanceStore((state) => state.fetchFinanceData);
-	const fetchRepositories = useCodeStore((state) => state.fetchRepositories);
 	const fetchIntegrations = useIntegrationsStore(
 		(state) => state.fetchIntegrations
 	);
@@ -93,21 +88,12 @@ export default function Page({
 	useEffect(() => {
 		const fetchData = async () => {
 			if (!session?.user.id) return;
-
-			await fetchFinanceData();
-			await fetchRepositories();
 			await fetchIntegrations();
 			await fetchTasks();
 		};
 
 		fetchData();
-	}, [
-		fetchFinanceData,
-		fetchIntegrations,
-		fetchRepositories,
-		fetchTasks,
-		session?.user.id,
-	]);
+	}, [fetchIntegrations, fetchTasks, session?.user.id]);
 
 	if (!session?.user.id && !isPending) {
 		router.push("/login"); // Redirect to login if not authenticated
@@ -126,9 +112,6 @@ export default function Page({
 								orientation="vertical"
 								className="mr-2 data-[orientation=vertical]:h-4"
 							/>
-							<div className="ml-auto">
-								<QuickActionsToolbar />
-							</div>
 						</div>
 					</header>
 					<div className="flex flex-1 flex-col gap-4 p-4 pt-0">

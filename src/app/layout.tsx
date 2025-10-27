@@ -4,7 +4,6 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { OrganizationStoreProvider } from "@/zustand/providers/organization-store-provider";
-import { CodeStoreProvider } from "@/zustand/providers/code-store-provider";
 import { IntegrationsStoreProvider } from "@/zustand/providers/integrations-store-provider";
 import { TaskStoreProvider } from "@/zustand/providers/tasks-store-provider";
 
@@ -36,11 +35,7 @@ export default function RootLayout({
 				<ThemeProvider>
 					<OrganizationStoreProvider>
 						<IntegrationsStoreProvider>
-							<TaskStoreProvider>
-								<CodeStoreProvider>
-									{children}
-								</CodeStoreProvider>
-							</TaskStoreProvider>
+							<TaskStoreProvider>{children}</TaskStoreProvider>
 						</IntegrationsStoreProvider>
 					</OrganizationStoreProvider>
 					<Toaster />
