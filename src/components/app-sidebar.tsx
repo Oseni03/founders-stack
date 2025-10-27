@@ -5,9 +5,10 @@ import {
 	CheckSquare,
 	Code,
 	DollarSign,
+	FileEdit,
 	FileText,
+	MessageCircle,
 	Plug,
-	Send,
 	Settings,
 	Settings2,
 	User,
@@ -40,6 +41,12 @@ const dashboardItems = [
 		url: "/dashboard/project-health",
 	},
 	{
+		id: "communication",
+		label: "Communication",
+		icon: MessageCircle,
+		url: "/dashboard/communication",
+	},
+	{
 		id: "financials",
 		label: "Financials",
 		icon: DollarSign,
@@ -52,6 +59,12 @@ const dashboardItems = [
 		url: "/dashboard/code",
 	},
 	{
+		id: "feedback",
+		label: "Feedbacks",
+		icon: FileEdit,
+		url: "/dashboard/feedback",
+	},
+	{
 		id: "integrations",
 		label: "Integrations",
 		icon: Plug,
@@ -62,12 +75,6 @@ const dashboardItems = [
 		label: "Analytics",
 		icon: FileText,
 		url: "/dashboard/analytics",
-	},
-	{
-		id: "settings",
-		label: "Settings",
-		icon: Settings,
-		url: "/dashboard/settings",
 	},
 ];
 
@@ -88,9 +95,9 @@ const accountItems = [
 
 const navSecondary = [
 	{
-		title: "Feedback",
-		url: "/feedback",
-		icon: Send,
+		title: "Settings",
+		icon: Settings,
+		url: "/dashboard/settings",
 	},
 ];
 

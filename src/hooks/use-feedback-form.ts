@@ -1,28 +1,29 @@
+// hooks/useFeedbackForm.ts
 "use client";
 
 import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-const useFeedbackForm = () => {
-	const [title, setTitle] = useState("");
-	const [details, setDetails] = useState("");
+export type FeedbackFormValues = {
+	title: string;
+	details: string;
+};
+
+export function useFeedbackForm() {
+	const form = useForm<FeedbackFormValues>({
+		defaultValues: {
+			title: "",
+			details: "",
+		},
+	});
+
 	const [loading, setLoading] = useState(false);
-	const [status, setStatus] = useState({ type: "", message: "" });
 
-	const handleSubmit = async () => {
-		if (!title.trim() || !details.trim()) {
-			setStatus({
-				type: "error",
-				message: "Please fill in both title and details",
-			});
-			return;
-		}
-
+	const onSubmit = async (values: FeedbackFormValues) => {
 		setLoading(true);
-		setStatus({ type: "", message: "" });
 
 		try {
-			// Replace these with your actual Canny credentials
 			const CANNY_API_KEY = process.env.NEXT_PUBLIC_CANNY_API_KEY;
 			const BOARD_ID = process.env.NEXT_PUBLIC_CANNY_BOARD_ID;
 			const AUTHOR_ID = process.env.NEXT_PUBLIC_CANNY_AUTHOR_ID;
@@ -37,8 +38,8 @@ const useFeedbackForm = () => {
 					body: JSON.stringify({
 						apiKey: CANNY_API_KEY,
 						boardID: BOARD_ID,
-						title: title,
-						details: details,
+						title: values.title,
+						details: values.details,
 						authorID: AUTHOR_ID,
 					}),
 				}
@@ -47,42 +48,18 @@ const useFeedbackForm = () => {
 			const data = await response.json();
 
 			if (response.ok) {
-				setStatus({
-					type: "success",
-					message:
-						"Feedback submitted successfully! Thank you for your input.",
-				});
-				toast.success("Feedback submitted successfully!");
-				setTitle("");
-				setDetails("");
+				toast.success("Thanks for your feedback!");
+				form.reset();
 			} else {
-				setStatus({
-					type: "error",
-					message:
-						data.error ||
-						"Failed to submit feedback. Please try again.",
-				});
+				toast.error(data.error || "Failed to submit feedback.");
 			}
 		} catch (error) {
-			setStatus({
-				type: "error",
-				message:
-					"An error occurred. Please check your API credentials and try again.",
-			});
-			console.error("Submission error:", error);
+			console.error("Feedback error:", error);
+			toast.error("Something went wrong while submitting your feedback.");
 		} finally {
 			setLoading(false);
 		}
 	};
-	return {
-		title,
-		details,
-		loading,
-		status,
-		setTitle,
-		setDetails,
-		handleSubmit,
-	};
-};
 
-export default useFeedbackForm;
+	return { form, onSubmit, loading };
+}

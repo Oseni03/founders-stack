@@ -1,5 +1,5 @@
 import * as React from "react";
-import { type LucideIcon } from "lucide-react";
+import { Send, type LucideIcon } from "lucide-react";
 
 import {
 	SidebarGroup,
@@ -8,6 +8,7 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { FeedbackMenuItem } from "./feedback-menu-item";
 
 export function NavSecondary({
 	items,
@@ -33,6 +34,9 @@ export function NavSecondary({
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 					))}
+					<SidebarMenuItem>
+						<FeedbackMenuItem />
+					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarGroupContent>
 		</SidebarGroup>
