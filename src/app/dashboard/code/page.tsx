@@ -50,6 +50,13 @@ export default function CodeCIPage() {
 	const addRepository = useCodeStore((state) => state.addRepository);
 	const deleteRepository = useCodeStore((state) => state.deleteRepository);
 
+	// Log the store state
+	console.log("📦 Store State:", {
+		repositories,
+		selectedRepositoryId,
+		repositoriesCount: repositories.length,
+	});
+
 	// Local state for data fetching
 	const [data, setData] = useState<CodeCIMetrics | null>(null);
 	const [loading, setLoading] = useState(false);
@@ -71,43 +78,65 @@ export default function CodeCIPage() {
 	}, [setRepositories]);
 
 	const fetchRepoData = useCallback(async (repoId: string) => {
+		console.log("🔵 fetchRepoData called with:", repoId);
 		setLoading(true);
 		setError(null);
 		setData(null); // Clear old data immediately
 		try {
 			const url = `/api/code-ci?repositoryId=${repoId}`;
+			console.log("🔵 Fetching from:", url);
 			const res = await fetch(url);
+			console.log("🔵 Response status:", res.status);
 
 			if (!res.ok) {
 				const txt = await res.text();
+				console.error("🔴 Fetch failed:", txt);
 				throw new Error(txt || `HTTP ${res.status}`);
 			}
 			const payload: CodeCIMetrics = await res.json();
+			console.log("🟢 Received payload:", payload);
 			setData(payload);
+			console.log("🟢 Data set successfully");
 		} catch (err: any) {
+			console.error("🔴 Error in fetchRepoData:", err);
 			setError(err.message);
 			setData(null);
 		} finally {
 			setLoading(false);
+			console.log("🔵 Loading set to false");
 		}
 	}, []);
 
 	// Load repos on mount
 	useEffect(() => {
+		console.log("🟡 Effect 1: Fetching repositories");
 		fetchRepositories();
 	}, [fetchRepositories]);
 
 	// Auto-select first repo
 	useEffect(() => {
+		console.log("🟡 Effect 2: Auto-select check", {
+			selectedRepositoryId,
+			repositoriesLength: repositories.length,
+			firstRepo: repositories[0]?.id,
+		});
 		if (!selectedRepositoryId && repositories.length > 0) {
+			console.log(
+				"🟢 Auto-selecting first repository:",
+				repositories[0].id
+			);
 			setSelectedRepository(repositories[0].id);
 		}
 	}, [repositories, selectedRepositoryId, setSelectedRepository]);
 
 	// Fetch data when repo is selected
 	useEffect(() => {
+		console.log("🟡 Effect 3: Fetch data check", { selectedRepositoryId });
 		if (selectedRepositoryId) {
+			console.log("🟢 Calling fetchRepoData for:", selectedRepositoryId);
 			fetchRepoData(selectedRepositoryId);
+		} else {
+			console.log("⚪ No repository selected yet");
 		}
 	}, [selectedRepositoryId, fetchRepoData]);
 
