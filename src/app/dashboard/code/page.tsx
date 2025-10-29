@@ -83,18 +83,26 @@ export default function CodeCIPage() {
 			setLoading(true);
 			setError(null);
 			try {
-				const res = await fetch(`/api/code-ci?repositoryId=${repoId}`);
+				const url = `/api/code-ci?repositoryId=${repoId}`;
+				console.log("Fetching from:", url);
+				const res = await fetch(url);
+				console.log("Response status:", res.status);
+
 				if (!res.ok) {
 					const txt = await res.text();
+					console.error("Fetch failed:", txt);
 					throw new Error(txt || `HTTP ${res.status}`);
 				}
 				const payload: CodeCIMetrics = await res.json();
 				setData(payload);
+				console.log("Data set successfully");
 			} catch (err: any) {
+				console.error("Error in fetchRepoData:", err);
 				setError(err.message);
 				setData(null);
 			} finally {
 				setLoading(false);
+				console.log("Loading set to false");
 			}
 		},
 		[setLoading, setError, setData]
@@ -108,14 +116,21 @@ export default function CodeCIPage() {
 
 	/* 2. Auto-select first repo after repos are loaded */
 	useEffect(() => {
+		console.log("Effect 2 - Auto-select:", {
+			selectedRepositoryId,
+			repositoriesLength: repositories.length,
+		});
 		if (!selectedRepositoryId && repositories.length > 0) {
+			console.log("Auto-selecting first repository:", repositories[0].id);
 			setSelectedRepository(repositories[0].id);
 		}
 	}, [repositories, selectedRepositoryId, setSelectedRepository]);
 
 	/* 3. Fetch repo data when a repo is selected - SINGLE useEffect */
 	useEffect(() => {
+		console.log("Effect 3 - Fetch data:", { selectedRepositoryId });
 		if (selectedRepositoryId) {
+			console.log("Calling fetchRepoData for:", selectedRepositoryId);
 			fetchRepoData(selectedRepositoryId);
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
