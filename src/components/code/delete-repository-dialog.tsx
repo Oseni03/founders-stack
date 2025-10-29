@@ -26,7 +26,7 @@ interface DeleteRepositoryDialogProps {
 export function DeleteRepositoryDialog({
 	repository,
 }: DeleteRepositoryDialogProps) {
-	const deleteRepository = useCodeStore((state) => state.deleteRepository);
+	const removeRepository = useCodeStore((state) => state.removeRepository);
 
 	const [open, setOpen] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
@@ -34,7 +34,18 @@ export function DeleteRepositoryDialog({
 	const handleDelete = async () => {
 		setIsDeleting(true);
 		try {
-			await deleteRepository(repository.id);
+			const response = await fetch("/api/code-ci/repositories", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					action: "deleteRepository",
+					data: { repositoryId: repository.id },
+				}),
+			});
+
+			if (!response.ok) throw new Error("Failed to delete repository");
+
+			removeRepository(repository.id);
 			toast.success("Repository deleted successfully");
 			setOpen(false);
 		} catch (error) {

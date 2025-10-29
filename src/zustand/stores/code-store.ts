@@ -11,7 +11,7 @@ export interface CodeState {
 	setRepositories: (repos: Repository[]) => void;
 	setSelectedRepository: (id: string) => void;
 	addRepository: (repo: Repository) => void;
-	deleteRepository: (id: string) => void;
+	removeRepository: (id: string) => void;
 }
 
 /**
@@ -49,7 +49,7 @@ export const createCodeStore = () => {
 						state.repositories.push(repo);
 					}),
 
-				deleteRepository: (id) =>
+				removeRepository: (id) =>
 					set((state) => {
 						state.repositories = state.repositories.filter(
 							(r) => r.id !== id
