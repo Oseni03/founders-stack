@@ -135,14 +135,8 @@ export async function POST(request: NextRequest) {
 		const { action, data } = body;
 
 		switch (action) {
-			case "createChannel":
-				const channel = await createChannel(data);
-				return NextResponse.json({
-					success: true,
-					channel,
-				});
 			case "deleteChannel":
-				await deleteChannel(data);
+				await deleteChannel(data.channelId);
 				return NextResponse.json({
 					success: true,
 				});

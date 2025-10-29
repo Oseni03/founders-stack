@@ -27,21 +27,26 @@ import {
 	Tooltip,
 	ResponsiveContainer,
 } from "recharts";
-import { ChannelManager } from "@/components/dashboard/channel-manager";
+import { ChannelManager } from "@/components/communication/channel-manager";
 import { useCommunicationStore } from "@/zustand/providers/communication-store-provider";
-import { toast } from "sonner";
 
 export default function CommunicationPage() {
 	const data = useCommunicationStore((state) => state.data);
 	const loading = useCommunicationStore((state) => state.loading);
-	const selectedChannelId = useCommunicationStore((state) => state.selectedChannelId);
-	const showAllMessages = useCommunicationStore((state) => state.showAllMessages);
+	const selectedChannelId = useCommunicationStore(
+		(state) => state.selectedChannelId
+	);
+	const showAllMessages = useCommunicationStore(
+		(state) => state.showAllMessages
+	);
 	const setData = useCommunicationStore((state) => state.setData);
 	const setLoading = useCommunicationStore((state) => state.setLoading);
-	const setSelectedChannelId = useCommunicationStore((state) => state.setSelectedChannelId);
-	const setShowAllMessages = useCommunicationStore((state) => state.setShowAllMessages);
-	// const addChannel = useCommunicationStore((state) => state.addChannel);
-	const removeChannel = useCommunicationStore((state) => state.removeChannel);
+	const setSelectedChannelId = useCommunicationStore(
+		(state) => state.setSelectedChannelId
+	);
+	const setShowAllMessages = useCommunicationStore(
+		(state) => state.setShowAllMessages
+	);
 
 	useEffect(() => {
 		fetchMetrics();
@@ -60,43 +65,6 @@ export default function CommunicationPage() {
 			console.error("[Communication] Fetch error:", err);
 		} finally {
 			setLoading(false);
-		}
-	};
-
-	const handleAddChannel = async (name: string, description: string) => {
-		try {
-			console.log("Creating channel:", name, description);
-
-			// const newChannel = {
-			// 	id: result.channel.id,
-			// 	name: result.channel.name,
-			// 	description: result.channel.description || "",
-			// };
-
-			// addChannel(newChannel);
-		} catch (err) {
-			console.error("[Communication] Create channel error:", err);
-			toast.error("Failed to create channel");
-		}
-	};
-
-	const handleDeleteChannel = async (channelId: string) => {
-		try {
-			const response = await fetch("/api/communication", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					action: "deleteChannel",
-					data: { channelId },
-				}),
-			});
-
-			if (!response.ok) throw new Error("Failed to delete channel");
-
-			removeChannel(channelId);
-		} catch (err) {
-			console.error("[Communication] Delete channel error:", err);
-			toast.error("Failed to delete channel");
 		}
 	};
 
@@ -200,8 +168,6 @@ export default function CommunicationPage() {
 									channels={data.channels}
 									selectedChannelId={selectedChannelId || ""}
 									onSelectChannel={setSelectedChannelId}
-									onAddChannel={handleAddChannel}
-									onDeleteChannel={handleDeleteChannel}
 								/>
 							</CardContent>
 						</Card>

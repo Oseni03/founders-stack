@@ -137,13 +137,10 @@ export async function createChannel(data: any) {
 	return channel;
 }
 
-export async function deleteChannel(data: any) {
-	const { channelId } = data;
-
+export async function deleteChannel(channelId: string) {
 	// Soft delete by updating status
-	await prisma.project.update({
+	await prisma.project.delete({
 		where: { id: channelId },
-		data: { status: "archived" },
 	});
 }
 
