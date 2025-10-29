@@ -35,13 +35,11 @@ import { useProjectStore } from "@/zustand/providers/project-store-provider";
  * Comprehensive view of task management, velocity, and project status
  */
 export default function TasksPage() {
-	const { data, loading, error, range, fetchData } = useProjectStore((s) => ({
-		data: s.data,
-		loading: s.loading,
-		error: s.error,
-		range: s.range,
-		fetchData: s.fetchData,
-	}));
+	const data = useProjectStore((s) => s.data);
+	const loading = useProjectStore((s) => s.loading);
+	const error = useProjectStore((s) => s.error);
+	const range = useProjectStore((s) => s.range);
+	const fetchData = useProjectStore((s) => s.fetchData);
 
 	useEffect(() => {
 		fetchData(range);

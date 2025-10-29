@@ -35,9 +35,9 @@ export function FeedbackMenuItem() {
 	return (
 		<Dialog>
 			<DialogTrigger asChild>
-				<SidebarMenuButton asChild size="sm">
+				<SidebarMenuButton size="sm">
 					<Send />
-					Feedback
+					<span>Feedback</span>
 				</SidebarMenuButton>
 			</DialogTrigger>
 
@@ -88,7 +88,7 @@ export function FeedbackMenuItem() {
 						/>
 
 						<div className="flex justify-end space-x-2 pt-2">
-							<DialogClose>
+							<DialogClose asChild>
 								<Button type="button" variant="outline">
 									Cancel
 								</Button>

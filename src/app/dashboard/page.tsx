@@ -14,29 +14,19 @@ import { Search, Calendar } from "lucide-react";
 import { useDashboardStore } from "@/zustand/providers/dashboard-store-provider";
 
 export default function DashboardContent() {
-	const {
-		data,
-		loading,
-		error,
-		range,
-		searchQuery,
-		setRange,
-		setSearchQuery,
-		fetchData,
-	} = useDashboardStore((s) => ({
-		data: s.data,
-		loading: s.loading,
-		error: s.error,
-		range: s.range,
-		searchQuery: s.searchQuery,
-		setRange: s.setRange,
-		setSearchQuery: s.setSearchQuery,
-		fetchData: s.fetchData,
-	}));
+	// Split into individual selectors instead of selecting an object
+	const data = useDashboardStore((s) => s.data);
+	const loading = useDashboardStore((s) => s.loading);
+	const error = useDashboardStore((s) => s.error);
+	const range = useDashboardStore((s) => s.range);
+	const searchQuery = useDashboardStore((s) => s.searchQuery);
+	const setRange = useDashboardStore((s) => s.setRange);
+	const setSearchQuery = useDashboardStore((s) => s.setSearchQuery);
+	const fetchData = useDashboardStore((s) => s.fetchData);
 
 	useEffect(() => {
 		fetchData();
-	}, [range, searchQuery]);
+	}, [range, searchQuery, fetchData]);
 
 	if (loading) {
 		return (

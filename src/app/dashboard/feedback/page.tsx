@@ -34,18 +34,16 @@ import { Badge } from "@/components/ui/badge";
 import { useFeedbackStore } from "@/zustand/providers/feedback-store-provider";
 
 export default function FeedbackPage() {
-	const {
-		data,
-		loading,
-		timeRange,
-		selectedStatus,
-		selectedCategory,
-		setData,
-		setLoading,
-		setTimeRange,
-		setSelectedStatus,
-		setSelectedCategory,
-	} = useFeedbackStore((state) => state);
+	const data = useFeedbackStore((state)=>state.data)
+	const loading = useFeedbackStore((state)=>state.loading)
+	const timeRange = useFeedbackStore((state)=>state.timeRange)
+	const selectedStatus = useFeedbackStore((state)=>state.selectedStatus)
+	const selectedCategory = useFeedbackStore((state)=>state.selectedCategory)
+	const setData = useFeedbackStore((state)=>state.setData)
+	const setLoading = useFeedbackStore((state)=>state.setLoading)
+	const setTimeRange = useFeedbackStore((state)=>state.setTimeRange)
+	const setSelectedStatus = useFeedbackStore((state)=>state.setSelectedStatus)
+	const setSelectedCategory = useFeedbackStore((state)=>state.setSelectedCategory)
 
 	useEffect(() => {
 		fetchMetrics();

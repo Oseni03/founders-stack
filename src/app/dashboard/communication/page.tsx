@@ -32,18 +32,16 @@ import { useCommunicationStore } from "@/zustand/providers/communication-store-p
 import { toast } from "sonner";
 
 export default function CommunicationPage() {
-	const {
-		data,
-		loading,
-		selectedChannelId,
-		showAllMessages,
-		setData,
-		setLoading,
-		setSelectedChannelId,
-		setShowAllMessages,
-		addChannel,
-		removeChannel,
-	} = useCommunicationStore((state) => state);
+	const data = useCommunicationStore((state) => state.data);
+	const loading = useCommunicationStore((state) => state.loading);
+	const selectedChannelId = useCommunicationStore((state) => state.selectedChannelId);
+	const showAllMessages = useCommunicationStore((state) => state.showAllMessages);
+	const setData = useCommunicationStore((state) => state.setData);
+	const setLoading = useCommunicationStore((state) => state.setLoading);
+	const setSelectedChannelId = useCommunicationStore((state) => state.setSelectedChannelId);
+	const setShowAllMessages = useCommunicationStore((state) => state.setShowAllMessages);
+	// const addChannel = useCommunicationStore((state) => state.addChannel);
+	const removeChannel = useCommunicationStore((state) => state.removeChannel);
 
 	useEffect(() => {
 		fetchMetrics();

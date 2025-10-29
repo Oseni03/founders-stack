@@ -34,10 +34,8 @@ export default function Page({
 	const fetchIntegrations = useIntegrationsStore(
 		(state) => state.fetchIntegrations
 	);
-	const { fetchMetrics, searchQuery } = useDashboardStore((state) => ({
-		fetchMetrics: state.fetchData,
-		searchQuery: state.searchQuery,
-	}));
+	const fetchMetrics = useDashboardStore((state) => state.fetchData)
+	const searchQuery = useDashboardStore((state) => state.searchQuery)
 
 	// Handle authentication redirect
 	useEffect(() => {

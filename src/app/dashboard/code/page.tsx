@@ -36,34 +36,70 @@ import {
 import { RepositoryManager } from "@/components/dashboard/repository-manager";
 import { useCodeStore } from "@/zustand/providers/code-store-provider";
 import Image from "next/image";
+import { Repository } from "@/types/code";
 
 /**
  * Code/CI Detail Page
  * Comprehensive view of build status, commits, PRs, contributors, and repository health
  */
 export default function CodeCIPage() {
-	const {
-		repositories,
-		selectedRepositoryId,
-		data,
-		loading,
-		error,
-		setSelectedRepository,
-		fetchData,
-		addRepository,
-		deleteRepository,
-	} = useCodeStore((state) => state);
+	const repositories = useCodeStore((state) => state.repositories);
+	const selectedRepositoryId = useCodeStore((state) => state.selectedRepositoryId);
+	const data = useCodeStore((state) => state.data);
+	const loading = useCodeStore((state) => state.loading);
+	const setLoading = useCodeStore((state) => state.setLoading);
+	const setData = useCodeStore((state) => state.setData);
+	const setError = useCodeStore((state) => state.setError);
+	const error = useCodeStore((state) => state.error);
+	const setSelectedRepository = useCodeStore((state) => state.setSelectedRepository);
+	const setRepositories = useCodeStore((state) => state.setRepositories); // Add this
+	const addRepository = useCodeStore((state) => state.addRepository);
+	const deleteRepository = useCodeStore((state) => state.deleteRepository);
 
-	// Fetch on mount and when repo changes
+	// Fetch repositories on mount
 	useEffect(() => {
-		if (selectedRepositoryId) {
-			fetchData(selectedRepositoryId);
-		} else if (repositories.length > 0) {
-			const firstId = repositories[0].id;
-			setSelectedRepository(firstId);
-			fetchData(firstId);
+		const fetchRepositories = async () => {
+			try {
+				const res = await fetch('/api/code-ci/repositories'); // Your API endpoint
+				if (!res.ok) throw new Error('Failed to fetch repositories');
+				const repos = await res.json();
+				setRepositories(repos as Repository[]);
+			} catch (err: any) {
+				console.error('Failed to load repositories:', err);
+				setError(err.message);
+			}
+		};
+
+		fetchRepositories();
+	}, [setRepositories, setError]);
+
+	// Auto-select first repository if none selected
+	useEffect(() => {
+		if (!selectedRepositoryId && repositories.length > 0) {
+			setSelectedRepository(repositories[0].id);
+			fetchData(repositories[0].id);
 		}
-	}, [selectedRepositoryId, repositories]);
+	}, [selectedRepositoryId, repositories, setSelectedRepository]);
+
+	const fetchData = async (repositoryId: string) => {
+		setLoading(true);
+		setError(null);
+		try {
+			const res = await fetch(
+				`/api/code-ci?repositoryId=${repositoryId}`
+			);
+			if (!res.ok) {
+				const err = await res.text();
+				throw new Error(err || "Failed to fetch");
+			}
+			const data = await res.json();
+			setData(data);
+		} catch (err: any) {
+			setError(err.message);
+		} finally {
+			setLoading(false);
+		}
+	};
 
 	const handleAddRepository = (
 		name: string,
@@ -98,6 +134,7 @@ export default function CodeCIPage() {
 	}
 
 	if (error || !data) {
+		console.log("Code page error: ", error)
 		return (
 			<div className="flex h-screen items-center justify-center">
 				<div className="text-center">
@@ -594,7 +631,7 @@ export default function CodeCIPage() {
 																}{" "}
 																reviewer
 																{pr.reviewerCount !==
-																1
+																	1
 																	? "s"
 																	: ""}{" "}
 																•{" "}
@@ -702,14 +739,13 @@ export default function CodeCIPage() {
 												</p>
 											</div>
 											<span
-												className={`rounded-full px-3 py-1 text-xs font-semibold ${
-													deploy.status === "success"
-														? "bg-green-100 text-green-700"
-														: deploy.status ===
-															  "failed"
-															? "bg-red-100 text-red-700"
-															: "bg-yellow-100 text-yellow-700"
-												}`}
+												className={`rounded-full px-3 py-1 text-xs font-semibold ${deploy.status === "success"
+													? "bg-green-100 text-green-700"
+													: deploy.status ===
+														"failed"
+														? "bg-red-100 text-red-700"
+														: "bg-yellow-100 text-yellow-700"
+													}`}
 											>
 												{deploy.status
 													.charAt(0)

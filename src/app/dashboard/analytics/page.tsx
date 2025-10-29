@@ -1,7 +1,7 @@
 // app/analytics/page.tsx
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import {
 	ArrowLeft,
@@ -34,14 +34,14 @@ import {
 import { useAnalyticsStore } from "@/zustand/providers/analytics-store-provider";
 
 export default function AnalyticsPage() {
-	const { data, loading, timeRange, setData, setLoading, setTimeRange } =
-		useAnalyticsStore((state) => state);
+	const data = useAnalyticsStore((state) => state.data);
+	const loading = useAnalyticsStore((state) => state.loading);
+	const timeRange = useAnalyticsStore((state) => state.timeRange);
+	const setData = useAnalyticsStore((state) => state.setData);
+	const setLoading = useAnalyticsStore((state) => state.setLoading);
+	const setTimeRange = useAnalyticsStore((state) => state.setTimeRange);
 
-	useEffect(() => {
-		fetchMetrics();
-	}, [timeRange]);
-
-	const fetchMetrics = async () => {
+	const fetchMetrics = useCallback(async () => {
 		try {
 			setLoading(true);
 			const response = await fetch(`/api/analytics?range=${timeRange}`);
@@ -55,7 +55,11 @@ export default function AnalyticsPage() {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [timeRange, setData, setLoading]);
+
+	useEffect(() => {
+		fetchMetrics();
+	}, [fetchMetrics]);
 
 	const COLORS = useMemo(
 		() => [
@@ -81,7 +85,7 @@ export default function AnalyticsPage() {
 		);
 	}
 
-	if (!data) {
+	if (!data || !data.summary) {
 		return (
 			<div className="flex h-screen items-center justify-center">
 				<div className="text-center">
@@ -242,8 +246,8 @@ export default function AnalyticsPage() {
 													key={`cell-${index}`}
 													fill={
 														COLORS[
-															index %
-																COLORS.length
+														index %
+														COLORS.length
 														]
 													}
 												/>

@@ -50,15 +50,191 @@ export async function GET(request: NextRequest) {
 			// Fetch analytics events from Prisma
 			const events = await getEvents(user.organizationId, startDate);
 
-			// Transform events to match frontend expectations
-			const transformedEvents = events.map((event) => ({
-				...event,
-				timestamp: event.timestamp.toISOString(),
-				createdAt: event.createdAt.toISOString(),
-				updatedAt: event.updatedAt.toISOString(),
-			}));
+			// Calculate summary metrics
+			const totalEvents = events.length;
+			const totalPageviews = events.filter(
+				(e) => e.eventType === "$pageview"
+			).length;
+			const uniqueVisitors = new Set(events.map((e) => e.externalId))
+				.size;
+			const avgSessionDuration =
+				events.reduce((sum, e) => sum + (e.duration || 0), 0) /
+				events.length || 0;
 
-			return NextResponse.json(transformedEvents, { status: 200 });
+			// Calculate event types distribution
+			const eventTypeCounts = events.reduce(
+				(acc, e) => {
+					const eventType = e.eventType || "Unknown";
+					acc[eventType] = (acc[eventType] || 0) + 1;
+					return acc;
+				},
+				{} as Record<string, number>
+			);
+
+			const eventTypes = Object.entries(eventTypeCounts).map(
+				([name, count]) => ({
+					name,
+					count,
+					percentage: Math.round((count / totalEvents) * 100),
+				})
+			);
+
+			// Calculate device types distribution
+			const deviceTypeCounts = events.reduce(
+				(acc, e) => {
+					const device = e.deviceType || "Unknown";
+					acc[device] = (acc[device] || 0) + 1;
+					return acc;
+				},
+				{} as Record<string, number>
+			);
+
+			const deviceTypes = Object.entries(deviceTypeCounts).map(
+				([name, count]) => ({
+					name,
+					count,
+					percentage: Math.round((count / totalEvents) * 100),
+				})
+			);
+
+			// Calculate top pages
+			const pageViewCounts = events
+				.filter((e) => e.eventType === "$pageview")
+				.reduce(
+					(acc, e) => {
+						if (!e.pathname) return acc;
+						if (!acc[e.pathname]) {
+							acc[e.pathname] = {
+								count: 0,
+								totalDuration: 0,
+							};
+						}
+						acc[e.pathname].count++;
+						acc[e.pathname].totalDuration += e.duration || 0;
+						return acc;
+					},
+					{} as Record<string, { count: number; totalDuration: number }>
+				);
+
+			const topPages = Object.entries(pageViewCounts)
+				.map(([pathname, data]) => ({
+					pathname,
+					pageviews: data.count,
+					avgDuration: Math.round(data.totalDuration / data.count),
+				}))
+				.sort((a, b) => b.pageviews - a.pageviews)
+				.slice(0, 10);
+
+			// Calculate top referrers
+			const referrerCounts = events.reduce(
+				(acc, e) => {
+					const domain = e.referringDomain || "Direct";
+					acc[domain] = (acc[domain] || 0) + 1;
+					return acc;
+				},
+				{} as Record<string, number>
+			);
+
+			const topReferrers = Object.entries(referrerCounts)
+				.map(([referringDomain, count]) => ({
+					referringDomain,
+					count,
+					percentage: Math.round((count / totalEvents) * 100),
+				}))
+				.sort((a, b) => b.count - a.count)
+				.slice(0, 10);
+
+			// Calculate geographic metrics
+			const geoCounts = events.reduce(
+				(acc, e) => {
+					const key = `${e.geoipCountryName || "Unknown"}_${e.geoipCountryCode || ""}`;
+					if (!acc[key]) {
+						acc[key] = {
+							geoipCountryName: e.geoipCountryName || "Unknown",
+							geoipCountryCode: e.geoipCountryCode || "",
+							count: 0,
+						};
+					}
+					acc[key].count++;
+					return acc;
+				},
+				{} as Record<string, { geoipCountryName: string; geoipCountryCode: string; count: number }>
+			);
+
+			const geoMetrics = Object.values(geoCounts)
+				.map((geo) => ({
+					...geo,
+					percentage: Math.round((geo.count / totalEvents) * 100),
+				}))
+				.sort((a, b) => b.count - a.count)
+				.slice(0, 10);
+
+			// Calculate browser languages
+			const languageCounts = events.reduce(
+				(acc, e) => {
+					const lang = e.browserLanguagePrefix || "Unknown";
+					acc[lang] = (acc[lang] || 0) + 1;
+					return acc;
+				},
+				{} as Record<string, number>
+			);
+
+			const browserLanguages = Object.entries(languageCounts)
+				.map(([language, count]) => ({
+					language,
+					count,
+					percentage: Math.round((count / totalEvents) * 100),
+				}))
+				.sort((a, b) => b.count - a.count)
+				.slice(0, 10);
+
+			// Calculate event trends (group by day)
+			const trendMap = events.reduce(
+				(acc, e) => {
+					const date = new Date(e.timestamp).toISOString().split("T")[0];
+					if (!acc[date]) {
+						acc[date] = { pageviews: 0, events: 0 };
+					}
+					acc[date].events++;
+					if (e.eventType === "$pageview") {
+						acc[date].pageviews++;
+					}
+					return acc;
+				},
+				{} as Record<string, { pageviews: number; events: number }>
+			);
+
+			const eventTrends = Object.entries(trendMap)
+				.map(([timestamp, data]) => ({
+					timestamp,
+					...data,
+				}))
+				.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+			// Generate insight
+			const topPage = topPages[0]?.pathname || "N/A";
+			const topReferrer = topReferrers[0]?.referringDomain || "Direct";
+			const insight = `Your most visited page is "${topPage}" with ${topPages[0]?.pageviews || 0} views. Most traffic comes from ${topReferrer}. You have ${uniqueVisitors} unique visitors with an average session duration of ${avgSessionDuration.toFixed(1)}s.`;
+
+			const analyticsData = {
+				timeRange: range,
+				summary: {
+					totalEvents,
+					totalPageviews,
+					uniqueVisitors,
+					avgSessionDuration,
+				},
+				eventTypes,
+				deviceTypes,
+				topPages,
+				topReferrers,
+				geoMetrics,
+				browserLanguages,
+				eventTrends,
+				insight,
+			};
+
+			return NextResponse.json(analyticsData, { status: 200 });
 		} catch (error) {
 			console.error(
 				"[API_ANALYTICS] Error fetching analytics events:",

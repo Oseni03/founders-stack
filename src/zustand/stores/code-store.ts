@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// lib/stores/useCodeStore.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
@@ -20,7 +19,6 @@ export interface CodeState {
 	setData: (data: CodeCIMetrics | null) => void;
 	setLoading: (loading: boolean) => void;
 	setError: (error: string | null) => void;
-	fetchData: (repositoryId: string) => Promise<void>;
 }
 
 /**
@@ -80,27 +78,6 @@ export const createCodeStore = () => {
 					set((state) => {
 						state.error = error;
 					}),
-
-				fetchData: async (repositoryId: string) => {
-					const { setLoading, setData, setError } = get();
-					setLoading(true);
-					setError(null);
-					try {
-						const res = await fetch(
-							`/api/code-ci?repositoryId=${repositoryId}`
-						);
-						if (!res.ok) {
-							const err = await res.text();
-							throw new Error(err || "Failed to fetch");
-						}
-						const data: CodeCIMetrics = await res.json();
-						setData(data);
-					} catch (err: any) {
-						setError(err.message);
-					} finally {
-						setLoading(false);
-					}
-				},
 			})),
 			{
 				name: "code-store",

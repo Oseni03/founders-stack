@@ -75,6 +75,13 @@ export function FinancialStatusCard({ data }: FinancialStatusCardProps) {
 									style={{ fontSize: "12px" }}
 								/>
 								<YAxis
+									yAxisId="left"
+									stroke="var(--muted-foreground)"
+									style={{ fontSize: "12px" }}
+								/>
+								<YAxis
+									yAxisId="right"
+									orientation="right"
 									stroke="var(--muted-foreground)"
 									style={{ fontSize: "12px" }}
 								/>

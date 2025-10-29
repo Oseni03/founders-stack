@@ -31,8 +31,12 @@ import {
 import { useFinanceStore } from "@/zustand/providers/finance-store-provider";
 
 export default function FinancialStatusPage() {
-	const { data, loading, timeRange, setData, setLoading, setTimeRange } =
-		useFinanceStore((state) => state);
+	const data = useFinanceStore((state)=>state.data)
+	const loading = useFinanceStore((state)=>state.loading)
+	const timeRange = useFinanceStore((state)=>state.timeRange)
+	const setData = useFinanceStore((state)=>state.setData)
+	const setLoading = useFinanceStore((state)=>state.setLoading)
+	const setTimeRange = useFinanceStore((state)=>state.setTimeRange)
 
 	useEffect(() => {
 		fetchMetrics();
