@@ -6,37 +6,22 @@ import Link from "next/link";
 import {
 	ArrowLeft,
 	GitBranch,
-	CheckCircle2,
-	AlertCircle,
 	Zap,
-	GitCommit,
-	GitPullRequest,
-	Users,
+	CheckCircle2,
 	Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import {
-	BarChart,
-	Bar,
-	LineChart,
-	Line,
-	XAxis,
-	YAxis,
-	CartesianGrid,
-	Tooltip,
-	ResponsiveContainer,
-} from "recharts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RepositoryManager } from "@/components/dashboard/repository-manager";
 import { useCodeStore } from "@/zustand/providers/code-store-provider";
-import Image from "next/image";
 import { CodeCIMetrics } from "@/types/code";
+import { CommitsCard } from "@/components/code/commits-card";
+import { PRCard } from "@/components/code/pr-card";
+import { SuccessRateCard } from "@/components/code/success-rate-card";
+import { CommitPRChart } from "@/components/code/commit-pr-chart";
+import { SuccessRateChart } from "@/components/code/success-rate-chart";
+import { ContributorsCard } from "@/components/code/contributors-card";
+import { DeploymentsCard } from "@/components/code/deployments-card";
 
 export default function CodeCIPage() {
 	const repositories = useCodeStore((state) => state.repositories);
@@ -47,8 +32,6 @@ export default function CodeCIPage() {
 		(state) => state.setSelectedRepository
 	);
 	const setRepositories = useCodeStore((state) => state.setRepositories);
-	const addRepository = useCodeStore((state) => state.addRepository);
-	const deleteRepository = useCodeStore((state) => state.deleteRepository);
 
 	// Local state for data fetching
 	const [data, setData] = useState<CodeCIMetrics | null>(null);
@@ -111,25 +94,6 @@ export default function CodeCIPage() {
 		}
 	}, [selectedRepositoryId, fetchRepoData]);
 
-	const handleAddRepository = (
-		name: string,
-		owner: string,
-		language: string
-	) => {
-		const newRepo = {
-			id: `repo-${Date.now()}`,
-			name,
-			owner,
-			language,
-			isPrivate: false,
-		};
-		addRepository(newRepo);
-	};
-
-	const handleDeleteRepository = (id: string) => {
-		deleteRepository(id);
-	};
-
 	// Loading state
 	if (loading && !data) {
 		return (
@@ -190,42 +154,6 @@ export default function CodeCIPage() {
 				? "text-red-500"
 				: "text-yellow-500";
 
-	const commitPRData = Array.from({ length: 7 }, (_, i) => ({
-		name: `Day ${i + 1}`,
-		commits: Math.floor(Math.random() * 20) + 5,
-		prs: Math.floor(Math.random() * 8) + 2,
-	}));
-
-	const deploymentTimeline = data.recentDeploys.map((deploy: any) => ({
-		id: deploy.id,
-		environment: deploy.environment,
-		status: deploy.status,
-		timestamp: new Date(deploy.timestamp).toLocaleDateString(),
-		time: new Date(deploy.timestamp).toLocaleTimeString(),
-	}));
-
-	const buildTrendData = Array.from({ length: 14 }, (_, i) => ({
-		name: `Day ${i + 1}`,
-		successRate: Math.round(data.buildSuccessRate - Math.random() * 10 + 5),
-	}));
-
-	const getStatusColor = (status: string) => {
-		switch (status) {
-			case "success":
-				return "bg-green-100 text-green-700";
-			case "failed":
-				return "bg-red-100 text-red-700";
-			case "merged":
-				return "bg-purple-100 text-purple-700";
-			case "open":
-				return "bg-blue-100 text-blue-700";
-			case "draft":
-				return "bg-gray-100 text-gray-700";
-			default:
-				return "bg-yellow-100 text-yellow-700";
-		}
-	};
-
 	const getHealthScoreColor = (score: number) => {
 		if (score >= 80) return "text-green-600";
 		if (score >= 60) return "text-yellow-600";
@@ -258,8 +186,6 @@ export default function CodeCIPage() {
 							repositories={repositories}
 							selectedRepositoryId={selectedRepositoryId!}
 							onSelectRepository={setSelectedRepository}
-							onAddRepository={handleAddRepository}
-							onDeleteRepository={handleDeleteRepository}
 						/>
 					</div>
 
@@ -364,22 +290,9 @@ export default function CodeCIPage() {
 									</CardContent>
 								</Card>
 
-								<Card>
-									<CardHeader className="pb-3">
-										<CardTitle className="flex items-center gap-2 text-sm font-medium">
-											<AlertCircle className="h-4 w-4 text-chart-4" />
-											Success Rate
-										</CardTitle>
-									</CardHeader>
-									<CardContent>
-										<p className="text-3xl font-bold">
-											{data.buildSuccessRate.toFixed(1)}%
-										</p>
-										<p className="mt-1 text-xs text-muted-foreground">
-											Build success
-										</p>
-									</CardContent>
-								</Card>
+								<SuccessRateCard
+									buildSuccessRate={data.buildSuccessRate}
+								/>
 
 								<Card>
 									<CardHeader className="pb-3">
@@ -436,348 +349,20 @@ export default function CodeCIPage() {
 						</div>
 
 						<div className="mb-8 grid gap-6 lg:grid-cols-2">
-							<Card>
-								<CardHeader>
-									<CardTitle>
-										Commits & Pull Requests
-									</CardTitle>
-									<CardDescription>
-										Development activity over the last 7
-										days
-									</CardDescription>
-								</CardHeader>
-								<CardContent>
-									<div className="h-80 w-full">
-										<ResponsiveContainer
-											width="100%"
-											height="100%"
-										>
-											<BarChart data={commitPRData}>
-												<CartesianGrid
-													strokeDasharray="3 3"
-													stroke="var(--border)"
-												/>
-												<XAxis
-													dataKey="name"
-													stroke="var(--muted-foreground)"
-												/>
-												<YAxis stroke="var(--muted-foreground)" />
-												<Tooltip
-													contentStyle={{
-														backgroundColor:
-															"var(--card)",
-														border: "1px solid var(--border)",
-														borderRadius:
-															"var(--radius)",
-													}}
-												/>
-												<Bar
-													dataKey="commits"
-													fill="var(--chart-1)"
-													name="Commits"
-												/>
-												<Bar
-													dataKey="prs"
-													fill="var(--chart-3)"
-													name="PRs"
-												/>
-											</BarChart>
-										</ResponsiveContainer>
-									</div>
-								</CardContent>
-							</Card>
+							<CommitPRChart commitPRData={data.commitPRData} />
 
-							<Card>
-								<CardHeader>
-									<CardTitle>
-										Build Success Rate Trend
-									</CardTitle>
-									<CardDescription>
-										Build success rate over the last 14 days
-									</CardDescription>
-								</CardHeader>
-								<CardContent>
-									<div className="h-80 w-full">
-										<ResponsiveContainer
-											width="100%"
-											height="100%"
-										>
-											<LineChart data={buildTrendData}>
-												<CartesianGrid
-													strokeDasharray="3 3"
-													stroke="var(--border)"
-												/>
-												<XAxis
-													dataKey="name"
-													stroke="var(--muted-foreground)"
-													style={{ fontSize: "12px" }}
-												/>
-												<YAxis
-													stroke="var(--muted-foreground)"
-													domain={[0, 100]}
-												/>
-												<Tooltip
-													contentStyle={{
-														backgroundColor:
-															"var(--card)",
-														border: "1px solid var(--border)",
-														borderRadius:
-															"var(--radius)",
-													}}
-													formatter={(value) =>
-														`${value}%`
-													}
-												/>
-												<Line
-													type="monotone"
-													dataKey="successRate"
-													stroke="var(--chart-1)"
-													strokeWidth={2}
-													dot={{
-														fill: "var(--chart-1)",
-													}}
-												/>
-											</LineChart>
-										</ResponsiveContainer>
-									</div>
-								</CardContent>
-							</Card>
+							<SuccessRateChart
+								buildTrendData={data.buildTrendData}
+							/>
 						</div>
 
-						<Card className="mb-8">
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2">
-									<GitCommit className="h-5 w-5" />
-									Recent Commits
-								</CardTitle>
-								<CardDescription>
-									Latest commits to the repository
-								</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className="space-y-3">
-									{data.recentCommits
-										?.slice(0, 8)
-										.map((commit: any) => (
-											<div
-												key={commit.id}
-												className="flex items-start justify-between rounded-lg border border-border p-4"
-											>
-												<div className="flex-1">
-													<div className="flex items-center gap-3">
-														<Image
-															src={
-																commit.avatarUrl ||
-																"/placeholder.svg"
-															}
-															alt={
-																commit.authorName
-															}
-															className="h-8 w-8 rounded-full"
-															width={32}
-															height={32}
-														/>
-														<div>
-															<p className="font-medium text-foreground">
-																{commit.message}
-															</p>
-															<p className="text-xs text-muted-foreground">
-																by{" "}
-																{
-																	commit.authorName
-																}{" "}
-																on{" "}
-																{new Date(
-																	commit.committedAt
-																).toLocaleDateString()}
-															</p>
-														</div>
-													</div>
-												</div>
-												<div className="ml-4 flex items-center gap-2 text-xs">
-													<span className="rounded bg-green-100 px-2 py-1 text-green-700">
-														+{commit.additions}
-													</span>
-													<span className="rounded bg-red-100 px-2 py-1 text-red-700">
-														-{commit.deletions}
-													</span>
-												</div>
-											</div>
-										))}
-								</div>
-							</CardContent>
-						</Card>
+						<CommitsCard commits={data.recentCommits} />
 
-						<Card className="mb-8">
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2">
-									<GitPullRequest className="h-5 w-5" />
-									Pull Requests
-								</CardTitle>
-								<CardDescription>
-									Recent pull requests and their status
-								</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className="space-y-3">
-									{data.recentPullRequests
-										?.slice(0, 8)
-										.map((pr: any) => (
-											<div
-												key={pr.id}
-												className="flex items-center justify-between rounded-lg border border-border p-4"
-											>
-												<div className="flex-1">
-													<div className="flex items-center gap-3">
-														<Image
-															src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${pr.authorName}`}
-															alt={pr.authorName}
-															className="h-8 w-8 rounded-full"
-															width={32}
-															height={32}
-														/>
-														<div>
-															<p className="font-medium text-foreground">
-																#{pr.number}{" "}
-																{pr.title}
-															</p>
-															<p className="text-xs text-muted-foreground">
-																by{" "}
-																{pr.authorName}{" "}
-																•{" "}
-																{
-																	pr.reviewerCount
-																}{" "}
-																reviewer
-																{pr.reviewerCount !==
-																1
-																	? "s"
-																	: ""}{" "}
-																•{" "}
-																{
-																	pr.avgReviewTime
-																}
-																h avg review
-																time
-															</p>
-														</div>
-													</div>
-												</div>
-												<span
-													className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(pr.status)}`}
-												>
-													{pr.status
-														.charAt(0)
-														.toUpperCase() +
-														pr.status.slice(1)}
-												</span>
-											</div>
-										))}
-								</div>
-							</CardContent>
-						</Card>
+						<PRCard prs={data.recentPullRequests} />
 
-						<Card className="mb-8">
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2">
-									<Users className="h-5 w-5" />
-									Top Contributors
-								</CardTitle>
-								<CardDescription>
-									Most active contributors this period
-								</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className="space-y-3">
-									{data.topContributors?.map(
-										(contributor: any, index: number) => (
-											<div
-												key={contributor.login}
-												className="flex items-center justify-between rounded-lg border border-border p-4"
-											>
-												<div className="flex items-center gap-3">
-													<div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-														{index + 1}
-													</div>
-													<Image
-														src={
-															contributor.avatarUrl ||
-															"/placeholder.svg"
-														}
-														alt={contributor.name}
-														className="h-8 w-8 rounded-full"
-														width={32}
-														height={32}
-													/>
-													<div>
-														<p className="font-medium text-foreground">
-															{contributor.name}
-														</p>
-														<p className="text-xs text-muted-foreground">
-															@{contributor.login}
-														</p>
-													</div>
-												</div>
-												<div className="text-right">
-													<p className="font-semibold text-foreground">
-														{
-															contributor.contributions
-														}
-													</p>
-													<p className="text-xs text-muted-foreground">
-														contributions
-													</p>
-												</div>
-											</div>
-										)
-									)}
-								</div>
-							</CardContent>
-						</Card>
+						<ContributorsCard contributors={data.topContributors} />
 
-						<Card className="mb-8">
-							<CardHeader>
-								<CardTitle>Recent Deployments</CardTitle>
-								<CardDescription>
-									Latest deployment activity
-								</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className="space-y-3">
-									{deploymentTimeline.map((deploy: any) => (
-										<div
-											key={deploy.id}
-											className="flex items-center justify-between rounded-lg border border-border p-4"
-										>
-											<div className="flex-1">
-												<p className="font-medium text-foreground capitalize">
-													{deploy.environment}
-												</p>
-												<p className="text-sm text-muted-foreground">
-													{deploy.timestamp} at{" "}
-													{deploy.time}
-												</p>
-											</div>
-											<span
-												className={`rounded-full px-3 py-1 text-xs font-semibold ${
-													deploy.status === "success"
-														? "bg-green-100 text-green-700"
-														: deploy.status ===
-															  "failed"
-															? "bg-red-100 text-red-700"
-															: "bg-yellow-100 text-yellow-700"
-												}`}
-											>
-												{deploy.status
-													.charAt(0)
-													.toUpperCase() +
-													deploy.status.slice(1)}
-											</span>
-										</div>
-									))}
-								</div>
-							</CardContent>
-						</Card>
+						<DeploymentsCard deployments={data.recentDeploys} />
 
 						<Card>
 							<CardHeader>

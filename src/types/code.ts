@@ -190,6 +190,17 @@ export interface RepositoryHealth {
 	testCoverage: number;
 }
 
+export interface CommitPR {
+	name: string;
+	commits: number;
+	prs: number;
+}
+
+export interface BuildTrend {
+	name: string; // Day-label, e.g., "Mon", "Tue"
+	successRate: number;
+}
+
 export interface CodeCIMetrics {
 	repositories: Repository[];
 	commits: number;
@@ -201,5 +212,7 @@ export interface CodeCIMetrics {
 	recentPullRequests: PullRequest[];
 	topContributors: Contributor[];
 	recentDeploys: Deployment[];
+	commitPRData: CommitPR[];
+	buildTrendData: BuildTrend[];
 	insight: string;
 }

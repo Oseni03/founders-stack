@@ -190,9 +190,113 @@ export async function GET(req: NextRequest) {
 					}))
 				);
 
+			// Compute commit/PR trend data (last 7 days)
+			const commitPRData = await Promise.all(
+				Array.from({ length: 7 }, async (_, i) => {
+					const dayStart = new Date(
+						Date.now() - (6 - i) * 24 * 60 * 60 * 1000
+					);
+					dayStart.setHours(0, 0, 0, 0);
+					const dayEnd = new Date(dayStart);
+					dayEnd.setHours(23, 59, 59, 999);
+
+					const [commitsCount, prsCount] = await Promise.all([
+						prisma.commit.count({
+							where: {
+								repositoryId,
+								committedAt: { gte: dayStart, lte: dayEnd },
+							},
+						}),
+						prisma.pullRequest.count({
+							where: {
+								repositoryId,
+								createdAt: { gte: dayStart, lte: dayEnd },
+							},
+						}),
+					]);
+
+					return {
+						name: dayStart.toLocaleDateString("en-US", {
+							month: "short",
+							day: "numeric",
+						}),
+						commits: commitsCount,
+						prs: prsCount,
+					};
+				})
+			);
+
+			// Compute build trend data (last 14 days)
+			const buildTrendData = await Promise.all(
+				Array.from({ length: 14 }, async (_, i) => {
+					const dayStart = new Date(
+						Date.now() - (13 - i) * 24 * 60 * 60 * 1000
+					);
+					dayStart.setHours(0, 0, 0, 0);
+					const dayEnd = new Date(dayStart);
+					dayEnd.setHours(23, 59, 59, 999);
+
+					const [totalBuilds, successfulBuilds] = await Promise.all([
+						prisma.deploymentEvent.count({
+							where: {
+								Commit: { repositoryId },
+								deployedAt: { gte: dayStart, lte: dayEnd },
+							},
+						}),
+						prisma.deploymentEvent.count({
+							where: {
+								Commit: { repositoryId },
+								deployedAt: { gte: dayStart, lte: dayEnd },
+								status: "success",
+							},
+						}),
+					]);
+
+					const successRate =
+						totalBuilds > 0
+							? Math.round((successfulBuilds / totalBuilds) * 100)
+							: 0;
+
+					return {
+						name: dayStart.toLocaleDateString("en-US", {
+							month: "short",
+							day: "numeric",
+						}),
+						successRate,
+					};
+				})
+			);
+
+			// Compute overall build status and success rate
+			const allDeployments = await prisma.deploymentEvent.findMany({
+				where: {
+					Commit: { repositoryId },
+					deployedAt: { gte: thirtyDaysAgo },
+				},
+				select: { status: true },
+			});
+
+			const latestDeployment = await prisma.deploymentEvent.findFirst({
+				where: { Commit: { repositoryId } },
+				orderBy: { deployedAt: "desc" },
+				select: { status: true },
+			});
+
+			const buildStatus = latestDeployment?.status || "unknown";
+			const totalDeployments = allDeployments.length;
+			const successfulDeployments = allDeployments.filter(
+				(d) => d.status === "success"
+			).length;
+			const buildSuccessRate =
+				totalDeployments > 0
+					? Math.round(
+							(successfulDeployments / totalDeployments) *
+								100 *
+								10
+						) / 10
+					: 0;
+
 			// Mocked/computed fields (expand with real logic)
-			const buildStatus = "success"; // From latest DeploymentEvent
-			const buildSuccessRate = 95.5; // Compute from DeploymentEvent statuses
 			const insight =
 				"Repository health is strong, but monitor open issues."; // AI-generated in future
 
@@ -207,6 +311,8 @@ export async function GET(req: NextRequest) {
 				recentPullRequests,
 				topContributors,
 				recentDeploys,
+				commitPRData,
+				buildTrendData,
 				insight,
 			});
 		} catch (error) {

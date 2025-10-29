@@ -15,26 +15,26 @@ import {
 import { Button } from "@/components/ui/button";
 import { Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Repository } from "@prisma/client";
+import { Repository } from "@/types/code";
+import { useCodeStore } from "@/zustand/providers/code-store-provider";
 
 interface DeleteRepositoryDialogProps {
 	repository: Repository;
-	onDelete: (repoId: string) => Promise<void>;
 	disabled?: boolean;
 }
 
 export function DeleteRepositoryDialog({
 	repository,
-	onDelete,
-	disabled = false,
 }: DeleteRepositoryDialogProps) {
+	const deleteRepository = useCodeStore((state) => state.deleteRepository);
+
 	const [open, setOpen] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 
 	const handleDelete = async () => {
 		setIsDeleting(true);
 		try {
-			await onDelete(repository.id);
+			await deleteRepository(repository.id);
 			toast.success("Repository deleted successfully");
 			setOpen(false);
 		} catch (error) {
@@ -48,13 +48,8 @@ export function DeleteRepositoryDialog({
 	return (
 		<AlertDialog open={open} onOpenChange={setOpen}>
 			<AlertDialogTrigger asChild>
-				<Button
-					variant="ghost"
-					size="icon"
-					disabled={disabled}
-					className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-				>
-					<Trash2 className="h-4 w-4" />
+				<Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+					<Trash2 className="h-4 w-4 text-destructive" />
 				</Button>
 			</AlertDialogTrigger>
 			<AlertDialogContent>
@@ -72,10 +67,7 @@ export function DeleteRepositoryDialog({
 						Cancel
 					</AlertDialogCancel>
 					<AlertDialogAction
-						onClick={(e) => {
-							e.preventDefault();
-							handleDelete();
-						}}
+						onClick={handleDelete}
 						disabled={isDeleting}
 						className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 					>
