@@ -127,8 +127,7 @@ export default function CodeCIPage() {
 			);
 			setSelectedRepository(repositories[0].id);
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [repositories]);
+	}, [repositories, selectedRepositoryId, setSelectedRepository]);
 
 	// Fetch data when repo is selected
 	useEffect(() => {
