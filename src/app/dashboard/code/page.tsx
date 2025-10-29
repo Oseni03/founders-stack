@@ -36,7 +36,7 @@ import {
 import { RepositoryManager } from "@/components/dashboard/repository-manager";
 import { useCodeStore } from "@/zustand/providers/code-store-provider";
 import Image from "next/image";
-import { CodeCIMetrics, Repository } from "@/types/code";
+import { CodeCIMetrics } from "@/types/code";
 
 export default function CodeCIPage() {
 	const repositories = useCodeStore((state) => state.repositories);
@@ -68,8 +68,8 @@ export default function CodeCIPage() {
 		try {
 			const res = await fetch("/api/code-ci/repositories");
 			if (!res.ok) throw new Error("Failed to fetch repositories");
-			const repos: Repository[] = await res.json();
-			setRepositories(repos);
+			const { data } = await res.json();
+			setRepositories(data);
 		} catch (err: any) {
 			setError(err.message);
 		} finally {
