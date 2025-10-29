@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
 	ArrowLeft,
@@ -38,21 +38,11 @@ import { useCodeStore } from "@/zustand/providers/code-store-provider";
 import Image from "next/image";
 import { CodeCIMetrics, Repository } from "@/types/code";
 
-/**
- * Code/CI Detail Page
- * Comprehensive view of build status, commits, PRs, contributors, and repository health
- */
 export default function CodeCIPage() {
 	const repositories = useCodeStore((state) => state.repositories);
 	const selectedRepositoryId = useCodeStore(
 		(state) => state.selectedRepositoryId
 	);
-	const data = useCodeStore((state) => state.data);
-	const loading = useCodeStore((state) => state.loading);
-	const setLoading = useCodeStore((state) => state.setLoading);
-	const setData = useCodeStore((state) => state.setData);
-	const setError = useCodeStore((state) => state.setError);
-	const error = useCodeStore((state) => state.error);
 	const setSelectedRepository = useCodeStore(
 		(state) => state.setSelectedRepository
 	);
@@ -60,9 +50,11 @@ export default function CodeCIPage() {
 	const addRepository = useCodeStore((state) => state.addRepository);
 	const deleteRepository = useCodeStore((state) => state.deleteRepository);
 
-	/* -------------------------------------------------
-	 *  1. Load *all* connected repositories (once)
-	 * ------------------------------------------------- */
+	// Local state for data fetching
+	const [data, setData] = useState<CodeCIMetrics | null>(null);
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
 	const fetchRepositories = useCallback(async () => {
 		setLoading(true);
 		setError(null);
@@ -76,65 +68,48 @@ export default function CodeCIPage() {
 		} finally {
 			setLoading(false);
 		}
-	}, [setLoading, setError, setRepositories]);
+	}, [setRepositories]);
 
-	const fetchRepoData = useCallback(
-		async (repoId: string) => {
-			setLoading(true);
-			setError(null);
-			try {
-				const url = `/api/code-ci?repositoryId=${repoId}`;
-				console.log("Fetching from:", url);
-				const res = await fetch(url);
-				console.log("Response status:", res.status);
+	const fetchRepoData = useCallback(async (repoId: string) => {
+		setLoading(true);
+		setError(null);
+		setData(null); // Clear old data immediately
+		try {
+			const url = `/api/code-ci?repositoryId=${repoId}`;
+			const res = await fetch(url);
 
-				if (!res.ok) {
-					const txt = await res.text();
-					console.error("Fetch failed:", txt);
-					throw new Error(txt || `HTTP ${res.status}`);
-				}
-				const payload: CodeCIMetrics = await res.json();
-				setData(payload);
-				console.log("Data set successfully");
-			} catch (err: any) {
-				console.error("Error in fetchRepoData:", err);
-				setError(err.message);
-				setData(null);
-			} finally {
-				setLoading(false);
-				console.log("Loading set to false");
+			if (!res.ok) {
+				const txt = await res.text();
+				throw new Error(txt || `HTTP ${res.status}`);
 			}
-		},
-		[setLoading, setError, setData]
-	);
-
-	/* 1. Load repos on mount */
-	useEffect(() => {
-		fetchRepositories();
-		// eslint-disable-next-line react-hooks/exhaustive-deps
+			const payload: CodeCIMetrics = await res.json();
+			setData(payload);
+		} catch (err: any) {
+			setError(err.message);
+			setData(null);
+		} finally {
+			setLoading(false);
+		}
 	}, []);
 
-	/* 2. Auto-select first repo after repos are loaded */
+	// Load repos on mount
 	useEffect(() => {
-		console.log("Effect 2 - Auto-select:", {
-			selectedRepositoryId,
-			repositoriesLength: repositories.length,
-		});
+		fetchRepositories();
+	}, [fetchRepositories]);
+
+	// Auto-select first repo
+	useEffect(() => {
 		if (!selectedRepositoryId && repositories.length > 0) {
-			console.log("Auto-selecting first repository:", repositories[0].id);
 			setSelectedRepository(repositories[0].id);
 		}
 	}, [repositories, selectedRepositoryId, setSelectedRepository]);
 
-	/* 3. Fetch repo data when a repo is selected - SINGLE useEffect */
+	// Fetch data when repo is selected
 	useEffect(() => {
-		console.log("Effect 3 - Fetch data:", { selectedRepositoryId });
 		if (selectedRepositoryId) {
-			console.log("Calling fetchRepoData for:", selectedRepositoryId);
 			fetchRepoData(selectedRepositoryId);
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [selectedRepositoryId]);
+	}, [selectedRepositoryId, fetchRepoData]);
 
 	const handleAddRepository = (
 		name: string,
@@ -155,17 +130,20 @@ export default function CodeCIPage() {
 		deleteRepository(id);
 	};
 
-	// Add console logs to debug
-	console.log("State:", {
-		loading,
-		error,
-		repositoriesLength: repositories.length,
-		hasData: !!data,
-		selectedRepositoryId,
-	});
+	// Loading state
+	if (loading && !data) {
+		return (
+			<div className="flex h-screen items-center justify-center">
+				<div className="text-center">
+					<div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-border border-t-primary" />
+					<p className="text-muted-foreground">Loading...</p>
+				</div>
+			</div>
+		);
+	}
 
-	// 1️⃣ If error (check this first), show error message
-	if (error && !loading) {
+	// Error state
+	if (error && !data) {
 		return (
 			<div className="flex h-screen items-center justify-center">
 				<div className="text-center">
@@ -180,7 +158,7 @@ export default function CodeCIPage() {
 		);
 	}
 
-	// 2️⃣ If no repositories and not loading
+	// No repositories
 	if (!loading && repositories.length === 0) {
 		return (
 			<div className="flex h-screen items-center justify-center">
@@ -191,36 +169,15 @@ export default function CodeCIPage() {
 		);
 	}
 
-	// 3️⃣ If loading OR if we have repositories but no data yet
-	if (loading || (repositories.length > 0 && !data)) {
+	// No data yet
+	if (!data) {
 		return (
 			<div className="flex h-screen items-center justify-center">
 				<div className="text-center">
 					<div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-border border-t-primary" />
 					<p className="text-muted-foreground">
-						{!data && repositories.length > 0
-							? "Loading repository data..."
-							: "Loading code metrics..."}
+						Loading repository data...
 					</p>
-				</div>
-			</div>
-		);
-	}
-
-	// 4️⃣ Final safeguard - shouldn't reach here without data
-	if (!data) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="text-center text-muted-foreground">
-					<p className="mb-4">Unable to load repository data.</p>
-					<Button
-						onClick={() =>
-							selectedRepositoryId &&
-							fetchRepoData(selectedRepositoryId)
-						}
-					>
-						Retry
-					</Button>
 				</div>
 			</div>
 		);
@@ -233,14 +190,12 @@ export default function CodeCIPage() {
 				? "text-red-500"
 				: "text-yellow-500";
 
-	// Generate trend data (can be moved to API later)
 	const commitPRData = Array.from({ length: 7 }, (_, i) => ({
 		name: `Day ${i + 1}`,
 		commits: Math.floor(Math.random() * 20) + 5,
 		prs: Math.floor(Math.random() * 8) + 2,
 	}));
 
-	// Generate deployment timeline
 	const deploymentTimeline = data.recentDeploys.map((deploy: any) => ({
 		id: deploy.id,
 		environment: deploy.environment,
@@ -249,7 +204,6 @@ export default function CodeCIPage() {
 		time: new Date(deploy.timestamp).toLocaleTimeString(),
 	}));
 
-	// Generate build success rate trend
 	const buildTrendData = Array.from({ length: 14 }, (_, i) => ({
 		name: `Day ${i + 1}`,
 		successRate: Math.round(data.buildSuccessRate - Math.random() * 10 + 5),
@@ -281,7 +235,6 @@ export default function CodeCIPage() {
 	return (
 		<main className="min-h-screen bg-background">
 			<div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-				{/* Header with Back Button */}
 				<div className="mb-8 flex items-center gap-4">
 					<Link href="/dashboard">
 						<Button variant="ghost" size="icon">
@@ -316,7 +269,6 @@ export default function CodeCIPage() {
 								Repository Overview
 							</h2>
 							<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-								{/* Health Score - Large Primary Card */}
 								<Card className="lg:col-span-1 lg:row-span-2">
 									<CardHeader className="pb-3">
 										<CardTitle className="flex items-center gap-2 text-sm font-medium">
@@ -357,7 +309,6 @@ export default function CodeCIPage() {
 									</CardContent>
 								</Card>
 
-								{/* Commits */}
 								<Card>
 									<CardHeader className="pb-3">
 										<CardTitle className="flex items-center gap-2 text-sm font-medium">
@@ -375,7 +326,6 @@ export default function CodeCIPage() {
 									</CardContent>
 								</Card>
 
-								{/* Pull Requests */}
 								<Card>
 									<CardHeader className="pb-3">
 										<CardTitle className="flex items-center gap-2 text-sm font-medium">
@@ -393,7 +343,6 @@ export default function CodeCIPage() {
 									</CardContent>
 								</Card>
 
-								{/* Build Status */}
 								<Card>
 									<CardHeader className="pb-3">
 										<CardTitle className="flex items-center gap-2 text-sm font-medium">
@@ -415,7 +364,6 @@ export default function CodeCIPage() {
 									</CardContent>
 								</Card>
 
-								{/* Success Rate */}
 								<Card>
 									<CardHeader className="pb-3">
 										<CardTitle className="flex items-center gap-2 text-sm font-medium">
@@ -433,7 +381,6 @@ export default function CodeCIPage() {
 									</CardContent>
 								</Card>
 
-								{/* Open Issues */}
 								<Card>
 									<CardHeader className="pb-3">
 										<CardTitle className="text-sm font-medium">
@@ -451,7 +398,6 @@ export default function CodeCIPage() {
 									</CardContent>
 								</Card>
 
-								{/* Stale PRs */}
 								<Card>
 									<CardHeader className="pb-3">
 										<CardTitle className="text-sm font-medium">
@@ -469,7 +415,6 @@ export default function CodeCIPage() {
 									</CardContent>
 								</Card>
 
-								{/* Avg Review Time */}
 								<Card>
 									<CardHeader className="pb-3">
 										<CardTitle className="text-sm font-medium">
@@ -490,9 +435,7 @@ export default function CodeCIPage() {
 							</div>
 						</div>
 
-						{/* Charts Grid */}
 						<div className="mb-8 grid gap-6 lg:grid-cols-2">
-							{/* Commits & PRs */}
 							<Card>
 								<CardHeader>
 									<CardTitle>
@@ -544,7 +487,6 @@ export default function CodeCIPage() {
 								</CardContent>
 							</Card>
 
-							{/* Build Success Rate Trend */}
 							<Card>
 								<CardHeader>
 									<CardTitle>
@@ -793,7 +735,6 @@ export default function CodeCIPage() {
 							</CardContent>
 						</Card>
 
-						{/* Recent Deployments */}
 						<Card className="mb-8">
 							<CardHeader>
 								<CardTitle>Recent Deployments</CardTitle>
@@ -838,7 +779,6 @@ export default function CodeCIPage() {
 							</CardContent>
 						</Card>
 
-						{/* Insights */}
 						<Card>
 							<CardHeader>
 								<CardTitle>Key Insights</CardTitle>
