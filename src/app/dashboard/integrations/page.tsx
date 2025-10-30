@@ -168,8 +168,13 @@ export default function IntegrationsPage() {
 						<CardContent>
 							<div className="text-sm text-muted-foreground">
 								Last sync:{" "}
-								{integration.lastSyncAt?.toLocaleDateString() ||
-									"Never"}
+								{integration.lastSyncAt
+									? typeof integration.lastSyncAt === "string"
+										? new Date(
+												integration.lastSyncAt
+											).toLocaleDateString()
+										: integration.lastSyncAt.toLocaleDateString()
+									: "Never"}
 							</div>
 						</CardContent>
 					</Card>
