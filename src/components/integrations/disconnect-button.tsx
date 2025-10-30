@@ -13,6 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
+import { deleteIntegration } from "@/server/integrations";
 
 interface DisconnectButtonProps {
 	integrationId: string | null | undefined;
@@ -25,20 +27,22 @@ export function DisconnectButton({
 	integrationName,
 	onDisconnect,
 }: DisconnectButtonProps) {
+	const organizationId = useOrganizationStore(
+		(state) => state.activeOrganization?.id
+	);
 	const [isOpen, setIsOpen] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 
 	const handleDisconnect = async () => {
 		setIsLoading(true);
+		if (!organizationId || !integrationId) {
+			toast.error("Organization or Integration ID is missing.");
+			setIsLoading(false);
+			return;
+		}
 
 		try {
-			const response = await fetch(`/api/integrations/${integrationId}`, {
-				method: "DELETE",
-			});
-
-			if (!response.ok) {
-				throw new Error("Failed to disconnect integration");
-			}
+			await deleteIntegration(organizationId!, integrationId!);
 
 			toast.success(`${integrationName} disconnected successfully`);
 			setIsOpen(false);

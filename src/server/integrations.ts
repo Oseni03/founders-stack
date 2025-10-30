@@ -59,6 +59,15 @@ export async function createIntegration(account: Account) {
 	return integration;
 }
 
+export async function deleteIntegration(
+	organizationId: string,
+	toolName: string
+) {
+	await prisma.integration.deleteMany({
+		where: { organizationId, toolName },
+	});
+}
+
 export async function getIntegration(organizationId: string, toolName: string) {
 	const integration = await prisma.integration.findFirst({
 		where: {
