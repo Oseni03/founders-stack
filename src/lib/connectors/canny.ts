@@ -228,7 +228,7 @@ export class CannyConnector {
 
 export async function syncCanny(organizationId: string, projs: Project[] = []) {
 	const integration = await getIntegration(organizationId, "canny");
-	if (!integration?.account.apiKey) {
+	if (!integration?.apiKey) {
 		throw new Error("Integration not connected");
 	}
 
@@ -252,7 +252,7 @@ export async function syncCanny(organizationId: string, projs: Project[] = []) {
 
 	if (projects.length === 0) return;
 
-	const connector = new CannyConnector(integration.account.apiKey);
+	const connector = new CannyConnector(integration.apiKey);
 
 	const syncPromises = projects.map((project) => async () => {
 		try {

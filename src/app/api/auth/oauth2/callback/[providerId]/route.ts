@@ -2,7 +2,6 @@
 import { withAuth } from "@/lib/middleware";
 import { OAUTH_CONFIG, OAuthConfig } from "@/lib/oauth-utils";
 import { prisma } from "@/lib/prisma";
-import { createId } from "@paralleldrive/cuid2";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -101,23 +100,10 @@ export async function GET(
 			}
 
 			// Extract tokens based on provider
-			const { accessToken, refreshToken, scope, resourceServer } =
-				extractTokens(provider, tokenResponse);
-
-			// Store the account and integration in database
-			const accountId = createId();
-
-			const account = await prisma.account.create({
-				data: {
-					id: createId(),
-					accountId,
-					accessToken,
-					refreshToken: refreshToken || null,
-					scope,
-					providerId: provider,
-					userId: user.id,
-				},
-			});
+			const { accessToken, refreshToken, resourceServer } = extractTokens(
+				provider,
+				tokenResponse
+			);
 
 			const integration = await prisma.integration.upsert({
 				where: {
@@ -127,9 +113,10 @@ export async function GET(
 					},
 				},
 				update: {
-					status: "active",
+					status: "CONNECTED",
 					type: "oauth2",
-					accountId: account.id,
+					accessToken,
+					refreshToken: refreshToken || null,
 					category: config.category,
 					attributes: {
 						baseUrl: resourceServer,
@@ -137,11 +124,12 @@ export async function GET(
 				},
 				create: {
 					category: config.category,
-					status: "active",
+					status: "CONNECTED",
 					toolName: provider,
 					type: "oauth2",
+					accessToken,
+					refreshToken: refreshToken || null,
 					organizationId: user.organizationId,
-					accountId: account.id,
 					attributes: {
 						baseUrl: resourceServer,
 					},

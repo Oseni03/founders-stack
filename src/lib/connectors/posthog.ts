@@ -101,7 +101,7 @@ export class PostHogConnector {
 export async function syncPostHog(organizationId: string, projectId?: string) {
 	const integration = await getIntegration(organizationId, "posthog");
 
-	if (!integration?.account.apiKey) {
+	if (!integration?.apiKey) {
 		throw new Error("Integration not connected");
 	}
 
@@ -119,7 +119,7 @@ export async function syncPostHog(organizationId: string, projectId?: string) {
 		projId = project.id;
 	}
 
-	const connector = new PostHogConnector(integration.account.apiKey, projId);
+	const connector = new PostHogConnector(integration.apiKey, projId);
 
 	let events;
 	try {

@@ -208,7 +208,7 @@ export class SlackConnector {
 
 export async function syncSlack(organizationId: string, projs: Project[] = []) {
 	const integration = await getIntegration(organizationId, "slack");
-	if (!integration?.account.accessToken) {
+	if (!integration?.accessToken) {
 		throw new Error("Integration not connected");
 	}
 
@@ -224,7 +224,7 @@ export async function syncSlack(organizationId: string, projs: Project[] = []) {
 
 	if (projects.length === 0) return;
 
-	const connector = new SlackConnector(integration.account.accessToken);
+	const connector = new SlackConnector(integration.accessToken);
 
 	const syncPromises = projects.map((project) => async () => {
 		try {

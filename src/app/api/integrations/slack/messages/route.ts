@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 				`https://slack.com/api/conversations.history?channel=${channelId}&limit=50`,
 				{
 					headers: {
-						Authorization: `Bearer ${integration.account.accessToken}`,
+						Authorization: `Bearer ${integration.accessToken}`,
 					},
 				}
 			);
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 			const userInfoPromises = userIds.map((userId) =>
 				fetch(`https://slack.com/api/users.info?user=${userId}`, {
 					headers: {
-						Authorization: `Bearer ${integration.account.accessToken}`,
+						Authorization: `Bearer ${integration.accessToken}`,
 					},
 				}).then((res) => res.json())
 			);

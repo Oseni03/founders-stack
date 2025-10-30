@@ -170,10 +170,8 @@ export async function POST(request: NextRequest) {
 			const integration = await prisma.integration.findFirst({
 				where: {
 					toolName: "posthog",
-					account: {
-						apiKey: {
-							equals: payload.data.project_id.toString(),
-						},
+					apiKey: {
+						equals: payload.data.project_id.toString(),
 					},
 				},
 				select: {

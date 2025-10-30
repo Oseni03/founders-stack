@@ -16,7 +16,6 @@ import { createFreeSubscription } from "@/server/subscription";
 import { sendEmail } from "./resend";
 import OrganizationInvitationEmail from "@/components/emails/organization-invitation-email";
 import MagicLinkEmail from "@/components/emails/magic-link-email";
-import { createIntegration } from "@/server/integrations";
 
 const polarClient = new Polar({
 	accessToken: process.env.POLAR_ACCESS_TOKEN!,
@@ -87,13 +86,6 @@ export const auth = betterAuth({
 							subscription: organization?.subscription,
 						},
 					};
-				},
-			},
-		},
-		account: {
-			create: {
-				after: async (account) => {
-					await createIntegration(account);
 				},
 			},
 		},

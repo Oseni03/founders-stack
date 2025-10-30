@@ -721,7 +721,7 @@ export async function syncGitHub(
 ) {
 	// Fetch integration
 	const integration = await getIntegration(organizationId, "github");
-	if (!integration?.account.accessToken) {
+	if (!integration?.accessToken) {
 		throw new Error("Integration not connected");
 	}
 
@@ -745,7 +745,7 @@ export async function syncGitHub(
 	// Process repositories in parallel with a limit to respect API rate limits
 	const syncPromises = repositories.map((repo) => async () => {
 		const connector = new GitHubConnector(
-			integration.account.accessToken!,
+			integration.accessToken!,
 			repo.owner,
 			repo.name
 		);

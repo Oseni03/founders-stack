@@ -56,7 +56,6 @@ model Account {
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?
-  apiKey                String?
   idToken               String?
   accessTokenExpiresAt  DateTime?
   refreshTokenExpiresAt DateTime?
@@ -64,9 +63,6 @@ model Account {
   password              String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
-
-  // Link to Integration metadata
-  integration Integration?
 
   @@unique([userId, providerId])
   @@map("account")
@@ -177,22 +173,31 @@ model Subscription {
   @@map("subscription")
 }
 
-enum IntegrationStatus {
-  active
-  inactive
-  error
-  pending
+enum IntegrationCategory {
+  PAYMENT           // Stripe, PayPal, Square, etc.
+  ANALYTICS         // Mixpanel, Amplitude, Google Analytics
+  CRM               // HubSpot, Salesforce, Pipedrive
+  SUPPORT           // Zendesk, Intercom, Freshdesk
+  PROJECT_MGMT      // Asana, Trello, Jira, Linear
+  COMMUNICATION     // Slack, Discord, Microsoft Teams
+  EMAIL_MARKETING   // Mailchimp, SendGrid, ActiveCampaign
+  DEVELOPMENT       // GitHub, GitLab, CircleCI
+  ACCOUNTING        // QuickBooks, Xero, Wave
+  SOCIAL_MEDIA      // Buffer, Hootsuite, Later
+  SEO               // Ahrefs, SEMrush
+  FEEDBACK          // Typeform, SurveyMonkey
+  SCHEDULING        // Calendly, Cal.com
+  DEVOPS            // Datadog, Sentry
+  AI                // OpenAI, Anthropic
+  OTHER
 }
 
-enum IntegrationCategory {
-  project_management
-  payment
-  analytics
-  feedback
-  version_control
-  communication
-  crm
-  other
+enum IntegrationStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+  PENDING_SETUP     // Waiting for user to complete webhook setup
+  SYNCING
 }
 
 enum TaskStatus {
@@ -214,10 +219,16 @@ enum TaskPriority {
   urgent
 }
 
+enum WebhookSetupType {
+  AUTOMATIC // App creates webhook via API
+  MANUAL // User must configure in platform
+  HYBRID // Combination of both
+}
+
 model Integration {
   id             String              @id @default(cuid())
   category       IntegrationCategory
-  status         IntegrationStatus   @default(pending)
+  status         IntegrationStatus   @default(PENDING_SETUP)
   lastSyncAt     DateTime?
   toolName       String // e.g., "stripe", "jira"
   type           IntegrationType     @default(oauth2)
@@ -227,20 +238,34 @@ model Integration {
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
+  // OAuth & API Credentials (encrypted)
+  accessToken    String? // Encrypted OAuth access token
+  refreshToken   String? // Encrypted OAuth refresh token
+  tokenExpiresAt DateTime?
+  apiKey         String? // Encrypted API key (for non-OAuth)
+  apiSecret      String? // Encrypted API secret
+  webhookSecret  String? // For webhook signature verification
+
+  // Webhook Configuration
+  webhookUrl       String? // The webhook URL we provide to user
+  webhookId        String? // Platform's webhook ID (if created via API)
+  webhookEvents    String[] // Events subscribed to
+  webhookSetupType WebhookSetupType @default(AUTOMATIC)
+
+  // Platform-specific metadata
+  metadata Json? // Store platform-specific IDs, settings
+
   // Multi-tenant field
   organizationId String
-  accountId      String @unique // Links to BetterAuth Account
 
   // Relations
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  account      Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
   User         User?        @relation(fields: [userId], references: [id])
   userId       String?
 
   @@unique([organizationId, toolName])
   @@index([organizationId, status])
   @@index([organizationId, category])
-  @@index([accountId])
 }
 
 model OAuthTemp {
@@ -282,7 +307,7 @@ model Project {
   @@index([organizationId, status])
 }
 
-// Project/Task Category
+// Asana task, Jira issue, Linear issue, GitHub issue
 model Task {
   id             String        @id @default(cuid())
   organizationId String

@@ -198,7 +198,7 @@ export class JiraConnector {
 
 export async function syncJira(organizationId: string, projs: Project[] = []) {
 	const integration = await getIntegration(organizationId, "jira");
-	if (!integration?.account.apiKey) {
+	if (!integration?.apiKey) {
 		throw new Error("Integration not connected");
 	}
 
@@ -226,7 +226,7 @@ export async function syncJira(organizationId: string, projs: Project[] = []) {
 
 	if (projects.length === 0) return;
 
-	const connector = new JiraConnector(integration.account.apiKey, baseUrl);
+	const connector = new JiraConnector(integration.apiKey, baseUrl);
 
 	const syncPromises = projects.map((project) => async () => {
 		try {

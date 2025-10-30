@@ -57,7 +57,7 @@ export const OAUTH_CONFIG: Record<string, OAuthConfig> = {
 			"user:email",
 		],
 		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/github`,
-		category: "version_control",
+		category: "DEVELOPMENT",
 	},
 	asana: {
 		providerId: "asana",
@@ -67,7 +67,7 @@ export const OAUTH_CONFIG: Record<string, OAuthConfig> = {
 		tokenUrl: "https://app.asana.com/-/oauth_token",
 		scopes: ["tasks:read", "projects:read", "users:read"],
 		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/asana`,
-		category: "project_management",
+		category: "PROJECT_MGMT",
 	},
 	jira: {
 		providerId: "jira",
@@ -77,7 +77,7 @@ export const OAUTH_CONFIG: Record<string, OAuthConfig> = {
 		tokenUrl: "https://auth.atlassian.com/oauth/token",
 		scopes: ["tasks:read", "projects:read", "users:read"],
 		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/jira`,
-		category: "project_management",
+		category: "PROJECT_MGMT",
 	},
 	slack: {
 		providerId: "slack",
@@ -98,7 +98,7 @@ export const OAUTH_CONFIG: Record<string, OAuthConfig> = {
 			"users:read.email",
 		],
 		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/slack`,
-		category: "communication",
+		category: "COMMUNICATION",
 	},
 };
 
@@ -109,9 +109,9 @@ export const INTEGRATIONS: Integration[] = [
 		id: "slack",
 		name: "Slack",
 		description: "Connect to sync messages and notifications",
-		category: "communication",
+		category: "COMMUNICATION",
 		logo: "/slack-logo.png",
-		status: "inactive",
+		status: "DISCONNECTED",
 		authType: "oauth2",
 		lastSyncAt: new Date(),
 		docsUrl: "https://docs.slack.dev/",
@@ -121,9 +121,9 @@ export const INTEGRATIONS: Integration[] = [
 		id: "github",
 		name: "GitHub",
 		description: "Integrate to track commits and pull requests",
-		category: "version_control",
+		category: "DEVELOPMENT",
 		logo: "/github-logo.png",
-		status: "inactive",
+		status: "DISCONNECTED",
 		authType: "oauth2",
 		lastSyncAt: new Date(),
 		docsUrl: "https://docs.github.com/",
@@ -133,9 +133,9 @@ export const INTEGRATIONS: Integration[] = [
 		id: "asana",
 		name: "Asana",
 		description: "Sync tasks and project updates",
-		category: "project_management",
+		category: "PROJECT_MGMT",
 		logo: "/asana-logo.png",
-		status: "inactive",
+		status: "DISCONNECTED",
 		authType: "api_key",
 		lastSyncAt: new Date(),
 		docsUrl: "https://developers.asana.com/docs",
@@ -145,9 +145,9 @@ export const INTEGRATIONS: Integration[] = [
 		id: "jira",
 		name: "Jira",
 		description: "Sync tasks and project updates",
-		category: "project_management",
+		category: "PROJECT_MGMT",
 		logo: "/jira-logo.png",
-		status: "inactive",
+		status: "DISCONNECTED",
 		authType: "oauth2",
 		lastSyncAt: new Date(),
 		docsUrl: "https://developers.jira.com/docs",
@@ -158,9 +158,9 @@ export const INTEGRATIONS: Integration[] = [
 		name: "Canny",
 		description:
 			"Track product and web analytics like page views and funnels",
-		category: "feedback",
+		category: "FEEDBACK",
 		logo: "/canny-logo.png",
-		status: "inactive",
+		status: "CONNECTED",
 		authType: "api_key",
 		lastSyncAt: new Date(),
 		docsUrl: "https://posthog.com/docs/api",
@@ -171,9 +171,9 @@ export const INTEGRATIONS: Integration[] = [
 		name: "PostHog",
 		description:
 			"Track product and web analytics like page views and funnels",
-		category: "analytics",
+		category: "ANALYTICS",
 		logo: "/posthog-logo.png",
-		status: "inactive",
+		status: "CONNECTED",
 		authType: "api_key",
 		lastSyncAt: new Date(),
 		docsUrl: "https://posthog.com/docs/api",
@@ -184,9 +184,9 @@ export const INTEGRATIONS: Integration[] = [
 		name: "Stripe",
 		description:
 			"Track product and web analytics like page views and funnels",
-		category: "payment",
+		category: "PAYMENT",
 		logo: "/stripe-logo.png",
-		status: "inactive",
+		status: "CONNECTED",
 		authType: "api_key",
 		lastSyncAt: new Date(),
 		docsUrl: "https://doc.stripe.com/api",
@@ -218,21 +218,21 @@ export const getProviderLogo = (providerId: string) => {
 export const getIntegrationCategory = (providerId: string) => {
 	switch (providerId) {
 		case "asana":
-			return IntegrationCategory.project_management;
+			return IntegrationCategory.PROJECT_MGMT;
 		case "slack":
-			return IntegrationCategory.communication;
+			return IntegrationCategory.COMMUNICATION;
 		case "github":
-			return IntegrationCategory.version_control;
+			return IntegrationCategory.DEVELOPMENT;
 		case "posthog":
-			return IntegrationCategory.analytics;
+			return IntegrationCategory.ANALYTICS;
 		case "stripe":
-			return IntegrationCategory.payment;
+			return IntegrationCategory.PAYMENT;
 		case "canny":
-			return IntegrationCategory.feedback;
+			return IntegrationCategory.FEEDBACK;
 		case "jira":
-			return IntegrationCategory.project_management;
+			return IntegrationCategory.PROJECT_MGMT;
 		default:
-			return IntegrationCategory.other;
+			return IntegrationCategory.OTHER;
 	}
 };
 
@@ -284,7 +284,7 @@ export function mergeIntegrations(
 		// User doesn't have this integration - return as inactive
 		return {
 			...staticIntegration,
-			status: "inactive",
+			status: "DISCONNECTED",
 		};
 	});
 }

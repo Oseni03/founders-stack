@@ -511,10 +511,10 @@ export async function syncStripe(
 			connector = new StripeConnector(apiKey);
 		} else {
 			const integration = await getIntegration(organizationId, "stripe");
-			if (!integration?.account.apiKey) {
+			if (!integration?.apiKey) {
 				throw new Error("Stripe not integrated");
 			}
-			connector = new StripeConnector(integration.account.apiKey);
+			connector = new StripeConnector(integration.apiKey);
 		}
 
 		// 1. Sync Customers

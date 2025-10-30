@@ -121,7 +121,7 @@ export default function IntegrationsPage() {
 									</div>
 								</div>
 								<div className="flex items-center gap-3">
-									{integration.status === "active" && (
+									{integration.status === "CONNECTED" && (
 										<>
 											<Badge
 												variant="outline"
@@ -142,7 +142,7 @@ export default function IntegrationsPage() {
 											/>
 										</>
 									)}
-									{integration.status === "error" && (
+									{integration.status === "ERROR" && (
 										<>
 											<Badge
 												variant="outline"
@@ -156,7 +156,7 @@ export default function IntegrationsPage() {
 											</Button>
 										</>
 									)}
-									{integration.status === "inactive" && (
+									{integration.status === "DISCONNECTED" && (
 										<ConnectButton
 											integration={integration}
 											onConnect={connect}

@@ -218,17 +218,12 @@ async function handlePostHogIntegration(body: any, user: any) {
 	// Store integration and events in a single transaction
 	const result = await prisma.$transaction(async (tx) => {
 		// Create/update integration
-		const integration = await createAPIIntegration(
-			user.organizationId,
-			user.id,
-			{
-				toolName: "posthog",
-				providerId: "posthog",
-				apiKey,
-				category: IntegrationCategory.analytics,
-				status: IntegrationStatus.active,
-			}
-		);
+		const integration = await createAPIIntegration(user.organizationId, {
+			toolName: "posthog",
+			apiKey,
+			category: IntegrationCategory.ANALYTICS,
+			status: IntegrationStatus.CONNECTED,
+		});
 
 		// Only insert events if there are any
 		let eventsCreated = { count: 0 };
@@ -288,17 +283,12 @@ async function handleDefaultAPIIntegration(
 	const category = getIntegrationCategory(toolName);
 
 	// Store integration
-	const integration = await createAPIIntegration(
-		user.organizationId,
-		user.id,
-		{
-			toolName,
-			providerId: toolName,
-			apiKey,
-			category,
-			status: IntegrationStatus.active,
-		}
-	);
+	const integration = await createAPIIntegration(user.organizationId, {
+		toolName,
+		apiKey,
+		category,
+		status: IntegrationStatus.CONNECTED,
+	});
 
 	// Run tool-specific sync if function exists
 	switch (toolName) {

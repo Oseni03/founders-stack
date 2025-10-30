@@ -64,10 +64,7 @@ export async function GET(
 				toolName
 			);
 
-			if (
-				!integration?.account.accessToken &&
-				!integration?.account.apiKey
-			) {
+			if (!integration?.accessToken && !integration?.apiKey) {
 				return NextResponse.json(
 					{
 						error: `${toolName.charAt(0).toUpperCase() + toolName.slice(1)} not connected`,
@@ -86,9 +83,7 @@ export async function GET(
 			};
 
 			if (toolName === "github") {
-				const connector = new GitHubConnector(
-					integration.account.accessToken!
-				);
+				const connector = new GitHubConnector(integration.accessToken!);
 				const result: PaginatedResponse<RepoData> =
 					await connector.fetchRepositories({
 						page,
@@ -106,9 +101,7 @@ export async function GET(
 					hasMore: result.hasMore,
 				};
 			} else if (toolName === "asana") {
-				const connector = new AsanaConnector(
-					integration.account.apiKey!
-				);
+				const connector = new AsanaConnector(integration.apiKey!);
 
 				const result = await connector.fetchProjects({
 					page,
@@ -125,9 +118,7 @@ export async function GET(
 					hasMore: result.hasMore,
 				};
 			} else if (toolName === "slack") {
-				const connector = new SlackConnector(
-					integration.account.accessToken!
-				);
+				const connector = new SlackConnector(integration.accessToken!);
 
 				const result = await connector.fetchChannels({
 					page,
@@ -150,7 +141,7 @@ export async function GET(
 				>;
 				const baseUrl = attributes.baseUrl;
 				const connector = new JiraConnector(
-					integration.account.accessToken!,
+					integration.accessToken!,
 					baseUrl
 				);
 				const data = await connector.getProjects();
@@ -163,9 +154,7 @@ export async function GET(
 					hasMore: data.hasMore,
 				};
 			} else if (toolName === "canny") {
-				const connector = new CannyConnector(
-					integration.account.apiKey!
-				);
+				const connector = new CannyConnector(integration.apiKey!);
 
 				const result = await connector.getBoards({
 					page,
