@@ -77,9 +77,6 @@ export function ChannelManager({
 							<p className="font-medium text-foreground">
 								#{channel.name}
 							</p>
-							<p className="text-xs text-muted-foreground">
-								{channel.description}
-							</p>
 						</Button>
 						<DeleteChannelDialog channel={channel} />
 					</div>
