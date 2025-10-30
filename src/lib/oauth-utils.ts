@@ -1,6 +1,7 @@
 import { IntegrationCategory, IntegrationStatus } from "@prisma/client";
+import { Integration as DBIntegration } from "@prisma/client";
 
-interface Integration {
+export interface Integration {
 	id: string;
 	name: string;
 	description: string;
@@ -10,6 +11,13 @@ interface Integration {
 	authType: "oauth2" | "api_key";
 	lastSyncAt: Date;
 	docsUrl: string;
+	metadata: {
+		lastSyncStatus: string | null;
+		syncInterval: number | null;
+		createdAt: Date | null;
+		updatedAt: Date | null;
+		integrationId: string | null;
+	} | null;
 }
 
 // OAuth configuration types
@@ -107,6 +115,7 @@ export const INTEGRATIONS: Integration[] = [
 		authType: "oauth2",
 		lastSyncAt: new Date(),
 		docsUrl: "https://docs.slack.dev/",
+		metadata: null,
 	},
 	{
 		id: "github",
@@ -118,6 +127,7 @@ export const INTEGRATIONS: Integration[] = [
 		authType: "oauth2",
 		lastSyncAt: new Date(),
 		docsUrl: "https://docs.github.com/",
+		metadata: null,
 	},
 	{
 		id: "asana",
@@ -129,6 +139,7 @@ export const INTEGRATIONS: Integration[] = [
 		authType: "api_key",
 		lastSyncAt: new Date(),
 		docsUrl: "https://developers.asana.com/docs",
+		metadata: null,
 	},
 	{
 		id: "jira",
@@ -140,6 +151,7 @@ export const INTEGRATIONS: Integration[] = [
 		authType: "oauth2",
 		lastSyncAt: new Date(),
 		docsUrl: "https://developers.jira.com/docs",
+		metadata: null,
 	},
 	{
 		id: "canny",
@@ -152,6 +164,7 @@ export const INTEGRATIONS: Integration[] = [
 		authType: "api_key",
 		lastSyncAt: new Date(),
 		docsUrl: "https://posthog.com/docs/api",
+		metadata: null,
 	},
 	{
 		id: "posthog",
@@ -164,6 +177,7 @@ export const INTEGRATIONS: Integration[] = [
 		authType: "api_key",
 		lastSyncAt: new Date(),
 		docsUrl: "https://posthog.com/docs/api",
+		metadata: null,
 	},
 	{
 		id: "stripe",
@@ -176,6 +190,7 @@ export const INTEGRATIONS: Integration[] = [
 		authType: "api_key",
 		lastSyncAt: new Date(),
 		docsUrl: "https://doc.stripe.com/api",
+		metadata: null,
 	},
 ];
 
@@ -229,3 +244,47 @@ export const taskSourceColors = {
 	posthog: "bg-green-600 text-white",
 	stripe: "bg-amber-600 text-white",
 };
+
+export function mergeIntegrations(
+	staticIntegrations: Integration[],
+	userIntegrations: DBIntegration[]
+): Integration[] {
+	// Create a map of user integrations by toolName for quick lookup
+	const userIntegrationMap = new Map(
+		userIntegrations.map((integration) => [
+			integration.toolName.toLowerCase(),
+			integration,
+		])
+	);
+
+	// Map through static integrations and update with user data
+	return staticIntegrations.map((staticIntegration) => {
+		const userIntegration = userIntegrationMap.get(
+			staticIntegration.id.toLowerCase()
+		);
+
+		if (userIntegration) {
+			// User has this integration active
+			return {
+				...staticIntegration,
+				status: userIntegration.status,
+				lastSyncAt:
+					userIntegration.lastSyncAt || staticIntegration.lastSyncAt,
+				// Optional: include additional metadata from user integration
+				metadata: {
+					lastSyncStatus: userIntegration.lastSyncStatus,
+					syncInterval: userIntegration.syncInterval,
+					createdAt: userIntegration.createdAt,
+					updatedAt: userIntegration.updatedAt,
+					integrationId: userIntegration.id || null,
+				},
+			};
+		}
+
+		// User doesn't have this integration - return as inactive
+		return {
+			...staticIntegration,
+			status: "inactive",
+		};
+	});
+}

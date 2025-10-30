@@ -2,57 +2,40 @@
 
 import { useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2, Plug, Clock } from "lucide-react";
+import { CheckCircle2, Plug, Clock, XCircle } from "lucide-react";
 import { toast } from "sonner";
-import { INTEGRATIONS } from "@/lib/oauth-utils";
-import { ConnectedTab } from "@/components/integrations/connected-tab";
-import { AvailableTab } from "@/components/integrations/available-tab";
+import { INTEGRATIONS, mergeIntegrations } from "@/lib/oauth-utils";
 import { useIntegrationsStore } from "@/zustand/providers/integrations-store-provider";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ConnectButton } from "@/components/integrations/connect-button";
+import { DisconnectButton } from "@/components/integrations/disconnect-button";
 
 export default function IntegrationsPage() {
-	const { integrations, loading, syncLoading, error, connect, sync } =
+	const { integrations, error, connect, fetchIntegrations } =
 		useIntegrationsStore((state) => state);
 
-	// FIX: Only show error toast if error exists and has a message
 	useEffect(() => {
-		if (error && typeof error === "string" && error.trim()) {
+		if (error) {
 			toast.error(error);
 		}
 	}, [error]);
 
-	// FIX: Ensure integrations is always an array before filtering
-	const connectedIntegrations = useMemo(() => {
-		// Guard against undefined, null, or non-array values
-		if (!integrations || !Array.isArray(integrations)) {
-			return [];
-		}
-		return integrations.filter((i) => i.status === "active");
-	}, [integrations]);
-
-	// FIX: Safely format date
 	const lastSyncTime = useMemo(() => {
-		if (connectedIntegrations.length === 0) return "N/A";
+		if (!integrations || integrations.length === 0) return "N/A";
 
-		const lastSync = connectedIntegrations[0]?.lastSyncAt;
+		const lastSync = integrations[0]?.lastSyncAt;
 		if (!lastSync) return "N/A";
 
-		try {
-			// Handle if lastSyncAt is a string or Date object
-			const date =
-				typeof lastSync === "string" ? new Date(lastSync) : lastSync;
+		const date =
+			typeof lastSync === "string" ? new Date(lastSync) : lastSync;
+		return isNaN(date.getTime()) ? "N/A" : date.toLocaleString();
+	}, [integrations]);
 
-			// Validate date is valid
-			if (isNaN(date.getTime())) {
-				return "N/A";
-			}
-
-			return date.toLocaleString();
-		} catch (error) {
-			console.error("[DATE_FORMAT_ERROR]", error);
-			return "N/A";
-		}
-	}, [connectedIntegrations]);
+	const mergedIntegrations = useMemo(() => {
+		if (!integrations) return INTEGRATIONS;
+		return mergeIntegrations(INTEGRATIONS, integrations);
+	}, [integrations]);
 
 	return (
 		<div className="space-y-6">
@@ -77,7 +60,7 @@ export default function IntegrationsPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{connectedIntegrations.length}
+							{integrations?.length || 0}
 						</div>
 						<p className="text-xs text-muted-foreground mt-1">
 							Active integrations
@@ -94,7 +77,7 @@ export default function IntegrationsPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">
-							{INTEGRATIONS?.length || 0}
+							{INTEGRATIONS.length}
 						</div>
 						<p className="text-xs text-muted-foreground mt-1">
 							Ready to connect
@@ -118,27 +101,80 @@ export default function IntegrationsPage() {
 				</Card>
 			</div>
 
-			{/* Integrations Tabs */}
-			<Tabs defaultValue="connected" className="space-y-4">
-				<TabsList>
-					<TabsTrigger value="connected">
-						Connected ({connectedIntegrations.length})
-					</TabsTrigger>
-					<TabsTrigger value="available">
-						Available ({INTEGRATIONS?.length || 0})
-					</TabsTrigger>
-				</TabsList>
-
-				<ConnectedTab
-					isLoading={loading}
-					syncLoading={syncLoading}
-					integrations={connectedIntegrations}
-					onConnect={connect}
-					sync={sync}
-				/>
-
-				<AvailableTab isLoading={loading} onConnect={connect} />
-			</Tabs>
+			{/* Integrations List */}
+			<div className="grid gap-4">
+				{mergedIntegrations.map((integration) => (
+					<Card key={integration.id}>
+						<CardHeader>
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-4">
+									<div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+										<Plug className="h-6 w-6 text-primary" />
+									</div>
+									<div>
+										<CardTitle className="text-lg">
+											{integration.name}
+										</CardTitle>
+										<p className="text-sm text-muted-foreground">
+											{integration.category}
+										</p>
+									</div>
+								</div>
+								<div className="flex items-center gap-3">
+									{integration.status === "active" && (
+										<>
+											<Badge
+												variant="outline"
+												className="gap-1"
+											>
+												<CheckCircle2 className="h-3 w-3 text-success" />
+												Connected
+											</Badge>
+											<DisconnectButton
+												integrationId={
+													integration.metadata
+														?.integrationId
+												}
+												integrationName={
+													integration.name
+												}
+												onDisconnect={fetchIntegrations}
+											/>
+										</>
+									)}
+									{integration.status === "error" && (
+										<>
+											<Badge
+												variant="outline"
+												className="gap-1 border-destructive"
+											>
+												<XCircle className="h-3 w-3 text-destructive" />
+												Error
+											</Badge>
+											<Button variant="outline" size="sm">
+												Retry
+											</Button>
+										</>
+									)}
+									{integration.status === "inactive" && (
+										<ConnectButton
+											integration={integration}
+											onConnect={connect}
+										/>
+									)}
+								</div>
+							</div>
+						</CardHeader>
+						<CardContent>
+							<div className="text-sm text-muted-foreground">
+								Last sync:{" "}
+								{integration.lastSyncAt?.toLocaleDateString() ||
+									"Never"}
+							</div>
+						</CardContent>
+					</Card>
+				))}
+			</div>
 		</div>
 	);
 }
