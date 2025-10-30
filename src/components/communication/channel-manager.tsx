@@ -74,12 +74,7 @@ export function ChannelManager({
 							onClick={() => onSelectChannel(channel.id)}
 							className="flex-1 text-left"
 						>
-							<p className="font-medium text-foreground">
-								#{channel.name}
-							</p>
-							<p className="text-xs text-muted-foreground">
-								{channel.description}
-							</p>
+							#{channel.name}
 						</Button>
 						<DeleteChannelDialog channel={channel} />
 					</div>
