@@ -103,11 +103,14 @@ export async function GET(
 			} else if (toolName === "asana") {
 				const connector = new AsanaConnector(integration.apiKey!);
 
-				const result = await connector.fetchProjects({
-					page,
-					limit,
-					search,
-				});
+				const result = await connector.fetchProjects(
+					(integration.metadata as Record<string, any>).workspaceGid,
+					{
+						page,
+						limit,
+						search,
+					}
+				);
 
 				resources = result.resources;
 				pagination = {

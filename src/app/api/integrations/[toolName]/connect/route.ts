@@ -5,6 +5,7 @@ import { OAUTH_CONFIG, ToolName } from "@/lib/oauth-utils";
 import { z } from "zod";
 import { connectPostHogIntegration } from "@/lib/connectors/posthog";
 import { connectStripeIntegration } from "@/lib/connectors/stripe";
+import { connectAsanaIntegration } from "@/lib/connectors/asana";
 
 export async function GET(
 	request: NextRequest,
@@ -119,7 +120,7 @@ export async function POST(
 							{ status: 400 }
 						);
 					}
-					const resp = await connectPostHogIntegration({
+					const respPostHog = await connectPostHogIntegration({
 						projectId,
 						organizationId: user.organizationId,
 						apiKey,
@@ -128,9 +129,10 @@ export async function POST(
 						webhookConfirmed: webhookConfirmed || false,
 					});
 					return NextResponse.json({
-						success: resp.status,
+						success: respPostHog.status,
 						message:
-							resp.message || `Stripe connected successfully`,
+							respPostHog.message ||
+							`Stripe connected successfully`,
 					});
 
 				case "stripe":
@@ -142,6 +144,18 @@ export async function POST(
 					return NextResponse.json({
 						success: true,
 						message: `Stripe connected successfully`,
+					});
+				case "asana":
+					const respAsana = await connectAsanaIntegration({
+						userId: user.id,
+						organizationId: user.organizationId,
+						apiKey,
+					});
+					return NextResponse.json({
+						success: respAsana.status,
+						message:
+							respAsana.message ||
+							`Stripe connected successfully`,
 					});
 
 				default:
