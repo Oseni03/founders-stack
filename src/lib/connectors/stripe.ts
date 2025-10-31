@@ -2,6 +2,7 @@
 import Stripe from "stripe";
 import { prisma } from "../prisma";
 import { getIntegration } from "@/server/integrations";
+import { Prisma } from "@prisma/client";
 
 // TypeScript interfaces matching your database schema
 interface NormalizedCustomer {
@@ -61,23 +62,11 @@ interface NormalizedEvent {
 	createdAt: Date;
 }
 
-interface WebhookProcessedData {
-	type: "customer" | "subscription" | "invoice" | "refund" | "other";
-	action:
-		| "create"
-		| "update"
-		| "delete"
-		| "paid"
-		| "failed"
-		| "refund"
-		| "info";
-	data: any;
-}
-
 // Mapping Functions
 function mapCustomerToNormalized(
-	customer: Stripe.Customer
-): NormalizedCustomer {
+	customer: Stripe.Customer | Stripe.DeletedCustomer
+): NormalizedCustomer | null {
+	if (customer.deleted) return null;
 	return {
 		externalId: customer.id,
 		sourceTool: "stripe",
@@ -188,7 +177,29 @@ export class StripeConnector {
 		});
 	}
 
-	async getCustomers(): Promise<NormalizedCustomer[]> {
+	async retrieveCustomer(
+		customerId: string
+	): Promise<NormalizedCustomer | null> {
+		try {
+			const response = await this.stripe.customers.retrieve(customerId);
+			return mapCustomerToNormalized(response);
+		} catch (error) {
+			console.error("Failed to fetch customer:", error);
+			throw error;
+		}
+	}
+
+	async retrieveBalance(): Promise<NormalizedBalance> {
+		try {
+			const response = await this.stripe.balance.retrieve();
+			return mapBalanceToNormalized(response);
+		} catch (error) {
+			console.error("Failed to fetch balance:", error);
+			throw error;
+		}
+	}
+
+	async getCustomers(): Promise<NormalizedCustomer[] | null> {
 		const customers: NormalizedCustomer[] = [];
 		let startingAfter: string | undefined;
 
@@ -201,7 +212,7 @@ export class StripeConnector {
 
 				for (const customer of response.data) {
 					try {
-						customers.push(mapCustomerToNormalized(customer));
+						customers.push(mapCustomerToNormalized(customer)!);
 					} catch (error) {
 						console.error(
 							`Failed to map customer ${customer.id}:`,
@@ -340,138 +351,310 @@ export class StripeConnector {
 	}
 
 	/**
-	 * Handles Stripe webhook events
-	 * @param rawBody - Raw request body as string
-	 * @param signature - Stripe signature from headers
-	 * @param secret - Webhook secret from Stripe dashboard
-	 * @returns Parsed webhook event and normalized data for storage
+	 * Create a webhook endpoint in Stripe
+	 * @param webhookUrl - The URL where Stripe will send webhook events
+	 * @param enabledEvents - Array of event types to subscribe to (optional)
+	 * @returns Webhook endpoint details including secret
 	 */
-	static async handleWebhook(
+	async createWebhookEndpoint(
+		webhookUrl: string,
+		enabledEvents?: string[]
+	): Promise<{
+		id: string;
+		secret: string;
+		url: string;
+		status: string;
+		enabledEvents: string[];
+	}> {
+		if (!webhookUrl || !webhookUrl.startsWith("https://")) {
+			throw new Error("Webhook URL must be a valid HTTPS URL");
+		}
+
+		try {
+			// Default events if none provided
+			const events = enabledEvents || [
+				"charge.succeeded",
+				"charge.failed",
+				"charge.refunded",
+				"customer.created",
+				"customer.updated",
+				"customer.deleted",
+				"customer.subscription.created",
+				"customer.subscription.updated",
+				"customer.subscription.deleted",
+				"customer.subscription.trial_will_end",
+				"invoice.created",
+				"invoice.paid",
+				"invoice.payment_failed",
+				"invoice.payment_action_required",
+				"payment_intent.succeeded",
+				"payment_intent.payment_failed",
+				"payment_intent.canceled",
+			];
+
+			const webhookEndpoint = await this.stripe.webhookEndpoints.create({
+				url: webhookUrl,
+				enabled_events:
+					events as Stripe.WebhookEndpointCreateParams.EnabledEvent[],
+				api_version: "2023-10-16", // Use latest stable version
+				description: "Stack Management App - Automatic webhook",
+			});
+
+			return {
+				id: webhookEndpoint.id,
+				secret: webhookEndpoint.secret!,
+				url: webhookEndpoint.url,
+				status: webhookEndpoint.status,
+				enabledEvents: webhookEndpoint.enabled_events,
+			};
+		} catch (error) {
+			console.error("Failed to create webhook endpoint:", error);
+			if (error instanceof Stripe.errors.StripeError) {
+				throw new Error(`Stripe error: ${error.message}`);
+			}
+			throw error;
+		}
+	}
+
+	/**
+	 * Update an existing webhook endpoint
+	 * @param webhookId - The ID of the webhook endpoint to update
+	 * @param updates - Fields to update (url, enabled_events, etc.)
+	 */
+	async updateWebhookEndpoint(
+		webhookId: string,
+		updates: {
+			url?: string;
+			enabledEvents?: string[];
+			disabled?: boolean;
+		}
+	): Promise<{
+		id: string;
+		url: string;
+		status: string;
+		enabledEvents: string[];
+	}> {
+		try {
+			const updateParams: Stripe.WebhookEndpointUpdateParams = {};
+
+			if (updates.url) {
+				updateParams.url = updates.url;
+			}
+
+			if (updates.enabledEvents) {
+				updateParams.enabled_events =
+					updates.enabledEvents as Stripe.WebhookEndpointUpdateParams.EnabledEvent[];
+			}
+
+			if (updates.disabled !== undefined) {
+				updateParams.disabled = updates.disabled;
+			}
+
+			const webhookEndpoint = await this.stripe.webhookEndpoints.update(
+				webhookId,
+				updateParams
+			);
+
+			return {
+				id: webhookEndpoint.id,
+				url: webhookEndpoint.url,
+				status: webhookEndpoint.status,
+				enabledEvents: webhookEndpoint.enabled_events,
+			};
+		} catch (error) {
+			console.error("Failed to update webhook endpoint:", error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Delete a webhook endpoint
+	 * @param webhookId - The ID of the webhook endpoint to delete
+	 */
+	async deleteWebhookEndpoint(webhookId: string): Promise<void> {
+		try {
+			await this.stripe.webhookEndpoints.del(webhookId);
+		} catch (error) {
+			console.error("Failed to delete webhook endpoint:", error);
+			throw error;
+		}
+	}
+
+	/**
+	 * List all webhook endpoints for this account
+	 */
+	async listWebhookEndpoints(): Promise<
+		Array<{
+			id: string;
+			url: string;
+			status: string;
+			enabledEvents: string[];
+			created: Date;
+		}>
+	> {
+		try {
+			const endpoints = await this.stripe.webhookEndpoints.list({
+				limit: 100,
+			});
+
+			return endpoints.data.map((endpoint) => ({
+				id: endpoint.id,
+				url: endpoint.url,
+				status: endpoint.status,
+				enabledEvents: endpoint.enabled_events,
+				created: new Date(endpoint.created * 1000),
+			}));
+		} catch (error) {
+			console.error("Failed to list webhook endpoints:", error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Test connection and get account info
+	 * Used during initial connection to verify API key
+	 */
+	async testConnection(): Promise<{
+		accountId: string;
+		businessName: string | null;
+		country: string;
+		email: string | null;
+		currency: string;
+	}> {
+		try {
+			const account = await this.stripe.accounts.retrieve();
+
+			return {
+				accountId: account.id,
+				businessName: account.business_profile?.name || null,
+				country: account.country || "US",
+				email: account.email || null,
+				currency: account.default_currency || "usd",
+			};
+		} catch (error) {
+			console.error("Failed to test Stripe connection:", error);
+			if (error instanceof Stripe.errors.StripeAuthenticationError) {
+				throw new Error("Invalid Stripe API key");
+			}
+			throw error;
+		}
+	}
+
+	async constructEvent(
 		rawBody: string,
 		signature: string,
 		secret: string
-	): Promise<{
-		event: Stripe.Event;
-		shouldStore: boolean;
-		normalizedEvent?: NormalizedEvent;
-		processedData?: WebhookProcessedData;
-	}> {
+	): Promise<Stripe.Event> {
 		if (!rawBody || !signature || !secret) {
 			throw new Error("Missing required webhook parameters");
 		}
 
-		const stripe = new Stripe("");
-
 		try {
-			const event = stripe.webhooks.constructEvent(
+			const event = this.stripe.webhooks.constructEvent(
 				rawBody,
 				signature,
 				secret
 			);
-
-			// Check if this is a critical event that should be stored
-			const shouldStore = StripeConnector.CRITICAL_EVENTS.has(event.type);
-
-			// Prepare normalized event data for storage
-			let normalizedEvent: NormalizedEvent | undefined;
-
-			if (shouldStore) {
-				normalizedEvent = mapEventToNormalized(event);
-			}
-
-			// Process event and prepare normalized data
-			const processedData =
-				await StripeConnector.processStripeEvent(event);
-
-			return {
-				event,
-				shouldStore,
-				normalizedEvent,
-				processedData,
-			};
+			return event;
 		} catch (error) {
-			console.error("Webhook verification failed:", error);
-			throw new Error("Webhook signature invalid");
+			console.error(`Error processing event:`, error);
+			throw error;
 		}
 	}
 
 	/**
 	 * Process specific event types and return normalized data
 	 */
-	private static async processStripeEvent(
-		event: Stripe.Event
-	): Promise<WebhookProcessedData> {
-		switch (event.type) {
-			case "customer.subscription.deleted": {
-				const subscription = event.data.object as Stripe.Subscription;
-				return {
-					type: "subscription",
-					action: "delete",
-					data: {
-						externalId: subscription.id,
-						status: "canceled",
-						endDate: subscription.ended_at
-							? new Date(subscription.ended_at * 1000)
-							: new Date(),
+	static async processStripeEvent(
+		event: Stripe.Event,
+		organizationId: string
+	): Promise<void> {
+		console.log(`Processing event ${event.id} of type ${event.type}`);
+
+		try {
+			switch (event.type) {
+				// ==================== CUSTOMER EVENTS ====================
+				case "customer.created":
+				case "customer.updated":
+					await handleCustomerEvent(event, organizationId);
+					break;
+
+				case "customer.deleted":
+					await handleCustomerDeleted(event);
+					break;
+
+				// ==================== SUBSCRIPTION EVENTS ====================
+				case "customer.subscription.created":
+				case "customer.subscription.updated":
+					await handleSubscriptionEvent(event, organizationId);
+					break;
+
+				case "customer.subscription.deleted":
+					await handleSubscriptionDeleted(event);
+					break;
+
+				case "customer.subscription.trial_will_end":
+					await handleSubscriptionTrialEnding(event);
+					break;
+
+				// ==================== INVOICE EVENTS ====================
+				case "invoice.created":
+				case "invoice.updated":
+				case "invoice.finalized":
+					await handleInvoiceEvent(event, organizationId);
+					break;
+
+				case "invoice.paid":
+					await handleInvoicePaid(event, organizationId);
+					break;
+
+				case "invoice.payment_failed":
+					await handleInvoicePaymentFailed(event, organizationId);
+					break;
+
+				// ==================== CHARGE EVENTS ====================
+				case "charge.succeeded":
+					await handleChargeSucceeded(event, organizationId);
+					break;
+
+				case "charge.failed":
+					await handleChargeFailed(event);
+					break;
+
+				case "charge.refunded":
+					await handleChargeRefunded(event, organizationId);
+					break;
+
+				// ==================== PAYMENT INTENT EVENTS ====================
+				case "payment_intent.succeeded":
+				case "payment_intent.payment_failed":
+				case "payment_intent.canceled":
+					// These are typically handled via invoice events
+					console.log(
+						`Payment intent event ${event.type} recorded but not processed separately`
+					);
+					break;
+
+				default:
+					console.log(`Unhandled event type: ${event.type}`);
+			}
+
+			// Mark event as processed
+			await prisma.event.update({
+				where: {
+					externalId_sourceTool: {
+						externalId: event.id,
+						sourceTool: "stripe",
 					},
-				};
-			}
-
-			case "customer.subscription.updated": {
-				const subscription = event.data.object as Stripe.Subscription;
-				return {
-					type: "subscription",
-					action: "update",
-					data: mapSubscriptionToNormalized(subscription),
-				};
-			}
-
-			case "invoice.payment_failed":
-			case "invoice.paid": {
-				const invoice = event.data.object as Stripe.Invoice;
-				return {
-					type: "invoice",
-					action: event.type === "invoice.paid" ? "paid" : "failed",
-					data: mapInvoiceToNormalized(invoice),
-				};
-			}
-
-			case "charge.refunded": {
-				const charge = event.data.object as Stripe.Charge;
-				return {
-					type: "refund",
-					action: "refund",
-					data: {
-						chargeId: charge.id,
-						amountRefunded: charge.amount_refunded
-							? charge.amount_refunded / 100
-							: 0,
-						refundedAt: new Date(charge.created * 1000),
-					},
-				};
-			}
-
-			case "customer.deleted": {
-				const customer = event.data.object as Stripe.Customer;
-				return {
-					type: "customer",
-					action: "delete",
-					data: {
-						externalId: customer.id,
-						deletedAt: new Date(),
-					},
-				};
-			}
-
-			default:
-				console.log(
-					`Event ${event.type} processed but not stored (informational)`
-				);
-				return {
-					type: "other",
-					action: "info",
-					data: event.data.object,
-				};
+				},
+				data: {
+					status: "processed",
+					processedAt: new Date(),
+				},
+			});
+		} catch (error) {
+			console.error(`Error processing event ${event.id}:`, error);
+			throw error;
 		}
 	}
 }
@@ -517,58 +700,63 @@ export async function syncStripe(
 			connector = new StripeConnector(integration.apiKey);
 		}
 
-		// 1. Sync Customers
-		console.log("Syncing customers...");
-		try {
-			const customers = await connector.getCustomers();
-
-			for (const customer of customers) {
-				try {
-					await prisma.customer.upsert({
-						where: {
-							externalId_sourceTool: {
-								externalId: customer.externalId,
-								sourceTool: customer.sourceTool,
+		const [customers, subscriptions, invoices, balance, events] =
+			await Promise.all([
+				connector.getCustomers(),
+				connector.getSubscriptions(),
+				connector.getInvoices(),
+				connector.getBalance(),
+				connector.getEvents({ limit: 100 }),
+			]);
+		// 1. saving Customers
+		if (customers) {
+			try {
+				for (const customer of customers) {
+					try {
+						await prisma.customer.upsert({
+							where: {
+								externalId_sourceTool: {
+									externalId: customer.externalId,
+									sourceTool: customer.sourceTool,
+								},
 							},
-						},
-						update: {
-							email: customer.email,
-							name: customer.name,
-							// metadata: customer.metadata,
-						},
-						create: {
-							organizationId,
-							externalId: customer.externalId,
-							sourceTool: "stripe",
-							email: customer.email,
-							name: customer.name,
-							createdAt: customer.createdAt,
-						},
-					});
-					result.stats.customers++;
-				} catch (error) {
-					console.error(
-						`Failed to sync customer ${customer.externalId}:`,
-						error
-					);
-					result.errors.push(
-						`Customer ${customer.externalId}: ${error instanceof Error ? error.message : "Unknown error"}`
-					);
+							update: {
+								email: customer.email,
+								name: customer.name,
+								// metadata: customer.metadata,
+							},
+							create: {
+								organizationId,
+								externalId: customer.externalId,
+								sourceTool: "stripe",
+								email: customer.email,
+								name: customer.name,
+								createdAt: customer.createdAt,
+							},
+						});
+						result.stats.customers++;
+					} catch (error) {
+						console.error(
+							`Failed to sync customer ${customer.externalId}:`,
+							error
+						);
+						result.errors.push(
+							`Customer ${customer.externalId}: ${error instanceof Error ? error.message : "Unknown error"}`
+						);
+					}
 				}
+				console.log(`Synced ${customers.length} customers`);
+			} catch (error) {
+				console.error("Failed to fetch customers:", error);
+				result.errors.push(
+					`Customers sync failed: ${error instanceof Error ? error.message : "Unknown error"}`
+				);
 			}
-			console.log(`Synced ${customers.length} customers`);
-		} catch (error) {
-			console.error("Failed to fetch customers:", error);
-			result.errors.push(
-				`Customers sync failed: ${error instanceof Error ? error.message : "Unknown error"}`
-			);
 		}
 
-		// 2. Sync Subscriptions
+		// 2. saving Subscriptions
 		console.log("Syncing subscriptions...");
 		try {
-			const subscriptions = await connector.getSubscriptions();
-
 			for (const subscription of subscriptions) {
 				try {
 					// Find the customer ID from the external ID
@@ -641,10 +829,8 @@ export async function syncStripe(
 		}
 
 		// 3. Sync Invoices
-		console.log("Syncing invoices...");
+		console.log("Saving invoices...");
 		try {
-			const invoices = await connector.getInvoices();
-
 			for (const invoice of invoices) {
 				try {
 					// Find the customer ID
@@ -717,10 +903,8 @@ export async function syncStripe(
 		}
 
 		// 4. Sync Balance
-		console.log("Syncing balance...");
+		console.log("Saving balance...");
 		try {
-			const balance = await connector.getBalance();
-
 			await prisma.balance.upsert({
 				where: {
 					organizationId_sourceTool: {
@@ -756,8 +940,6 @@ export async function syncStripe(
 		// 5. Sync Recent Events (last 100)
 		console.log("Syncing events...");
 		try {
-			const events = await connector.getEvents({ limit: 100 });
-
 			for (const event of events) {
 				try {
 					await prisma.event.upsert({
@@ -806,4 +988,556 @@ export async function syncStripe(
 		);
 		return result;
 	}
+}
+
+export interface CreateIntegrationInput {
+	organizationId: string;
+	userId: string;
+	apiKey: string;
+	displayName?: string;
+}
+
+export interface WebhookCreationResult {
+	integrationId: string;
+	webhookId: string;
+	webhookUrl: string;
+	status: "CONNECTED" | "PENDING_SETUP" | "ERROR";
+	message: string;
+}
+
+/**
+ * Main server action to connect Stripe integration and create webhook
+ */
+export async function connectStripeIntegration(
+	input: CreateIntegrationInput
+): Promise<WebhookCreationResult> {
+	const { organizationId, userId, apiKey, displayName } = input;
+
+	// Validate inputs
+	if (!organizationId || !userId || !apiKey) {
+		throw new Error(
+			"Missing required fields: organizationId, userId, or apiKey"
+		);
+	}
+
+	// Validate API key format
+	if (!apiKey.startsWith("sk_test_") && !apiKey.startsWith("sk_live_")) {
+		throw new Error(
+			"Invalid Stripe API key format. Must start with sk_test_ or sk_live_"
+		);
+	}
+
+	try {
+		// Step 1: Initialize Stripe connector
+		const stripeConnector = new StripeConnector(apiKey);
+
+		// Step 2: Test connection and get account info
+		const accountInfo = await stripeConnector.testConnection();
+
+		// Step 3: Generate webhook URL
+		const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/stripe/${userId}/${organizationId}`;
+
+		// Step 4: Create webhook endpoint in Stripe
+		const webhookData =
+			await stripeConnector.createWebhookEndpoint(webhookUrl);
+
+		console.log("Webhook created successfully:", webhookData.id);
+
+		// Step 5: Save integration to database
+		const integration = await prisma.integration.create({
+			data: {
+				organizationId,
+				userId,
+				toolName: "stripe",
+				category: "PAYMENT",
+				displayName:
+					displayName ||
+					`Stripe (${accountInfo.businessName || accountInfo.email || "Account"})`,
+				status: "CONNECTED",
+
+				// Encrypt sensitive data
+				apiKey,
+				webhookSecret: webhookData.secret,
+
+				// Webhook configuration
+				webhookUrl: webhookData.url,
+				webhookId: webhookData.id,
+				webhookEvents: webhookData.enabledEvents,
+				webhookSetupType: "AUTOMATIC",
+
+				// Account metadata
+				metadata: {
+					accountId: accountInfo.accountId,
+					businessName: accountInfo.businessName,
+					country: accountInfo.country,
+					email: accountInfo.email,
+					currency: accountInfo.currency,
+					webhookStatus: webhookData.status,
+				},
+
+				lastSyncAt: new Date(),
+			},
+		});
+
+		// Step 6: Start initial data sync (async - don't wait)
+		// This runs in the background
+		startInitialSync(integration.id, apiKey).catch((error) => {
+			console.error("Initial sync failed:", error);
+			// Update integration status to show error
+			prisma.integration.update({
+				where: { id: integration.id },
+				data: {
+					status: "ERROR",
+				},
+			});
+		});
+
+		// Step 7: Return success response
+		return {
+			integrationId: integration.id,
+			webhookId: webhookData.id,
+			webhookUrl: webhookData.url,
+			status: "CONNECTED",
+			message:
+				"Stripe integration connected successfully. Syncing historical data...",
+		};
+	} catch (error) {
+		console.error("Failed to connect Stripe integration:", error);
+
+		// If we created a webhook but DB save failed, try to clean up
+		// (You might want to add webhook cleanup logic here)
+
+		throw new Error(
+			error instanceof Error
+				? error.message
+				: "Failed to connect Stripe integration"
+		);
+	}
+}
+
+/**
+ * Background job to perform initial data sync
+ * This runs asynchronously after integration is created
+ */
+async function startInitialSync(
+	integrationId: string,
+	apiKey: string
+): Promise<void> {
+	try {
+		const integration = await prisma.integration.findUnique({
+			where: { id: integrationId },
+		});
+
+		if (!integration) {
+			throw new Error("Integration not found");
+		}
+
+		// Update status to syncing
+		await prisma.integration.update({
+			where: { id: integrationId },
+			data: { status: "SYNCING" },
+		});
+
+		await syncStripe(integration.organizationId, apiKey);
+
+		// Update status to connected after successful sync
+		await prisma.integration.update({
+			where: { id: integrationId },
+			data: { status: "CONNECTED", lastSyncAt: new Date() },
+		});
+	} catch (error) {
+		console.error(
+			`Initial sync failed for integration ${integrationId}:`,
+			error
+		);
+
+		// Update integration with error status
+		await prisma.integration.update({
+			where: { id: integrationId },
+			data: {
+				status: "ERROR",
+			},
+		});
+
+		throw error;
+	}
+}
+
+// ============================================================================
+// EVENT PROCESSING LOGIC
+// ============================================================================
+
+// ============================================================================
+// CUSTOMER EVENT HANDLERS
+// ============================================================================
+
+async function handleCustomerEvent(
+	event: Stripe.Event,
+	organizationId: string
+): Promise<void> {
+	const customer = mapCustomerToNormalized(
+		event.data.object as Stripe.Customer
+	);
+
+	if (!customer) return;
+
+	await prisma.customer.upsert({
+		where: {
+			externalId_sourceTool: {
+				externalId: customer.externalId,
+				sourceTool: "stripe",
+			},
+		},
+		create: {
+			organizationId,
+			...customer,
+			metadata: customer.metadata as Prisma.InputJsonValue, // ← cast
+		},
+		update: {
+			email: customer.email,
+			name: customer.name,
+			metadata: customer.metadata as Prisma.InputJsonValue, // ← cast
+		},
+	});
+
+	console.log(`Customer ${customer.externalId} upserted successfully`);
+}
+
+async function handleCustomerDeleted(event: Stripe.Event): Promise<void> {
+	const customer = mapCustomerToNormalized(
+		event.data.object as Stripe.Customer
+	);
+
+	if (!customer) return;
+
+	// Soft delete: update metadata to mark as deleted
+	await prisma.customer.update({
+		where: {
+			externalId_sourceTool: {
+				externalId: customer.externalId,
+				sourceTool: "stripe",
+			},
+		},
+		data: {
+			metadata: {
+				deleted: true,
+				deletedAt: new Date(),
+			},
+		},
+	});
+
+	console.log(`Customer ${customer.externalId} marked as deleted`);
+}
+
+async function handleSubscriptionEvent(
+	event: Stripe.Event,
+	organizationId: string
+): Promise<void> {
+	const subscription = mapSubscriptionToNormalized(
+		event.data.object as Stripe.Subscription
+	);
+
+	// Get or create customer first
+	const customer = await ensureCustomerExists(
+		subscription.customerExternalId,
+		organizationId
+	);
+
+	await prisma.financeSubscription.upsert({
+		where: {
+			externalId_sourceTool: {
+				externalId: subscription.externalId,
+				sourceTool: "stripe",
+			},
+		},
+		create: {
+			organizationId,
+			externalId: subscription.externalId,
+			sourceTool: "stripe",
+			customerId: customer.id,
+			planId: subscription.planId,
+			status: subscription.status,
+			amount: subscription.amount,
+			billingCycle: subscription.billingCycle,
+			startDate: subscription.startDate,
+			endDate: subscription.endDate,
+			nextBillingDate: subscription.nextBillingDate,
+			metadata: subscription.metadata as Prisma.InputJsonValue,
+		},
+		update: {
+			status: subscription.status,
+			amount: subscription.amount,
+			billingCycle: subscription.billingCycle,
+			startDate: subscription.startDate,
+			endDate: subscription.endDate,
+			nextBillingDate: subscription.nextBillingDate,
+			metadata: subscription.metadata as Prisma.InputJsonValue,
+		},
+	});
+
+	console.log(
+		`Subscription ${subscription.externalId} upserted successfully`
+	);
+}
+
+async function handleSubscriptionDeleted(event: Stripe.Event): Promise<void> {
+	const subscription = mapSubscriptionToNormalized(
+		event.data.object as Stripe.Subscription
+	);
+
+	await prisma.financeSubscription.update({
+		where: {
+			externalId_sourceTool: {
+				externalId: subscription.externalId,
+				sourceTool: "stripe",
+			},
+		},
+		data: {
+			status: "canceled",
+			endDate: subscription.endDate,
+			metadata: subscription.metadata as Prisma.InputJsonValue,
+		},
+	});
+
+	console.log(`Subscription ${subscription.externalId} marked as canceled`);
+}
+
+async function handleSubscriptionTrialEnding(
+	event: Stripe.Event
+): Promise<void> {
+	const subscription = mapSubscriptionToNormalized(
+		event.data.object as Stripe.Subscription
+	);
+
+	// Update subscription metadata to flag trial ending
+	await prisma.financeSubscription.update({
+		where: {
+			externalId_sourceTool: {
+				externalId: subscription.externalId,
+				sourceTool: "stripe",
+			},
+		},
+		data: {
+			metadata: subscription.metadata as Prisma.InputJsonValue,
+		},
+	});
+
+	console.log(
+		`Subscription ${subscription.externalId} trial ending notification recorded`
+	);
+}
+
+async function handleInvoiceEvent(
+	event: Stripe.Event,
+	organizationId: string
+): Promise<void> {
+	const invoice = mapInvoiceToNormalized(event.data.object as Stripe.Invoice);
+
+	// Ensure customer exists
+	const customer = await ensureCustomerExists(
+		invoice.customerExternalId,
+		organizationId
+	);
+
+	await prisma.invoice.upsert({
+		where: {
+			externalId_sourceTool: {
+				externalId: invoice.externalId,
+				sourceTool: "stripe",
+			},
+		},
+		create: {
+			organizationId,
+			...invoice,
+			customerId: customer.id,
+			metadata: invoice.metadata as Prisma.InputJsonValue,
+		},
+		update: {
+			amountDue: invoice.amountDue,
+			amountPaid: invoice.amountPaid,
+			amountRemaining: invoice.amountRemaining,
+			status: invoice.status || "draft",
+			dueDate: invoice.dueDate,
+			pdfUrl: invoice.pdfUrl,
+			metadata: invoice.metadata as Prisma.InputJsonValue,
+		},
+	});
+
+	console.log(`Invoice ${invoice.externalId} upserted successfully`);
+}
+
+async function handleInvoicePaid(
+	event: Stripe.Event,
+	organizationId: string
+): Promise<void> {
+	const invoice = event.data.object as Stripe.Invoice;
+
+	await handleInvoiceEvent(event, organizationId);
+
+	// Update balance after successful payment
+	await updateBalance(organizationId);
+
+	console.log(`Invoice ${invoice.id} marked as paid`);
+}
+
+async function handleInvoicePaymentFailed(
+	event: Stripe.Event,
+	organizationId: string
+): Promise<void> {
+	const invoice = event.data.object as Stripe.Invoice;
+
+	await handleInvoiceEvent(event, organizationId);
+
+	// Could trigger alert/notification here
+	console.log(`Invoice ${invoice.id} payment failed`);
+}
+
+async function handleChargeSucceeded(
+	event: Stripe.Event,
+	organizationId: string
+): Promise<void> {
+	const charge = event.data.object as Stripe.Charge;
+
+	// Update balance with successful charge
+	await updateBalance(organizationId);
+
+	console.log(`Charge ${charge.id} succeeded - balance updated`);
+}
+
+async function handleChargeFailed(event: Stripe.Event): Promise<void> {
+	const charge = event.data.object as Stripe.Charge;
+
+	console.log(`Charge ${charge.id} failed: ${charge.failure_message}`);
+}
+
+async function handleChargeRefunded(
+	event: Stripe.Event,
+	organizationId: string
+): Promise<void> {
+	const charge = event.data.object as Stripe.Charge;
+
+	// Update balance after refund
+	await updateBalance(organizationId);
+
+	console.log(`Charge ${charge.id} refunded - balance updated`);
+}
+
+async function ensureCustomerExists(
+	stripeCustomerId: string,
+	organizationId: string
+): Promise<{ id: string }> {
+	// Try to find existing customer
+	let customer = await prisma.customer.findUnique({
+		where: {
+			externalId_sourceTool: {
+				externalId: stripeCustomerId,
+				sourceTool: "stripe",
+			},
+		},
+		select: { id: true },
+	});
+
+	if (!customer) {
+		// Fetch customer from Stripe and create
+		const integration = await prisma.integration.findFirst({
+			where: {
+				organizationId,
+				toolName: "stripe",
+				status: "CONNECTED",
+			},
+		});
+
+		if (!integration) {
+			throw new Error("Stripe integration not found");
+		}
+
+		const connector = new StripeConnector(integration.apiKey!);
+
+		const stripeCustomer =
+			await connector.retrieveCustomer(stripeCustomerId);
+
+		if (!stripeCustomer) {
+			throw new Error(`Customer ${stripeCustomerId} has been deleted`);
+		}
+
+		customer = await prisma.customer.create({
+			data: {
+				organizationId,
+				externalId: stripeCustomer.externalId,
+				sourceTool: "stripe",
+				email: stripeCustomer.email,
+				name: stripeCustomer.name,
+				createdAt: stripeCustomer.createdAt,
+			},
+			select: { id: true },
+		});
+
+		console.log(`Created missing customer ${stripeCustomer.externalId}`);
+	}
+
+	return customer;
+}
+
+/**
+ * Update balance from Stripe
+ */
+async function updateBalance(organizationId: string): Promise<void> {
+	try {
+		const integration = await prisma.integration.findFirst({
+			where: {
+				organizationId,
+				toolName: "stripe",
+				status: "CONNECTED",
+			},
+		});
+
+		if (!integration) {
+			console.warn("No Stripe integration found for balance update");
+			return;
+		}
+
+		const stripeConnector = new StripeConnector(integration.apiKey!);
+
+		const balance = await stripeConnector.retrieveBalance();
+
+		await prisma.balance.upsert({
+			where: {
+				organizationId_sourceTool: {
+					organizationId,
+					sourceTool: "stripe",
+				},
+			},
+			create: {
+				organizationId,
+				externalId: null, // Stripe balance has no ID
+				sourceTool: "stripe",
+				currency: "USD",
+				availableAmount: balance.availableAmount,
+				pendingAmount: balance.pendingAmount,
+				updatedAt: new Date(),
+			},
+			update: {
+				availableAmount: balance.availableAmount,
+				pendingAmount: balance.pendingAmount,
+				updatedAt: new Date(),
+			},
+		});
+
+		console.log("Balance updated successfully");
+	} catch (error) {
+		console.error("Failed to update balance:", error);
+		// Don't throw - balance update is not critical
+	}
+}
+
+/**
+ * Determine event category based on type
+ */
+export function determineEventCategory(eventType: string): string {
+	if (eventType.startsWith("customer.")) return "customer";
+	if (eventType.startsWith("charge.")) return "charge";
+	if (eventType.startsWith("invoice.")) return "invoice";
+	if (eventType.startsWith("payment_intent.")) return "payment";
+	if (eventType.startsWith("subscription.")) return "subscription";
+	return "other";
 }

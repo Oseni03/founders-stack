@@ -2,16 +2,12 @@
 import { withAuth } from "@/lib/middleware";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import {
-	getIntegrationCategory,
-	OAUTH_CONFIG,
-	ToolName,
-} from "@/lib/oauth-utils";
+import { OAUTH_CONFIG, ToolName } from "@/lib/oauth-utils";
 import { z } from "zod";
 import { createAPIIntegration } from "@/server/integrations";
 import { PostHogConnector } from "@/lib/connectors/posthog";
 import { IntegrationCategory, IntegrationStatus } from "@prisma/client";
-import { syncStripe } from "@/lib/connectors/stripe";
+import { connectStripeIntegration } from "@/lib/connectors/stripe";
 
 export async function GET(
 	request: NextRequest,
@@ -108,19 +104,47 @@ export async function POST(
 				);
 			}
 
+			const { apiKey, projectId, projectName } = body;
+
+			if (!apiKey) {
+				return NextResponse.json(
+					{ error: "API key is required" },
+					{ status: 400 }
+				);
+			}
+
 			// Route to specific integration handler based on toolName
 			switch (toolName) {
 				case "posthog":
-					return await handlePostHogIntegration(body, user);
+					if (!projectId) {
+						return NextResponse.json(
+							{ error: "Project ID is required" },
+							{ status: 400 }
+						);
+					}
+					return await handlePostHogIntegration(
+						apiKey,
+						projectId,
+						projectName || "Unknown",
+						user
+					);
+
+				case "stripe":
+					await connectStripeIntegration({
+						userId: user.id,
+						organizationId: user.organizationId,
+						apiKey: apiKey,
+					});
+					return NextResponse.json({
+						success: true,
+						message: `Stripe connected successfully`,
+					});
 
 				default:
 					// Default API key integration handler (like Stripe)
-					return await handleDefaultAPIIntegration(
-						request,
-						body,
-						user,
-						toolName
-					);
+					return NextResponse.json({
+						error: `Integration for ${toolName} is not implemented yet.`,
+					});
 			}
 		} catch (error) {
 			console.error(`Failed to connect ${toolName} with API key:`, error);
@@ -167,9 +191,12 @@ export async function POST(
 }
 
 // PostHog integration handler
-async function handlePostHogIntegration(body: any, user: any) {
-	const { apiKey, projectId, projectName } = body;
-
+async function handlePostHogIntegration(
+	apiKey: string,
+	projectId: string,
+	projectName: string,
+	user: any
+) {
 	// Test API key and fetch events
 	const connector = new PostHogConnector(apiKey, projectId);
 
@@ -262,55 +289,4 @@ async function handlePostHogIntegration(body: any, user: any) {
 		},
 		{ status: 201 }
 	);
-}
-
-// Default API key integration handler (Stripe, etc.)
-async function handleDefaultAPIIntegration(
-	request: NextRequest,
-	body: any,
-	user: any,
-	toolName: string
-) {
-	const { apiKey } = body;
-
-	if (!apiKey) {
-		return NextResponse.json(
-			{ error: "API key is required" },
-			{ status: 400 }
-		);
-	}
-
-	const category = getIntegrationCategory(toolName);
-
-	// Store integration
-	const integration = await createAPIIntegration(user.organizationId, {
-		toolName,
-		apiKey,
-		category,
-		status: IntegrationStatus.CONNECTED,
-	});
-
-	// Run tool-specific sync if function exists
-	switch (toolName) {
-		case "stripe":
-			await syncStripe(user.organizationId, apiKey);
-			return NextResponse.json(
-				{
-					success: true,
-					integration: integration,
-					message: `${toolName.charAt(0).toUpperCase() + toolName.slice(1)} connected successfully`,
-				},
-				{ status: 201 }
-			);
-
-		default:
-			const origin = new URL(request.url).origin;
-			return NextResponse.redirect(
-				new URL(
-					`/dashboard/integrations/${toolName}/onboarding`,
-					origin
-				),
-				303 // This forces a GET redirect
-			);
-	}
 }

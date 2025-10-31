@@ -231,6 +231,7 @@ model Integration {
   status         IntegrationStatus   @default(PENDING_SETUP)
   lastSyncAt     DateTime?
   toolName       String // e.g., "stripe", "jira"
+  displayName    String?
   type           IntegrationType     @default(oauth2)
   lastSyncStatus String?
   syncInterval   Int? // Minutes, e.g., 15

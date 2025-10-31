@@ -215,7 +215,9 @@ export const getProviderLogo = (providerId: string) => {
 	}
 };
 
-export const getIntegrationCategory = (providerId: string) => {
+export const getIntegrationCategory = (
+	providerId: string
+): IntegrationCategory => {
 	switch (providerId) {
 		case "asana":
 			return IntegrationCategory.PROJECT_MGMT;
