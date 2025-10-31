@@ -1,12 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { withAuth } from "@/lib/middleware";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { OAUTH_CONFIG, ToolName } from "@/lib/oauth-utils";
 import { z } from "zod";
-import { createAPIIntegration } from "@/server/integrations";
-import { PostHogConnector } from "@/lib/connectors/posthog";
-import { IntegrationCategory, IntegrationStatus } from "@prisma/client";
+import { connectPostHogIntegration } from "@/lib/connectors/posthog";
 import { connectStripeIntegration } from "@/lib/connectors/stripe";
 
 export async function GET(
@@ -122,12 +119,18 @@ export async function POST(
 							{ status: 400 }
 						);
 					}
-					return await handlePostHogIntegration(
-						apiKey,
+					const resp = await connectPostHogIntegration({
 						projectId,
-						projectName || "Unknown",
-						user
-					);
+						organizationId: user.organizationId,
+						apiKey,
+						displayName: projectName,
+						userId: user.id,
+					});
+					return NextResponse.json({
+						success: resp.status,
+						message:
+							resp.message || `Stripe connected successfully`,
+					});
 
 				case "stripe":
 					await connectStripeIntegration({
@@ -188,105 +191,4 @@ export async function POST(
 			);
 		}
 	});
-}
-
-// PostHog integration handler
-async function handlePostHogIntegration(
-	apiKey: string,
-	projectId: string,
-	projectName: string,
-	user: any
-) {
-	// Test API key and fetch events
-	const connector = new PostHogConnector(apiKey, projectId);
-
-	let events;
-	try {
-		events = await connector.getEvents();
-	} catch (error: any) {
-		// Check if it's an authentication error from PostHog
-		if (
-			error.message?.includes("401") ||
-			error.message?.includes("authentication") ||
-			error.message?.includes("invalid")
-		) {
-			return NextResponse.json(
-				{
-					error: "Invalid PostHog API key",
-					details:
-						"The API key you provided is invalid. You can find your project API key in PostHog project settings.",
-				},
-				{ status: 401 }
-			);
-		}
-		throw error;
-	}
-
-	// Upsert project
-	const project = await prisma.project.upsert({
-		where: {
-			externalId_sourceTool: {
-				externalId: projectId,
-				sourceTool: "posthog",
-			},
-		},
-		update: {
-			name: projectName,
-			updatedAt: new Date(),
-		},
-		create: {
-			organizationId: user.organizationId,
-			name: projectName,
-			externalId: projectId,
-			sourceTool: "posthog",
-		},
-	});
-
-	// Store integration and events in a single transaction
-	const result = await prisma.$transaction(async (tx) => {
-		// Create/update integration
-		const integration = await createAPIIntegration(user.organizationId, {
-			toolName: "posthog",
-			apiKey,
-			category: IntegrationCategory.ANALYTICS,
-			status: IntegrationStatus.CONNECTED,
-		});
-
-		// Only insert events if there are any
-		let eventsCreated = { count: 0 };
-		if (events && events.length > 0) {
-			eventsCreated = await tx.analyticsEvent.createMany({
-				data: events.map((event) => ({
-					...event,
-					sourceTool: "posthog",
-					organizationId: user.organizationId,
-					projectId: project.id,
-				})),
-				skipDuplicates: true,
-			});
-		}
-
-		return { integration, eventsCreated };
-	});
-
-	return NextResponse.json(
-		{
-			success: true,
-			integration: result.integration,
-			project: {
-				id: project.id,
-				name: project.name,
-				externalId: project.externalId,
-			},
-			stats: {
-				eventsTotal: events?.length || 0,
-				eventsCreated: result.eventsCreated.count,
-			},
-			message:
-				events?.length === 0
-					? "PostHog connected successfully. No events found yet."
-					: `PostHog connected successfully. ${result.eventsCreated.count} events synced.`,
-		},
-		{ status: 201 }
-	);
 }
