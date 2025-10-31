@@ -11,13 +11,17 @@ export interface Integration {
 	authType: "oauth2" | "api_key";
 	lastSyncAt: Date;
 	docsUrl: string;
-	metadata: {
-		lastSyncStatus: string | null;
-		syncInterval: number | null;
-		createdAt: Date | null;
-		updatedAt: Date | null;
-		integrationId: string | null;
-	} | null;
+	metadata?: null | {
+		/** Only for API-key integrations that need a manual webhook */
+		webhook?: {
+			/** The exact URL the user must copy */
+			url: string;
+			/** Markdown/HTML that explains where to paste it */
+			instructions: string;
+			/** Text for the checkbox (default: "I have added the webhook") */
+			confirmLabel?: string;
+		};
+	};
 }
 
 // OAuth configuration types
@@ -58,16 +62,6 @@ export const OAUTH_CONFIG: Record<string, OAuthConfig> = {
 		],
 		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/github`,
 		category: "DEVELOPMENT",
-	},
-	asana: {
-		providerId: "asana",
-		clientId: process.env.ASANA_CLIENT_ID!,
-		clientSecret: process.env.ASANA_CLIENT_SECRET!,
-		authorizationUrl: "https://app.asana.com/-/oauth_authorize",
-		tokenUrl: "https://app.asana.com/-/oauth_token",
-		scopes: ["tasks:read", "projects:read", "users:read"],
-		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/asana`,
-		category: "PROJECT_MGMT",
 	},
 	jira: {
 		providerId: "jira",
@@ -115,7 +109,6 @@ export const INTEGRATIONS: Integration[] = [
 		authType: "oauth2",
 		lastSyncAt: new Date(),
 		docsUrl: "https://docs.slack.dev/",
-		metadata: null,
 	},
 	{
 		id: "github",
@@ -127,7 +120,6 @@ export const INTEGRATIONS: Integration[] = [
 		authType: "oauth2",
 		lastSyncAt: new Date(),
 		docsUrl: "https://docs.github.com/",
-		metadata: null,
 	},
 	{
 		id: "asana",
@@ -139,7 +131,6 @@ export const INTEGRATIONS: Integration[] = [
 		authType: "api_key",
 		lastSyncAt: new Date(),
 		docsUrl: "https://developers.asana.com/docs",
-		metadata: null,
 	},
 	{
 		id: "jira",
@@ -151,7 +142,6 @@ export const INTEGRATIONS: Integration[] = [
 		authType: "oauth2",
 		lastSyncAt: new Date(),
 		docsUrl: "https://developers.jira.com/docs",
-		metadata: null,
 	},
 	{
 		id: "canny",
@@ -164,7 +154,19 @@ export const INTEGRATIONS: Integration[] = [
 		authType: "api_key",
 		lastSyncAt: new Date(),
 		docsUrl: "https://posthog.com/docs/api",
-		metadata: null,
+		metadata: {
+			webhook: {
+				url: `${window.location.origin}/api/webhooks/canny`, // <-- your endpoint
+				instructions: `
+                1. Open **Canny → Settings → API & Webhooks**  
+                2. Click **Add Webhook**  
+                3. Paste the URL below  
+                4. Choose the events you want (e.g. *post.created*, *vote.created*)  
+                5. Save
+            `,
+				confirmLabel: "I have added the webhook URL in Canny",
+			},
+		},
 	},
 	{
 		id: "posthog",
@@ -177,7 +179,17 @@ export const INTEGRATIONS: Integration[] = [
 		authType: "api_key",
 		lastSyncAt: new Date(),
 		docsUrl: "https://posthog.com/docs/api",
-		metadata: null,
+		metadata: {
+			webhook: {
+				url: `${window.location.origin}/api/webhooks/posthog`,
+				instructions: `
+                1. Go to **Project → Settings → Webhooks**  
+                2. Click **New webhook**  
+                3. Paste the URL and select events (capture, identify…)  
+                4. Save
+            `,
+			},
+		},
 	},
 	{
 		id: "stripe",
@@ -190,7 +202,6 @@ export const INTEGRATIONS: Integration[] = [
 		authType: "api_key",
 		lastSyncAt: new Date(),
 		docsUrl: "https://doc.stripe.com/api",
-		metadata: null,
 	},
 ];
 
@@ -272,14 +283,6 @@ export function mergeIntegrations(
 				status: userIntegration.status,
 				lastSyncAt:
 					userIntegration.lastSyncAt || staticIntegration.lastSyncAt,
-				// Optional: include additional metadata from user integration
-				metadata: {
-					lastSyncStatus: userIntegration.lastSyncStatus,
-					syncInterval: userIntegration.syncInterval,
-					createdAt: userIntegration.createdAt,
-					updatedAt: userIntegration.updatedAt,
-					integrationId: userIntegration.id || null,
-				},
 			};
 		}
 

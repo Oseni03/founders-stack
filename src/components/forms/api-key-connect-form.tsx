@@ -1,4 +1,5 @@
 import React from "react";
+import { useState } from "react";
 import { Button } from "../ui/button";
 import { useIntegrationsStore } from "@/zustand/providers/integrations-store-provider";
 import {
@@ -21,6 +22,9 @@ import {
 	FormLabel,
 	FormMessage,
 } from "../ui/form";
+import { Checkbox } from "../ui/checkbox";
+import { Alert, AlertDescription } from "../ui/alert";
+import { CopyButton } from "../ui/copy-button";
 
 // Define explicit type for form values to match connect function
 interface FormValues {
@@ -55,9 +59,12 @@ export const APIKeyConnectForm = ({
 	onClose: () => void;
 	integrationId: string;
 }) => {
-	const { connect } = useIntegrationsStore((state) => state);
+	const connect = useIntegrationsStore((s) => s.connect);
+	const integration = INTEGRATIONS.find((i) => i.id === integrationId)!;
 
-	// Initialize form with dynamic schema and explicit type
+	// -----------------------------------------------------------------
+	// 1. Form state (API key + optional fields)
+	// -----------------------------------------------------------------
 	const form = useForm<FormValues>({
 		resolver: zodResolver(createFormSchema(integrationId)),
 		defaultValues: {
@@ -69,54 +76,60 @@ export const APIKeyConnectForm = ({
 		},
 	});
 
-	async function onSubmit(values: FormValues) {
-		await connect(integrationId, values);
+	// -----------------------------------------------------------------
+	// 2. Webhook step state
+	// -----------------------------------------------------------------
+	const webhook = integration.metadata?.webhook;
+	const [webhookConfirmed, setWebhookConfirmed] = useState(false);
+	const [showWebhookStep, setShowWebhookStep] = useState(false);
+
+	// -----------------------------------------------------------------
+	// 3. Submit handler
+	// -----------------------------------------------------------------
+	const onSubmit = async (values: FormValues) => {
+		if (webhook && !showWebhookStep) {
+			// move to webhook step
+			setShowWebhookStep(true);
+			return;
+		}
+
+		await connect(integrationId, {
+			...values,
+			...(webhook ? { webhookConfirmed } : {}),
+		});
 		onClose();
-	}
+	};
 
-	const integration = INTEGRATIONS.find(
-		(integration) => integration.id === integrationId
-	);
-
+	// -----------------------------------------------------------------
+	// 4. Render
+	// -----------------------------------------------------------------
 	return (
 		<Form {...form}>
 			<Dialog open={isOpen} onOpenChange={onClose}>
-				<DialogContent>
+				<DialogContent className="max-w-lg">
 					<DialogHeader>
-						<DialogTitle>Connect {integration?.name}</DialogTitle>
+						<DialogTitle>
+							Connect {integration.name}
+							{showWebhookStep && " – Webhook"}
+						</DialogTitle>
 					</DialogHeader>
+
 					<form
 						onSubmit={form.handleSubmit(onSubmit)}
-						className="space-y-4"
+						className="space-y-5"
 					>
-						<FormField
-							control={form.control}
-							name="apiKey"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>API Key</FormLabel>
-									<FormControl>
-										<Input
-											placeholder={`Enter your ${integration?.name} API key`}
-											{...field}
-										/>
-									</FormControl>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						{integrationId === "posthog" && (
+						{/* ---------- STEP 1: API KEY ---------- */}
+						{!showWebhookStep && (
 							<>
 								<FormField
 									control={form.control}
-									name="projectId"
+									name="apiKey"
 									render={({ field }) => (
 										<FormItem>
-											<FormLabel>Project ID</FormLabel>
+											<FormLabel>API Key</FormLabel>
 											<FormControl>
 												<Input
-													placeholder={`Enter your ${integration?.name} project ID`}
+													placeholder={`Your ${integration.name} API key`}
 													{...field}
 												/>
 											</FormControl>
@@ -125,27 +138,109 @@ export const APIKeyConnectForm = ({
 									)}
 								/>
 
-								<FormField
-									control={form.control}
-									name="projectName"
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Project Name</FormLabel>
-											<FormControl>
-												<Input
-													placeholder={`Enter your ${integration?.name} project name`}
-													{...field}
-												/>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
+								{/* PostHog extra fields */}
+								{integrationId === "posthog" && (
+									<>
+										<FormField
+											control={form.control}
+											name="projectId"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>
+														Project ID
+													</FormLabel>
+													<FormControl>
+														<Input
+															placeholder="Project ID"
+															{...field}
+														/>
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name="projectName"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>
+														Project Name
+													</FormLabel>
+													<FormControl>
+														<Input
+															placeholder="Project Name"
+															{...field}
+														/>
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+									</>
+								)}
 							</>
 						)}
 
-						<DialogFooter>
-							<Button type="submit">Connect</Button>
+						{/* ---------- STEP 2: WEBHOOK ---------- */}
+						{showWebhookStep && webhook && (
+							<div className="space-y-4">
+								<Alert>
+									<AlertDescription
+										dangerouslySetInnerHTML={{
+											__html: webhook.instructions,
+										}}
+									/>
+								</Alert>
+
+								<div className="flex items-center gap-2">
+									<Input
+										readOnly
+										value={webhook.url}
+										className="flex-1"
+									/>
+									<CopyButton text={webhook.url} />
+								</div>
+
+								<div className="flex items-center space-x-2">
+									<Checkbox
+										id="webhook-ok"
+										checked={webhookConfirmed}
+										onCheckedChange={(c) =>
+											setWebhookConfirmed(c === true)
+										}
+									/>
+									<label
+										htmlFor="webhook-ok"
+										className="text-sm"
+									>
+										{webhook.confirmLabel ??
+											"I have added the webhook URL"}
+									</label>
+								</div>
+							</div>
+						)}
+
+						{/* ---------- FOOTER ---------- */}
+						<DialogFooter className="gap-2">
+							<Button
+								variant="outline"
+								type="button"
+								onClick={onClose}
+							>
+								Cancel
+							</Button>
+
+							<Button
+								type="submit"
+								disabled={showWebhookStep && !webhookConfirmed}
+							>
+								{showWebhookStep
+									? "Finish"
+									: webhook
+										? "Next"
+										: "Connect"}
+							</Button>
 						</DialogFooter>
 					</form>
 				</DialogContent>

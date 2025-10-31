@@ -16,6 +16,7 @@ export interface IntegrationsState {
 			apiKey?: string;
 			projectId?: string;
 			projectName?: string;
+			webhookConfirmed?: boolean;
 		}
 	) => Promise<void>;
 	disconnect: (toolName: string) => Promise<void>;
@@ -56,6 +57,7 @@ export const createIntegrationsStore = () => {
 						apiKey?: string;
 						projectId?: string;
 						projectName?: string;
+						webhookConfirmed?: boolean;
 					}
 				) => {
 					set({ loading: true, error: null });

@@ -252,6 +252,7 @@ model Integration {
   webhookId        String? // Platform's webhook ID (if created via API)
   webhookEvents    String[] // Events subscribed to
   webhookSetupType WebhookSetupType @default(AUTOMATIC)
+  webhookConfirmed Boolean  @default(false)  // For MANUAL webhook Configuration
 
   // Platform-specific metadata
   metadata Json? // Store platform-specific IDs, settings

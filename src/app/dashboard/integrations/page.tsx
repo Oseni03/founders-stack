@@ -131,10 +131,7 @@ export default function IntegrationsPage() {
 												Connected
 											</Badge>
 											<DisconnectButton
-												integrationId={
-													integration.metadata
-														?.integrationId
-												}
+												integrationId={integration.id}
 												integrationName={
 													integration.name
 												}

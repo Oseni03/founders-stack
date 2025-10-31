@@ -101,7 +101,7 @@ export async function POST(
 				);
 			}
 
-			const { apiKey, projectId, projectName } = body;
+			const { apiKey, projectId, projectName, webhookConfirmed } = body;
 
 			if (!apiKey) {
 				return NextResponse.json(
@@ -125,6 +125,7 @@ export async function POST(
 						apiKey,
 						displayName: projectName,
 						userId: user.id,
+						webhookConfirmed: webhookConfirmed || false,
 					});
 					return NextResponse.json({
 						success: resp.status,

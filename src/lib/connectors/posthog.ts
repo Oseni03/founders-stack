@@ -319,6 +319,7 @@ interface ConnectPostHogInput {
 	apiKey: string;
 	projectId: string;
 	displayName?: string;
+	webhookConfirmed: boolean;
 }
 
 export async function connectPostHogIntegration(
@@ -330,7 +331,14 @@ export async function connectPostHogIntegration(
 	status: string;
 	message: string;
 }> {
-	const { organizationId, userId, apiKey, projectId, displayName } = input;
+	const {
+		organizationId,
+		userId,
+		apiKey,
+		projectId,
+		displayName,
+		webhookConfirmed,
+	} = input;
 
 	// Validate inputs
 	if (!organizationId || !userId || !apiKey || !projectId) {
@@ -356,6 +364,7 @@ export async function connectPostHogIntegration(
 
 				apiKey,
 				webhookSetupType: "MANUAL",
+				webhookConfirmed,
 
 				metadata: {
 					projectId: projectInfo.projectId,
