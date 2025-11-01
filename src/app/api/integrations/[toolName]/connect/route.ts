@@ -6,6 +6,7 @@ import { z } from "zod";
 import { connectPostHogIntegration } from "@/lib/connectors/posthog";
 import { connectStripeIntegration } from "@/lib/connectors/stripe";
 import { connectAsanaIntegration } from "@/lib/connectors/asana";
+import { connectCannyIntegration } from "@/lib/connectors/canny";
 
 export async function GET(
 	request: NextRequest,
@@ -179,6 +180,24 @@ export async function POST(
 						status: respAsana.status,
 						message:
 							respAsana.message || `Asana connected successfully`,
+					});
+				case "canny":
+					const respCanny = await connectCannyIntegration({
+						userId: user.id,
+						organizationId: user.organizationId,
+						apiKey,
+					});
+					if (respCanny.status === "CONNECTED") {
+						const redirectUrl = new URL(
+							`/integrations/${toolName}/onboarding`,
+							request.url
+						);
+						return NextResponse.redirect(redirectUrl, 303);
+					}
+					return NextResponse.json({
+						status: respCanny.status,
+						message:
+							respCanny.message || `Canny connected successfully`,
 					});
 
 				default:

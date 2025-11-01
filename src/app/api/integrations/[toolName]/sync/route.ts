@@ -5,6 +5,7 @@ import { syncAsana } from "@/lib/connectors/asana";
 import { syncPostHog } from "@/lib/connectors/posthog";
 import { syncStripe } from "@/lib/connectors/stripe";
 import { syncSlack } from "@/lib/connectors/slack";
+import { syncCanny } from "@/lib/connectors/canny";
 
 export async function POST(
 	req: NextRequest,
@@ -14,16 +15,22 @@ export async function POST(
 		try {
 			const { toolName } = await params;
 
-			if (toolName === "github") {
-				await syncGitHub(user.organizationId);
-			} else if (toolName === "asana") {
-				await syncAsana(user.organizationId);
-			} else if (toolName === "posthog") {
-				await syncPostHog(user.organizationId);
-			} else if (toolName === "stripe") {
-				await syncStripe(user.organizationId);
-			} else if (toolName === "slack") {
-				await syncSlack(user.organizationId);
+			switch (toolName) {
+				case "github":
+					await syncGitHub(user.organizationId);
+				case "asana":
+					await syncAsana(user.organizationId);
+				case "posthog":
+					await syncPostHog(user.organizationId);
+				case "stripe":
+					await syncStripe(user.organizationId);
+				case "slack":
+					await syncSlack(user.organizationId);
+				case "canny":
+					await syncCanny(user.organizationId);
+
+				default:
+					break;
 			}
 
 			return NextResponse.json({

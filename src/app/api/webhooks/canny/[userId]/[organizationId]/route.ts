@@ -25,13 +25,11 @@ interface CannyWebhookPayload {
  * Verify Canny webhook signature
  * Canny signs webhooks with HMAC SHA256
  */
-function verifyCannySignature(request: NextRequest): boolean {
+function verifyCannySignature(request: NextRequest, APIKey: string): boolean {
 	const nonce = request.headers.get("canny-nonce");
 	const signature = request.headers.get("canny-signature");
 
 	if (!nonce || !signature) return false;
-
-	const APIKey = process.env.NEXT_PUBLIC_CANNY_API_KEY!;
 
 	const calculated = crypto
 		.createHmac("sha256", APIKey)
@@ -228,43 +226,35 @@ async function handleCannyEvent(
 	}
 }
 
-/**
- * POST /api/webhooks/canny
- * Handles incoming webhooks from Canny.io
- */
-export async function POST(request: NextRequest) {
+export async function POST(
+	request: NextRequest,
+	{ params }: { params: Promise<{ userId: string; organizationId: string }> }
+) {
 	try {
-		// Get the webhook secret from environment variables
-		const webhookSecret = process.env.CANNY_WEBHOOK_SECRET;
+		const { organizationId } = await params;
+		const integration = await prisma.integration.findFirst({
+			where: {
+				organizationId,
+				toolName: "canny",
+			},
+		});
 
-		if (!webhookSecret) {
-			console.error("CANNY_WEBHOOK_SECRET not configured");
+		if (!integration?.apiKey) {
 			return NextResponse.json(
-				{ error: "Webhook secret not configured" },
-				{ status: 500 }
+				{ error: "Canny not integrated!" },
+				{ status: 404 }
 			);
 		}
-
-		// Get the signature from headers
-		const signature = request.headers.get("x-canny-signature");
-
-		if (!signature) {
-			return NextResponse.json(
-				{ error: "Missing signature header" },
-				{ status: 401 }
-			);
-		}
-
 		// Get raw body as text for signature verification
 		const rawBody = await request.text();
 
 		// Verify the webhook signature
-		const isValid = verifyCannySignature(request);
+		const isValid = verifyCannySignature(request, integration.apiKey);
 
 		if (!isValid) {
 			console.error("Invalid webhook signature");
 			return NextResponse.json(
-				{ error: "Invalid signature" },
+				{ error: "Invalid webhook signature" },
 				{ status: 401 }
 			);
 		}
@@ -283,16 +273,12 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		// Import your Prisma client
-		// import { prisma } from "@/lib/prisma";
-
 		// Look up the project by Canny board ID
-		const project = await prisma.project.findUnique({
+		const project = await prisma.project.findFirst({
 			where: {
-				externalId_sourceTool: {
-					externalId: cannyBoardId,
-					sourceTool: "canny",
-				},
+				externalId: cannyBoardId,
+				sourceTool: "canny",
+				organizationId,
 			},
 			select: {
 				id: true,
@@ -310,7 +296,7 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		const { organizationId, id: projectId } = project;
+		const { id: projectId } = project;
 
 		// Handle the event
 		await handleCannyEvent(payload, organizationId, projectId);

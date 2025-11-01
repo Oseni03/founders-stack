@@ -226,6 +226,40 @@ export class CannyConnector {
 	}
 }
 
+export async function connectCannyIntegration(input: {
+	organizationId: string;
+	userId: string;
+	apiKey: string;
+	displayName?: string;
+}) {
+	const { organizationId, userId, apiKey, displayName } = input;
+
+	const connector = new CannyConnector(apiKey);
+	const isValid = await connector.testConnection();
+
+	if (!isValid) throw new Error("Invalid Canny API key");
+
+	const integration = await prisma.integration.create({
+		data: {
+			organizationId,
+			userId,
+			toolName: "canny",
+			category: "FEEDBACK", // or 'FEEDBACK'
+			displayName: displayName || `Canny-`,
+			status: "CONNECTED",
+			apiKey,
+			webhookSetupType: "MANUAL", // User configures in Canny UI
+			lastSyncAt: new Date(),
+		},
+	});
+
+	return {
+		integrationId: integration.id,
+		status: "CONNECTED",
+		message: "Canny connected (polling mode)",
+	};
+}
+
 export async function syncCanny(organizationId: string, projs: Project[] = []) {
 	const integration = await getIntegration(organizationId, "canny");
 	if (!integration?.apiKey) {
