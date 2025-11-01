@@ -225,13 +225,14 @@ function normalizePostHogWebhookEvent(payload: PostHogWebhookPayload): {
  */
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: { userId: string; organizationId: string } }
+	{ params }: { params: Promise<{ organizationId: string }> }
 ) {
+	const { organizationId } = await params;
 	return NextResponse.json(
 		{
 			status: "ok",
 			message: "PostHog webhook endpoint",
-			organizationId: params.organizationId,
+			organizationId,
 		},
 		{ status: 200 }
 	);
