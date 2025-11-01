@@ -32,6 +32,8 @@ interface NormalizedInvoice {
 	externalId: string;
 	sourceTool: "stripe";
 	customerExternalId: string; // Used to find customerId in database
+	customerName: string | null;
+	customerEmail: string | null;
 	amountDue: number;
 	amountPaid: number;
 	amountRemaining: number;
@@ -108,6 +110,8 @@ function mapInvoiceToNormalized(invoice: Stripe.Invoice): NormalizedInvoice {
 			typeof invoice.customer === "string"
 				? invoice.customer
 				: (invoice.customer?.id ?? ""),
+		customerName: invoice.customer_name,
+		customerEmail: invoice.customer_email,
 		amountDue: invoice.amount_due / 100,
 		amountPaid: invoice.amount_paid / 100,
 		amountRemaining: invoice.amount_remaining / 100,
@@ -834,7 +838,7 @@ export async function syncStripe(
 			for (const invoice of invoices) {
 				try {
 					// Find the customer ID
-					const customer = await prisma.customer.findFirst({
+					let customer = await prisma.customer.findFirst({
 						where: {
 							externalId: invoice.customerExternalId,
 							sourceTool: "stripe",
@@ -848,6 +852,29 @@ export async function syncStripe(
 							`Invoice ${invoice.externalId}: Customer ${invoice.customerExternalId} not found`
 						);
 						continue;
+					} else {
+						if (!invoice.customerEmail) continue;
+						customer = await prisma.customer.upsert({
+							where: {
+								externalId_sourceTool: {
+									externalId: invoice.customerExternalId,
+									sourceTool: "stripe",
+								},
+							},
+							create: {
+								organizationId,
+								name: invoice.customerName,
+								email: invoice.customerEmail,
+								sourceTool: "stripe",
+								externalId: invoice.customerExternalId,
+								createdAt: new Date(),
+							},
+							update: {
+								email: invoice.customerEmail,
+								name: invoice.customerName,
+							},
+							select: { id: true },
+						});
 					}
 
 					await prisma.invoice.upsert({
@@ -1211,17 +1238,11 @@ async function handleCustomerDeleted(event: Stripe.Event): Promise<void> {
 	if (!customer) return;
 
 	// Soft delete: update metadata to mark as deleted
-	await prisma.customer.update({
+	await prisma.customer.delete({
 		where: {
 			externalId_sourceTool: {
 				externalId: customer.externalId,
 				sourceTool: "stripe",
-			},
-		},
-		data: {
-			metadata: {
-				deleted: true,
-				deletedAt: new Date(),
 			},
 		},
 	});

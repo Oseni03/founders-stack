@@ -128,6 +128,14 @@ export async function POST(
 						userId: user.id,
 						webhookConfirmed: webhookConfirmed || false,
 					});
+					if (respPostHog.status === "CONNECTED") {
+						const redirectUrl = new URL(
+							`/integrations/analytics`,
+							request.url
+						);
+						return NextResponse.redirect(redirectUrl, 303);
+					}
+
 					return NextResponse.json({
 						success: respPostHog.status,
 						message:
@@ -136,14 +144,23 @@ export async function POST(
 					});
 
 				case "stripe":
-					await connectStripeIntegration({
+					const respStripe = await connectStripeIntegration({
 						userId: user.id,
 						organizationId: user.organizationId,
 						apiKey: apiKey,
 					});
+					if (respStripe.status === "CONNECTED") {
+						const redirectUrl = new URL(
+							`/integrations/finance`,
+							request.url
+						);
+						return NextResponse.redirect(redirectUrl, 303);
+					}
 					return NextResponse.json({
-						success: true,
-						message: `Stripe connected successfully`,
+						status: respStripe.status,
+						message:
+							respStripe.message ||
+							`Stripe connected successfully`,
 					});
 				case "asana":
 					const respAsana = await connectAsanaIntegration({
@@ -151,11 +168,17 @@ export async function POST(
 						organizationId: user.organizationId,
 						apiKey,
 					});
+					if (respAsana.status === "CONNECTED") {
+						const redirectUrl = new URL(
+							`/integrations/${toolName}/onboarding`,
+							request.url
+						);
+						return NextResponse.redirect(redirectUrl, 303);
+					}
 					return NextResponse.json({
-						success: respAsana.status,
+						status: respAsana.status,
 						message:
-							respAsana.message ||
-							`Stripe connected successfully`,
+							respAsana.message || `Asana connected successfully`,
 					});
 
 				default:

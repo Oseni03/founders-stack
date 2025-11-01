@@ -79,6 +79,14 @@ export const createIntegrationsStore = () => {
 									`Failed to connect ${toolName}`
 								);
 							}
+
+							// NEW: check for redirect header
+							const location = resp.headers.get("Location");
+							if (location) {
+								window.location.href = location; // <-- will go to /integrations/[tool]/onboarding
+								return;
+							}
+
 							toast.success(`${toolName} connected successfully`);
 						} else {
 							// OAuth2 flow for other integrations
