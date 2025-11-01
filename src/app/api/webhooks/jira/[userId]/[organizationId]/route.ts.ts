@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { TaskPriority, TaskStatus } from "@prisma/client";
+import { getIntegration } from "@/server/integrations";
 
 // Jira webhook event types
 type JiraEventType =
@@ -86,25 +86,6 @@ interface JiraWebhookPayload {
 		created: string;
 		updated: string;
 	};
-}
-
-/**
- * Verify Jira webhook signature (if configured)
- * Jira uses HMAC SHA256 for webhook signatures
- */
-function verifyJiraSignature(
-	payload: string,
-	signature: string,
-	secret: string
-): boolean {
-	const hmac = crypto.createHmac("sha256", secret);
-	hmac.update(payload);
-	const expectedSignature = hmac.digest("hex");
-
-	return crypto.timingSafeEqual(
-		Buffer.from(signature),
-		Buffer.from(expectedSignature)
-	);
 }
 
 /**
@@ -415,48 +396,46 @@ async function handleJiraEvent(
  * POST /api/webhooks/jira
  * Handles incoming webhooks from Jira
  */
-export async function POST(request: NextRequest) {
+export async function POST(
+	request: NextRequest,
+	{ params }: { params: Promise<{ userId: string; organizationId: string }> }
+) {
 	try {
+		const { userId, organizationId } = await params;
 		// Optional: Get the webhook secret from environment variables
-		const webhookSecret = process.env.JIRA_WEBHOOK_SECRET;
+		const payload = await request.text();
+		const data: JiraWebhookPayload = JSON.parse(payload);
 
-		let payload: JiraWebhookPayload;
+		// Get signature headers
+		// const hubSignature = request.headers.get("x-hub-signature");
+		// const authHeader = request.headers.get("authorization");
+		const webhookId = request.headers.get("x-atlassian-webhook-identifier");
 
-		// Verify signature if secret is configured
-		if (webhookSecret) {
-			const signature = request.headers.get("x-hub-signature");
+		console.log(`📥 Jira webhook received: ${data.webhookEvent}`);
 
-			if (!signature) {
-				return NextResponse.json(
-					{ error: "Missing signature header" },
-					{ status: 401 }
-				);
-			}
+		const integration = await getIntegration(organizationId, "jira");
 
-			const rawBody = await request.text();
-			const isValid = verifyJiraSignature(
-				rawBody,
-				signature.replace("sha256=", ""),
-				webhookSecret
+		if (!integration) {
+			console.warn("⚠️  No integration found for webhook");
+			return NextResponse.json(
+				{ error: "Integration not found" },
+				{ status: 404 }
 			);
+		}
 
-			if (!isValid) {
-				console.error("Invalid Jira webhook signature");
-				return NextResponse.json(
-					{ error: "Invalid signature" },
-					{ status: 401 }
-				);
-			}
+		const attributes = integration.attributes as Record<string, any>;
 
-			// Parse the verified payload
-			payload = JSON.parse(rawBody);
-		} else {
-			// No signature verification - parse directly
-			payload = await request.json();
+		// Verify webhook signature if secret exists
+		if (webhookId !== attributes.webhookId) {
+			console.error("❌ Invalid webhook ID");
+			return NextResponse.json(
+				{ error: "Invalid webhook" },
+				{ status: 401 }
+			);
 		}
 
 		// Extract Jira project ID from the webhook payload
-		const jiraProjectId = payload.issue?.fields?.project?.id;
+		const jiraProjectId = data.issue?.fields?.project?.id;
 
 		if (!jiraProjectId) {
 			console.error("No project ID found in webhook payload");
@@ -490,14 +469,12 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		const { organizationId, id: projectId } = project;
-
 		// Handle the event
-		await handleJiraEvent(payload, organizationId, projectId);
+		await handleJiraEvent(data, organizationId, project.id);
 
 		// Return success response
 		return NextResponse.json(
-			{ received: true, event: payload.webhookEvent },
+			{ success: true, event: data.webhookEvent },
 			{ status: 200 }
 		);
 	} catch (error) {

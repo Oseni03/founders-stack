@@ -69,7 +69,12 @@ export const OAUTH_CONFIG: Record<string, OAuthConfig> = {
 		clientSecret: process.env.JIRA_CLIENT_SECRET!,
 		authorizationUrl: "https://auth.atlassian.com/authorize",
 		tokenUrl: "https://auth.atlassian.com/oauth/token",
-		scopes: ["tasks:read", "projects:read", "users:read"],
+		scopes: [
+			"read:jira-user",
+			"read:jira-work",
+			"manage:jira-project",
+			"manage:jira-webhook",
+		],
 		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/jira`,
 		category: "PROJECT_MGMT",
 	},

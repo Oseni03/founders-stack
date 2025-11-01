@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { connectJiraIntegration } from "@/lib/connectors/jira";
 import { withAuth } from "@/lib/middleware";
 import { OAUTH_CONFIG, OAuthConfig } from "@/lib/oauth-utils";
 import { prisma } from "@/lib/prisma";
@@ -100,41 +101,45 @@ export async function GET(
 			}
 
 			// Extract tokens based on provider
-			const { accessToken, refreshToken, resourceServer } = extractTokens(
+			const { accessToken, refreshToken, expiresIn } = extractTokens(
 				provider,
 				tokenResponse
 			);
 
-			const integration = await prisma.integration.upsert({
-				where: {
-					organizationId_toolName: {
-						organizationId: user.organizationId,
-						toolName: provider,
-					},
-				},
-				update: {
-					status: "CONNECTED",
-					type: "oauth2",
-					accessToken,
-					refreshToken: refreshToken || null,
-					category: config.category,
-					attributes: {
-						baseUrl: resourceServer,
-					},
-				},
-				create: {
-					category: config.category,
-					status: "CONNECTED",
-					toolName: provider,
-					type: "oauth2",
-					accessToken,
-					refreshToken: refreshToken || null,
+			if (provider === "jira") {
+				await connectJiraIntegration({
 					organizationId: user.organizationId,
-					attributes: {
-						baseUrl: resourceServer,
+					userId: user.id,
+					accessToken,
+					refreshToken,
+					expiresIn,
+				});
+			} else {
+				await prisma.integration.upsert({
+					where: {
+						organizationId_toolName: {
+							organizationId: user.organizationId,
+							toolName: provider,
+						},
 					},
-				},
-			});
+					update: {
+						status: "CONNECTED",
+						type: "oauth2",
+						accessToken,
+						refreshToken: refreshToken || null,
+						category: config.category,
+					},
+					create: {
+						category: config.category,
+						status: "CONNECTED",
+						toolName: provider,
+						type: "oauth2",
+						accessToken,
+						refreshToken: refreshToken || null,
+						organizationId: user.organizationId,
+					},
+				});
+			}
 
 			// Clean up temporary state
 			await prisma.oAuthTemp.delete({
@@ -146,7 +151,7 @@ export async function GET(
 				},
 			});
 
-			console.log(`${provider} integration saved:`, integration);
+			console.log(`${provider} integration saved`);
 
 			// Redirect to integration onboarding page
 			return NextResponse.redirect(
@@ -192,7 +197,9 @@ async function exchangeCodeForTokens(
 		method: "POST",
 		headers: {
 			"Content-Type": "application/x-www-form-urlencoded",
-			...(provider === "github" && { Accept: "application/json" }),
+			...((provider === "github" || provider === "jira") && {
+				Accept: "application/json",
+			}),
 		},
 		body: new URLSearchParams(tokenParams),
 	});
@@ -213,9 +220,8 @@ function extractTokens(provider: string, tokenResponse: any) {
 		case "jira":
 			return {
 				accessToken: tokenResponse.access_token,
-				refreshToken: tokenResponse.refresh_token,
 				scope: tokenResponse.scope,
-				resourceServer: tokenResponse.resource_server,
+				expiresIn: tokenResponse.expires_in,
 				ok: !!tokenResponse.access_token,
 			};
 

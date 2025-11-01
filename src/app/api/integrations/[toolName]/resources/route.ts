@@ -77,9 +77,9 @@ const TOOL_CONFIG = {
 			const attributes = integration.attributes as Record<string, any>;
 			const connector = new JiraConnector(
 				integration.accessToken!,
-				attributes.baseUrl
+				attributes.cloudId
 			);
-			return await connector.getProjects();
+			return await connector.getProjects(params);
 		},
 	},
 	canny: {

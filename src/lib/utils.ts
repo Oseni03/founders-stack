@@ -57,3 +57,8 @@ export const getPlanByProductId = (productId: string) => {
 		FREE_PLAN
 	);
 };
+
+export const generateWebhookUrl = (organizationId: string, userId: string) => {
+	const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/asana/${userId}/${organizationId}`;
+	return webhookUrl;
+};
