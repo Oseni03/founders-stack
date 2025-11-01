@@ -161,7 +161,7 @@ export const INTEGRATIONS: Integration[] = [
 		docsUrl: "https://developers.canny.io/api-reference",
 		metadata: {
 			webhook: {
-				url: `${window.location.origin}/api/webhooks/canny`,
+				url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/canny`,
 				instructions: `
 ### Setting up Canny Webhooks
 
@@ -200,7 +200,7 @@ Your webhook will now receive real-time notifications when these events occur in
 		docsUrl: "https://posthog.com/docs/api",
 		metadata: {
 			webhook: {
-				url: `${window.location.origin}/api/webhooks/posthog`,
+				url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/posthog`,
 				instructions: `
 ### Setting up PostHog Webhooks
 
