@@ -225,7 +225,7 @@ function normalizePostHogWebhookEvent(payload: PostHogWebhookPayload): {
  */
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: { userId: string; organizationId: string } }
+	{ params }: { params: { organizationId: string } }
 ) {
 	return NextResponse.json(
 		{
