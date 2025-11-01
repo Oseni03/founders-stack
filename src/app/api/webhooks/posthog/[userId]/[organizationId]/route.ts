@@ -8,9 +8,9 @@ import { NextRequest, NextResponse } from "next/server";
  */
 export async function POST(
 	request: NextRequest,
-	{ params }: { params: { userId: string; organizationId: string } }
+	{ params }: { params: Promise<{ userId: string; organizationId: string }> }
 ) {
-	const { userId, organizationId } = params;
+	const { userId, organizationId } = await params;
 
 	try {
 		// Step 1: Get integration from database
@@ -216,24 +216,6 @@ function normalizePostHogWebhookEvent(payload: PostHogWebhookPayload): {
 				.reduce((acc, key) => ({ ...acc, [key]: properties[key] }), {}),
 		},
 	};
-}
-
-/**
- * Determine if event is significant enough to trigger metric recalculation
- */
-function isSignificantEvent(eventType: string): boolean {
-	const significantEvents = [
-		"$pageview",
-		"$pageleave",
-		"$autocapture",
-		"user_signed_up",
-		"user_logged_in",
-		"purchase_completed",
-		"subscription_started",
-		"subscription_canceled",
-	];
-
-	return significantEvents.includes(eventType) || !eventType.startsWith("$");
 }
 
 // ============================================================================

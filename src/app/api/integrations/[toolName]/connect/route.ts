@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { withAuth } from "@/lib/middleware";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
@@ -7,6 +8,77 @@ import { connectPostHogIntegration } from "@/lib/connectors/posthog";
 import { connectStripeIntegration } from "@/lib/connectors/stripe";
 import { connectAsanaIntegration } from "@/lib/connectors/asana";
 import { connectCannyIntegration } from "@/lib/connectors/canny";
+
+// Configuration for API-key based integrations
+const API_KEY_INTEGRATIONS = {
+	posthog: {
+		handler: connectPostHogIntegration as (params: any) => Promise<any>,
+		redirectPath: "/integrations/analytics",
+		requiredFields: ["apiKey", "projectId"] as const,
+		mapParams: (body: any, user: any) => ({
+			projectId: body.projectId,
+			organizationId: user.organizationId,
+			apiKey: body.apiKey,
+			displayName: body.projectName,
+			userId: user.id,
+			webhookConfirmed: body.webhookConfirmed || false,
+		}),
+	},
+	stripe: {
+		handler: connectStripeIntegration as (params: any) => Promise<any>,
+		redirectPath: "/integrations/finance",
+		requiredFields: ["apiKey"] as const,
+		mapParams: (body: any, user: any) => ({
+			userId: user.id,
+			organizationId: user.organizationId,
+			apiKey: body.apiKey,
+		}),
+	},
+	asana: {
+		handler: connectAsanaIntegration as (params: any) => Promise<any>,
+		redirectPath: (toolName: string) =>
+			`/integrations/${toolName}/onboarding`,
+		requiredFields: ["apiKey"] as const,
+		mapParams: (body: any, user: any) => ({
+			userId: user.id,
+			organizationId: user.organizationId,
+			apiKey: body.apiKey,
+		}),
+	},
+	canny: {
+		handler: connectCannyIntegration as (params: any) => Promise<any>,
+		redirectPath: (toolName: string) =>
+			`/integrations/${toolName}/onboarding`,
+		requiredFields: ["apiKey"] as const,
+		mapParams: (body: any, user: any) => ({
+			userId: user.id,
+			organizationId: user.organizationId,
+			apiKey: body.apiKey,
+		}),
+	},
+} as const;
+
+type ApiKeyToolName = keyof typeof API_KEY_INTEGRATIONS;
+
+function isApiKeyIntegration(toolName: string): toolName is ApiKeyToolName {
+	return toolName in API_KEY_INTEGRATIONS;
+}
+
+// OAuth URL builders for special cases
+const OAUTH_PARAM_BUILDERS = {
+	jira: (authUrl: URL) => {
+		authUrl.searchParams.set("audience", "api.atlassian.com");
+	},
+	slack: (authUrl: URL, config: any) => {
+		authUrl.searchParams.set("scope", ""); // Bot scopes
+		authUrl.searchParams.set("user_scope", config.userScopes.join(","));
+	},
+	default: (authUrl: URL, config: any) => {
+		if ("scopes" in config) {
+			authUrl.searchParams.set("scope", config.scopes.join(" "));
+		}
+	},
+} as const;
 
 export async function GET(
 	request: NextRequest,
@@ -57,21 +129,12 @@ export async function GET(
 			authUrl.searchParams.set("response_type", "code");
 			authUrl.searchParams.set("prompt", "consent");
 
-			if (toolName === "jira") {
-				authUrl.searchParams.set("audience", "api.atlassian.com");
-			}
-
-			// Handle provider-specific parameters
-			if (toolName === "slack" && "userScopes" in config) {
-				authUrl.searchParams.set("scope", ""); // Bot scopes
-				authUrl.searchParams.set(
-					"user_scope",
-					config.userScopes.join(",")
-				);
-			} else if ("scopes" in config) {
-				// Standard OAuth providers (GitHub, Asana)
-				authUrl.searchParams.set("scope", config.scopes.join(" "));
-			}
+			// Apply tool-specific OAuth parameters
+			const paramBuilder =
+				OAUTH_PARAM_BUILDERS[
+					toolName as keyof typeof OAUTH_PARAM_BUILDERS
+				] || OAUTH_PARAM_BUILDERS.default;
+			paramBuilder(authUrl, config);
 
 			return NextResponse.json({ url: authUrl.toString() });
 		} catch (error) {
@@ -103,109 +166,55 @@ export async function POST(
 				);
 			}
 
-			const { apiKey, projectId, projectName, webhookConfirmed } = body;
-
-			if (!apiKey) {
+			// Check if this is an API-key based integration
+			if (!isApiKeyIntegration(toolName)) {
 				return NextResponse.json(
-					{ error: "API key is required" },
+					{
+						error: `Integration for ${toolName} is not implemented yet.`,
+					},
 					{ status: 400 }
 				);
 			}
 
-			// Route to specific integration handler based on toolName
-			switch (toolName) {
-				case "posthog":
-					if (!projectId) {
-						return NextResponse.json(
-							{ error: "Project ID is required" },
-							{ status: 400 }
-						);
-					}
-					const respPostHog = await connectPostHogIntegration({
-						projectId,
-						organizationId: user.organizationId,
-						apiKey,
-						displayName: projectName,
-						userId: user.id,
-						webhookConfirmed: webhookConfirmed || false,
-					});
-					if (respPostHog.status === "CONNECTED") {
-						const redirectUrl = new URL(
-							`/integrations/analytics`,
-							request.url
-						);
-						return NextResponse.redirect(redirectUrl, 303);
-					}
+			const integration = API_KEY_INTEGRATIONS[toolName];
 
-					return NextResponse.json({
-						success: respPostHog.status,
-						message:
-							respPostHog.message ||
-							`Stripe connected successfully`,
-					});
-
-				case "stripe":
-					const respStripe = await connectStripeIntegration({
-						userId: user.id,
-						organizationId: user.organizationId,
-						apiKey: apiKey,
-					});
-					if (respStripe.status === "CONNECTED") {
-						const redirectUrl = new URL(
-							`/integrations/finance`,
-							request.url
-						);
-						return NextResponse.redirect(redirectUrl, 303);
-					}
-					return NextResponse.json({
-						status: respStripe.status,
-						message:
-							respStripe.message ||
-							`Stripe connected successfully`,
-					});
-				case "asana":
-					const respAsana = await connectAsanaIntegration({
-						userId: user.id,
-						organizationId: user.organizationId,
-						apiKey,
-					});
-					if (respAsana.status === "CONNECTED") {
-						const redirectUrl = new URL(
-							`/integrations/${toolName}/onboarding`,
-							request.url
-						);
-						return NextResponse.redirect(redirectUrl, 303);
-					}
-					return NextResponse.json({
-						status: respAsana.status,
-						message:
-							respAsana.message || `Asana connected successfully`,
-					});
-				case "canny":
-					const respCanny = await connectCannyIntegration({
-						userId: user.id,
-						organizationId: user.organizationId,
-						apiKey,
-					});
-					if (respCanny.status === "CONNECTED") {
-						const redirectUrl = new URL(
-							`/integrations/${toolName}/onboarding`,
-							request.url
-						);
-						return NextResponse.redirect(redirectUrl, 303);
-					}
-					return NextResponse.json({
-						status: respCanny.status,
-						message:
-							respCanny.message || `Canny connected successfully`,
-					});
-
-				default:
-					// Default API key integration handler (like Stripe)
-					return NextResponse.json({
-						error: `Integration for ${toolName} is not implemented yet.`,
-					});
+			// Validate required fields
+			for (const field of integration.requiredFields) {
+				if (!body[field]) {
+					const fieldName =
+						field === "apiKey"
+							? "API key"
+							: field.replace(/([A-Z])/g, " $1").toLowerCase();
+					return NextResponse.json(
+						{
+							error: `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} is required`,
+						},
+						{ status: 400 }
+					);
+				}
 			}
+
+			// Map parameters and call the handler
+			const params = integration.mapParams(body, user);
+			const response = await integration.handler(params);
+
+			// Handle successful connection with redirect
+			if (response.status === "CONNECTED") {
+				const redirectPath =
+					typeof integration.redirectPath === "function"
+						? integration.redirectPath(toolName)
+						: integration.redirectPath;
+
+				const redirectUrl = new URL(redirectPath, request.url);
+				return NextResponse.redirect(redirectUrl, 303);
+			}
+
+			// Return success response without redirect
+			return NextResponse.json({
+				status: response.status,
+				message:
+					response.message || `${toolName} connected successfully`,
+			});
 		} catch (error) {
 			console.error(`Failed to connect ${toolName} with API key:`, error);
 

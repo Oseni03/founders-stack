@@ -153,16 +153,30 @@ export const INTEGRATIONS: Integration[] = [
 		status: "CONNECTED",
 		authType: "api_key",
 		lastSyncAt: new Date(),
-		docsUrl: "https://posthog.com/docs/api",
+		docsUrl: "https://developers.canny.io/api-reference",
 		metadata: {
 			webhook: {
-				url: `${window.location.origin}/api/webhooks/canny`, // <-- your endpoint
+				url: `${window.location.origin}/api/webhooks/canny`,
 				instructions: `
-                1. Open **Canny → Settings → API & Webhooks**  
-                2. Click **Add Webhook**  
-                3. Paste the URL below  
-                4. Choose the events you want (e.g. *post.created*, *vote.created*)  
-                5. Save
+### Setting up Canny Webhooks
+
+1. Log in to your **Canny account**
+2. Click your **profile** in the top-right corner
+3. Navigate to **Settings → API & Webhooks**
+4. In the Webhooks section, click **Add Webhook**
+5. Paste your webhook URL (provided below)
+6. Select the events you want to receive:
+   - **post.created** - When a new post is created
+   - **post.deleted** - When a post is deleted
+   - **post.status_changed** - When a post's status changes
+   - **post.jira_issue_linked** - When a post is linked to a Jira issue
+   - **comment.created** - When a new comment is added
+   - **comment.deleted** - When a comment is removed
+   - **vote.created** - When a user votes on a post
+   - **vote.deleted** - When a user removes a vote from a post
+7. Click **Save** to activate the webhook
+
+Your webhook will now receive real-time notifications when these events occur in Canny.
             `,
 				confirmLabel: "I have added the webhook URL in Canny",
 			},
@@ -183,11 +197,22 @@ export const INTEGRATIONS: Integration[] = [
 			webhook: {
 				url: `${window.location.origin}/api/webhooks/posthog`,
 				instructions: `
-                1. Go to **Project → Settings → Webhooks**  
-                2. Click **New webhook**  
-                3. Paste the URL and select events (capture, identify…)  
-                4. Save
+### Setting up PostHog Webhooks
+
+1. Log in to your **PostHog account**
+2. Navigate to **Data Pipelines** in the left sidebar
+3. Click **+ New → Destination** in the top-right corner
+4. Search for **"Webhook"** and click **+ Create**
+5. On the configuration page:
+   - Enter your **Webhook URL** (provided below)
+   - The default is a POST request with JSON body
+6. Click **Create & Enable**
+7. Test your webhook by clicking **Start testing → Test function**
+
+**Note:** PostHog webhooks require either PostHog Cloud with the data pipelines add-on, or a self-hosted instance.
             `,
+				confirmLabel:
+					"I have configured the webhook destination in PostHog",
 			},
 		},
 	},

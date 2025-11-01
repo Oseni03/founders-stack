@@ -6,9 +6,9 @@ import { AsanaConnector } from "@/lib/connectors/asana";
 
 export async function POST(
 	request: NextRequest,
-	{ params }: { params: { userId: string; organizationId: string } }
+	{ params }: { params: Promise<{ userId: string; organizationId: string }> }
 ) {
-	const { userId, organizationId } = params;
+	const { userId, organizationId } = await params;
 
 	try {
 		// Step 1: Check for webhook handshake
@@ -420,14 +420,15 @@ async function markTaskDeleted(
  */
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: { userId: string; organizationId: string } }
+	{ params }: { params: Promise<{ userId: string; organizationId: string }> }
 ) {
+	const { userId, organizationId } = await params;
 	return NextResponse.json(
 		{
 			status: "ok",
 			message: "Asana webhook endpoint",
-			userId: params.userId,
-			organizationId: params.organizationId,
+			userId,
+			organizationId,
 		},
 		{ status: 200 }
 	);

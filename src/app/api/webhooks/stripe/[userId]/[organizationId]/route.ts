@@ -14,9 +14,9 @@ import {
  */
 export async function POST(
 	request: NextRequest,
-	{ params }: { params: { userId: string; organizationId: string } }
+	{ params }: { params: Promise<{ userId: string; organizationId: string }> }
 ) {
-	const { userId, organizationId } = params;
+	const { userId, organizationId } = await params;
 
 	try {
 		// Step 1: Get integration from database
@@ -128,14 +128,15 @@ export async function POST(
  */
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: { userId: string; organizationId: string } }
+	{ params }: { params: Promise<{ userId: string; organizationId: string }> }
 ) {
+	const { userId, organizationId } = await params;
 	return NextResponse.json(
 		{
 			status: "ok",
 			message: "Stripe webhook endpoint",
-			userId: params.userId,
-			organizationId: params.organizationId,
+			userId,
+			organizationId,
 		},
 		{ status: 200 }
 	);
