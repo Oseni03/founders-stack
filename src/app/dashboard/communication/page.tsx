@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 // app/communication/page.tsx
 "use client";
 
@@ -78,13 +79,8 @@ export default function CommunicationPage() {
 	}, [data?.sentiment]);
 
 	const messageVolumeTrendData = useMemo(
-		() =>
-			Array.from({ length: 7 }, (_, i) => ({
-				name: `Day ${i + 1}`,
-				messages: Math.floor(Math.random() * 500) + 200,
-				mentions: Math.floor(Math.random() * 50) + 10,
-			})),
-		[]
+		() => data?.messageVolumeTrendData || [],
+		[data?.messageVolumeTrendData]
 	);
 
 	const channelActivityData = useMemo(() => {

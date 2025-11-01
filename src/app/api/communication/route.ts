@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import {
+	calculateMessageVolumeTrend,
 	calculateSentiment,
-	createChannel,
 	deleteChannel,
 	generateInsight,
 	syncMessages,
@@ -106,6 +106,12 @@ export async function GET(request: NextRequest) {
 				channels.length
 			);
 
+			// Calculate message volume trend (last 7 days)
+			const messageVolumeTrendData = await calculateMessageVolumeTrend(
+				user.organizationId,
+				7 // last 7 days
+			);
+
 			return NextResponse.json({
 				channels: channels.map((ch) => ({
 					id: ch.id,
@@ -118,6 +124,7 @@ export async function GET(request: NextRequest) {
 				sentiment,
 				recentThreads,
 				insight,
+				messageVolumeTrendData, // Add this
 			});
 		} catch (error) {
 			console.error("[Communication API] Error:", error);

@@ -17,6 +17,12 @@ interface Message {
 	timestamp: Date;
 }
 
+interface MessageVolumeTrend {
+	name: string; // Day name (e.g., "Mon", "Tue")
+	messages: number; // Total messages for that day
+	mentions: number; // Messages with mentions for that day
+}
+
 interface CommunicationData {
 	channels: Channel[];
 	messagesByChannel: Record<string, Message[]>;
@@ -30,6 +36,7 @@ interface CommunicationData {
 		mentions: number;
 	}>;
 	insight: string;
+	messageVolumeTrendData: MessageVolumeTrend[];
 }
 
 export interface CommunicationState {

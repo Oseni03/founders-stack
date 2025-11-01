@@ -251,3 +251,68 @@ export async function generateInsight(
 		? insights.join(". ") + "."
 		: "Communication patterns are within normal ranges.";
 }
+
+export async function calculateMessageVolumeTrend(
+	organizationId: string,
+	days: number
+) {
+	const now = new Date();
+	const startDate = new Date(now);
+	startDate.setDate(now.getDate() - days);
+	startDate.setHours(0, 0, 0, 0);
+
+	// Get all messages for the period
+	const messages = await prisma.message.findMany({
+		where: {
+			organizationId,
+			timestamp: {
+				gte: startDate,
+			},
+		},
+		select: {
+			timestamp: true,
+			attributes: true,
+		},
+	});
+
+	// Group by day
+	const trendMap = new Map<string, { messages: number; mentions: number }>();
+
+	for (let i = days - 1; i >= 0; i--) {
+		const date = new Date(now);
+		date.setDate(now.getDate() - i);
+		const dateKey = date.toISOString().split("T")[0];
+		trendMap.set(dateKey, { messages: 0, mentions: 0 });
+	}
+
+	// Count messages and mentions per day
+	messages.forEach((msg) => {
+		const dateKey = msg.timestamp.toISOString().split("T")[0];
+		const dayData = trendMap.get(dateKey);
+
+		if (dayData) {
+			dayData.messages++;
+			const attrs = msg.attributes as any;
+			if (attrs?.has_mention) {
+				dayData.mentions++;
+			}
+		}
+	});
+
+	// Convert to array format
+	const trendData = [];
+	for (let i = days - 1; i >= 0; i--) {
+		const date = new Date(now);
+		date.setDate(now.getDate() - i);
+		const dateKey = date.toISOString().split("T")[0];
+		const dayName = date.toLocaleDateString("en-US", { weekday: "short" });
+		const dayData = trendMap.get(dateKey) || { messages: 0, mentions: 0 };
+
+		trendData.push({
+			name: dayName,
+			...dayData,
+		});
+	}
+
+	return trendData;
+}
