@@ -109,7 +109,6 @@ export async function GET(
 			if (provider === "jira") {
 				await connectJiraIntegration({
 					organizationId: user.organizationId,
-					userId: user.id,
 					accessToken,
 					refreshToken,
 					expiresIn,

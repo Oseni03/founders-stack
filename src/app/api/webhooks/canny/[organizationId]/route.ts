@@ -228,7 +228,7 @@ async function handleCannyEvent(
 
 export async function POST(
 	request: NextRequest,
-	{ params }: { params: Promise<{ userId: string; organizationId: string }> }
+	{ params }: { params: Promise<{ organizationId: string }> }
 ) {
 	try {
 		const { organizationId } = await params;
@@ -236,6 +236,7 @@ export async function POST(
 			where: {
 				organizationId,
 				toolName: "canny",
+				status: { in: ["CONNECTED", "SYNCING"] },
 			},
 		});
 

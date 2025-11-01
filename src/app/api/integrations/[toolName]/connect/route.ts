@@ -40,7 +40,6 @@ const API_KEY_INTEGRATIONS = {
 			`/integrations/${toolName}/onboarding`,
 		requiredFields: ["apiKey"] as const,
 		mapParams: (body: any, user: any) => ({
-			userId: user.id,
 			organizationId: user.organizationId,
 			apiKey: body.apiKey,
 		}),
@@ -51,7 +50,6 @@ const API_KEY_INTEGRATIONS = {
 			`/integrations/${toolName}/onboarding`,
 		requiredFields: ["apiKey"] as const,
 		mapParams: (body: any, user: any) => ({
-			userId: user.id,
 			organizationId: user.organizationId,
 			apiKey: body.apiKey,
 		}),

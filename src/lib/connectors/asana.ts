@@ -6,6 +6,7 @@ import {
 } from "@/types/connector";
 import { prisma } from "../prisma";
 import { Project } from "@prisma/client";
+import { generateWebhookUrl } from "../utils";
 
 export interface TaskData {
 	externalId: string;
@@ -423,7 +424,6 @@ export class AsanaConnector {
 
 interface ConnectAsanaInput {
 	organizationId: string;
-	userId: string;
 	apiKey: string; // Personal Access Token
 	workspaceGid?: string; // Optional: specific workspace to track
 	displayName?: string;
@@ -437,9 +437,9 @@ export async function connectAsanaIntegration(
 	status: string;
 	message: string;
 }> {
-	const { organizationId, userId, apiKey, workspaceGid, displayName } = input;
+	const { organizationId, apiKey, workspaceGid, displayName } = input;
 
-	if (!organizationId || !userId || !apiKey) {
+	if (!organizationId || !apiKey) {
 		throw new Error("Missing required fields");
 	}
 
@@ -460,7 +460,7 @@ export async function connectAsanaIntegration(
 		}
 
 		// Step 2: Try to create webhook (automatic mode)
-		const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/asana/${userId}/${organizationId}`;
+		const webhookUrl = generateWebhookUrl(organizationId, "asana");
 		let webhookGid: string | undefined;
 		let webhookMode: "automatic" | "polling" = "polling";
 
@@ -485,7 +485,6 @@ export async function connectAsanaIntegration(
 		const integration = await prisma.integration.create({
 			data: {
 				organizationId,
-				userId,
 				toolName: "asana",
 				category: "PROJECT_MGMT",
 				displayName: displayName || `Asana (${workspaceName})`,

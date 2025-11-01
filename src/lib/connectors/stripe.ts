@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { prisma } from "../prisma";
 import { getIntegration } from "@/server/integrations";
 import { Prisma } from "@prisma/client";
+import { generateWebhookUrl } from "../utils";
 
 // TypeScript interfaces matching your database schema
 interface NormalizedCustomer {
@@ -1019,7 +1020,6 @@ export async function syncStripe(
 
 export interface CreateIntegrationInput {
 	organizationId: string;
-	userId: string;
 	apiKey: string;
 	displayName?: string;
 }
@@ -1038,13 +1038,11 @@ export interface WebhookCreationResult {
 export async function connectStripeIntegration(
 	input: CreateIntegrationInput
 ): Promise<WebhookCreationResult> {
-	const { organizationId, userId, apiKey, displayName } = input;
+	const { organizationId, apiKey, displayName } = input;
 
 	// Validate inputs
-	if (!organizationId || !userId || !apiKey) {
-		throw new Error(
-			"Missing required fields: organizationId, userId, or apiKey"
-		);
+	if (!organizationId || !apiKey) {
+		throw new Error("Missing required fields: organizationId or apiKey");
 	}
 
 	// Validate API key format
@@ -1062,7 +1060,7 @@ export async function connectStripeIntegration(
 		const accountInfo = await stripeConnector.testConnection();
 
 		// Step 3: Generate webhook URL
-		const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/stripe/${userId}/${organizationId}`;
+		const webhookUrl = generateWebhookUrl(organizationId, "stripe");
 
 		// Step 4: Create webhook endpoint in Stripe
 		const webhookData =
@@ -1074,7 +1072,6 @@ export async function connectStripeIntegration(
 		const integration = await prisma.integration.create({
 			data: {
 				organizationId,
-				userId,
 				toolName: "stripe",
 				category: "PAYMENT",
 				displayName:

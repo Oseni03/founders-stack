@@ -315,7 +315,6 @@ export class PostHogConnector {
 
 interface ConnectPostHogInput {
 	organizationId: string;
-	userId: string;
 	apiKey: string;
 	projectId: string;
 	displayName?: string;
@@ -331,17 +330,11 @@ export async function connectPostHogIntegration(
 	status: string;
 	message: string;
 }> {
-	const {
-		organizationId,
-		userId,
-		apiKey,
-		projectId,
-		displayName,
-		webhookConfirmed,
-	} = input;
+	const { organizationId, apiKey, projectId, displayName, webhookConfirmed } =
+		input;
 
 	// Validate inputs
-	if (!organizationId || !userId || !apiKey || !projectId) {
+	if (!organizationId || !apiKey || !projectId) {
 		throw new Error("Missing required fields");
 	}
 
@@ -355,7 +348,6 @@ export async function connectPostHogIntegration(
 		const integration = await prisma.integration.create({
 			data: {
 				organizationId,
-				userId,
 				toolName: "posthog",
 				category: "ANALYTICS",
 				displayName:

@@ -398,10 +398,10 @@ async function handleJiraEvent(
  */
 export async function POST(
 	request: NextRequest,
-	{ params }: { params: Promise<{ userId: string; organizationId: string }> }
+	{ params }: { params: Promise<{ organizationId: string }> }
 ) {
 	try {
-		const { userId, organizationId } = await params;
+		const { organizationId } = await params;
 		// Optional: Get the webhook secret from environment variables
 		const payload = await request.text();
 		const data: JiraWebhookPayload = JSON.parse(payload);
@@ -413,7 +413,13 @@ export async function POST(
 
 		console.log(`📥 Jira webhook received: ${data.webhookEvent}`);
 
-		const integration = await getIntegration(organizationId, "jira");
+		const integration = await prisma.integration.findFirst({
+			where: {
+				organizationId,
+				toolName: "jira",
+				status: { in: ["CONNECTED", "SYNCING"] },
+			},
+		});
 
 		if (!integration) {
 			console.warn("⚠️  No integration found for webhook");

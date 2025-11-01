@@ -10,19 +10,18 @@ import {
 
 /**
  * POST handler for Stripe webhooks
- * Route: /api/webhooks/stripe/[userId]/[organizationId]
+ * Route: /api/webhooks/stripe/[organizationId]
  */
 export async function POST(
 	request: NextRequest,
-	{ params }: { params: Promise<{ userId: string; organizationId: string }> }
+	{ params }: { params: Promise<{ organizationId: string }> }
 ) {
-	const { userId, organizationId } = await params;
+	const { organizationId } = await params;
 
 	try {
 		// Step 1: Get integration from database
 		const integration = await prisma.integration.findFirst({
 			where: {
-				userId,
 				organizationId,
 				toolName: "stripe",
 				status: { in: ["CONNECTED", "SYNCING"] },
@@ -31,7 +30,6 @@ export async function POST(
 
 		if (!integration) {
 			console.warn("Stripe webhook received for unknown integration", {
-				userId,
 				organizationId,
 			});
 			return NextResponse.json(
@@ -128,14 +126,13 @@ export async function POST(
  */
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: Promise<{ userId: string; organizationId: string }> }
+	{ params }: { params: Promise<{ organizationId: string }> }
 ) {
-	const { userId, organizationId } = await params;
+	const { organizationId } = await params;
 	return NextResponse.json(
 		{
 			status: "ok",
 			message: "Stripe webhook endpoint",
-			userId,
 			organizationId,
 		},
 		{ status: 200 }

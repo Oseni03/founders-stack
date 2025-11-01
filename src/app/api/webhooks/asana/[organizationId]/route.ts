@@ -6,9 +6,9 @@ import { AsanaConnector } from "@/lib/connectors/asana";
 
 export async function POST(
 	request: NextRequest,
-	{ params }: { params: Promise<{ userId: string; organizationId: string }> }
+	{ params }: { params: Promise<{ organizationId: string }> }
 ) {
-	const { userId, organizationId } = await params;
+	const { organizationId } = await params;
 
 	try {
 		// Step 1: Check for webhook handshake
@@ -30,7 +30,6 @@ export async function POST(
 		// Step 2: Get integration from database
 		const integration = await prisma.integration.findFirst({
 			where: {
-				userId,
 				organizationId,
 				toolName: "asana",
 				status: { in: ["CONNECTED", "SYNCING"] },
@@ -39,7 +38,6 @@ export async function POST(
 
 		if (!integration) {
 			console.warn("Asana webhook received for unknown integration", {
-				userId,
 				organizationId,
 			});
 			return NextResponse.json(
@@ -420,14 +418,13 @@ async function markTaskDeleted(
  */
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: Promise<{ userId: string; organizationId: string }> }
+	{ params }: { params: Promise<{ organizationId: string }> }
 ) {
-	const { userId, organizationId } = await params;
+	const { organizationId } = await params;
 	return NextResponse.json(
 		{
 			status: "ok",
 			message: "Asana webhook endpoint",
-			userId,
 			organizationId,
 		},
 		{ status: 200 }

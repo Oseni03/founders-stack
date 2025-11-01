@@ -228,11 +228,10 @@ export class CannyConnector {
 
 export async function connectCannyIntegration(input: {
 	organizationId: string;
-	userId: string;
 	apiKey: string;
 	displayName?: string;
 }) {
-	const { organizationId, userId, apiKey, displayName } = input;
+	const { organizationId, apiKey, displayName } = input;
 
 	const connector = new CannyConnector(apiKey);
 	const isValid = await connector.testConnection();
@@ -242,7 +241,6 @@ export async function connectCannyIntegration(input: {
 	const integration = await prisma.integration.create({
 		data: {
 			organizationId,
-			userId,
 			toolName: "canny",
 			category: "FEEDBACK", // or 'FEEDBACK'
 			displayName: displayName || `Canny-`,

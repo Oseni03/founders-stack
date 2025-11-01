@@ -417,13 +417,11 @@ export async function getAccessibleResources(
 
 export async function connectJiraIntegration(input: {
 	organizationId: string;
-	userId: string;
 	accessToken: string;
 	refreshToken?: string;
 	expiresIn: number;
 }) {
-	const { organizationId, userId, accessToken, expiresIn, refreshToken } =
-		input;
+	const { organizationId, accessToken, expiresIn, refreshToken } = input;
 
 	if (!organizationId || !accessToken || !expiresIn) {
 		throw new Error("Missing required fields");
@@ -479,7 +477,7 @@ export async function connectJiraIntegration(input: {
 
 		// Create webhook
 		const connector = new JiraConnector(accessToken, cloudId);
-		const webhookUrl = generateWebhookUrl(organizationId, userId);
+		const webhookUrl = generateWebhookUrl(organizationId, "jira");
 
 		const webhook = await connector.createWebhook(webhookUrl, [
 			"jira:issue_created",

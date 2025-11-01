@@ -4,19 +4,18 @@ import { NextRequest, NextResponse } from "next/server";
 
 /**
  * POST handler for PostHog webhooks
- * Route: /api/webhooks/posthog/[userId]/[organizationId]
+ * Route: /api/webhooks/posthog/[organizationId]
  */
 export async function POST(
 	request: NextRequest,
-	{ params }: { params: Promise<{ userId: string; organizationId: string }> }
+	{ params }: { params: Promise<{ organizationId: string }> }
 ) {
-	const { userId, organizationId } = await params;
+	const { organizationId } = await params;
 
 	try {
 		// Step 1: Get integration from database
 		const integration = await prisma.integration.findFirst({
 			where: {
-				userId,
 				organizationId,
 				toolName: "posthog",
 				status: { in: ["CONNECTED", "SYNCING"] },
@@ -25,7 +24,6 @@ export async function POST(
 
 		if (!integration) {
 			console.warn("PostHog webhook received for unknown integration", {
-				userId,
 				organizationId,
 			});
 			return NextResponse.json(
@@ -228,17 +226,16 @@ function normalizePostHogWebhookEvent(payload: PostHogWebhookPayload): {
  */
 export async function handleBatchWebhook(
 	request: NextRequest,
-	{ params }: { params: { userId: string; organizationId: string } }
+	{ params }: { params: { organizationId: string } }
 ) {
-	const { userId, organizationId } = params;
+	const { organizationId } = params;
 
 	try {
 		const integration = await prisma.integration.findFirst({
 			where: {
-				userId,
 				organizationId,
 				toolName: "posthog",
-				status: "CONNECTED",
+				status: { in: ["CONNECTED", "SYNCING"] },
 			},
 		});
 
@@ -308,7 +305,6 @@ export async function GET(
 		{
 			status: "ok",
 			message: "PostHog webhook endpoint",
-			userId: params.userId,
 			organizationId: params.organizationId,
 		},
 		{ status: 200 }
