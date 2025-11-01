@@ -29,7 +29,7 @@ export function ChannelManager({
 	const router = useRouter();
 
 	const communicationIntegrations = useMemo(() => {
-		return integrations.filter((item) => item.category === "communication");
+		return integrations.filter((item) => item.category === "COMMUNICATION");
 	}, [integrations]);
 
 	return (
