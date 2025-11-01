@@ -29,9 +29,7 @@ export function RepositoryManager({
 	const router = useRouter();
 
 	const codeIntegrations = useMemo(() => {
-		return integrations.filter(
-			(item) => item.category === "version_control"
-		);
+		return integrations.filter((item) => item.category === "DEVELOPMENT");
 	}, [integrations]);
 
 	return (

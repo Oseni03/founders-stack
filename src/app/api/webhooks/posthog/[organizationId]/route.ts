@@ -237,27 +237,3 @@ export async function GET(
 		{ status: 200 }
 	);
 }
-
-// ============================================================================
-// WEBHOOK SECURITY (Optional Enhancement)
-// ============================================================================
-
-/**
- * Add webhook secret token verification
- * Usage: https://yourapp.com/webhooks/posthog/user123/org456?token=secret123
- */
-function verifyWebhookToken(request: NextRequest, integration: any): boolean {
-	const url = new URL(request.url);
-	const token = url.searchParams.get("token");
-
-	if (!token) {
-		return false;
-	}
-
-	// Compare with stored webhook secret (if using this method)
-	const webhookSecret = integration.webhookSecret
-		? integration.webhookSecret
-		: null;
-
-	return token === webhookSecret;
-}
