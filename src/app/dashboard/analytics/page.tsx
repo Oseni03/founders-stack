@@ -1,4 +1,3 @@
-// app/analytics/page.tsx
 "use client";
 
 import { useEffect, useMemo, useCallback } from "react";
@@ -32,6 +31,8 @@ import {
 	ResponsiveContainer,
 } from "recharts";
 import { useAnalyticsStore } from "@/zustand/providers/analytics-store-provider";
+import { AnalyticsPageLoading } from "@/components/analytics/analytics-loading";
+import { AnalyticsNoDataState } from "@/components/analytics/analytics-no-data";
 
 export default function AnalyticsPage() {
 	const data = useAnalyticsStore((state) => state.data);
@@ -73,31 +74,11 @@ export default function AnalyticsPage() {
 	);
 
 	if (loading) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="text-center">
-					<div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-border border-t-primary" />
-					<p className="text-muted-foreground">
-						Loading analytics...
-					</p>
-				</div>
-			</div>
-		);
+		return <AnalyticsPageLoading />;
 	}
 
 	if (!data || !data.summary) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="text-center">
-					<p className="mb-4 text-lg font-semibold text-destructive">
-						Failed to load analytics data
-					</p>
-					<Link href="/dashboard">
-						<Button>Back to Dashboard</Button>
-					</Link>
-				</div>
-			</div>
-		);
+		return <AnalyticsNoDataState />;
 	}
 
 	return (
@@ -246,8 +227,8 @@ export default function AnalyticsPage() {
 													key={`cell-${index}`}
 													fill={
 														COLORS[
-														index %
-														COLORS.length
+															index %
+																COLORS.length
 														]
 													}
 												/>

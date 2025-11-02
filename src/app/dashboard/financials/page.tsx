@@ -29,14 +29,16 @@ import {
 	ResponsiveContainer,
 } from "recharts";
 import { useFinanceStore } from "@/zustand/providers/finance-store-provider";
+import { FinancialStatusPageLoading } from "@/components/financials/financial-loading";
+import { FinancialStatusNoDataState } from "@/components/financials/financial-no-data";
 
 export default function FinancialStatusPage() {
-	const data = useFinanceStore((state)=>state.data)
-	const loading = useFinanceStore((state)=>state.loading)
-	const timeRange = useFinanceStore((state)=>state.timeRange)
-	const setData = useFinanceStore((state)=>state.setData)
-	const setLoading = useFinanceStore((state)=>state.setLoading)
-	const setTimeRange = useFinanceStore((state)=>state.setTimeRange)
+	const data = useFinanceStore((state) => state.data);
+	const loading = useFinanceStore((state) => state.loading);
+	const timeRange = useFinanceStore((state) => state.timeRange);
+	const setData = useFinanceStore((state) => state.setData);
+	const setLoading = useFinanceStore((state) => state.setLoading);
+	const setTimeRange = useFinanceStore((state) => state.setTimeRange);
 
 	useEffect(() => {
 		fetchMetrics();
@@ -87,31 +89,11 @@ export default function FinancialStatusPage() {
 	const cac = useMemo(() => Math.round(ltv / 3), [ltv]);
 
 	if (loading) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="text-center">
-					<div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-border border-t-primary" />
-					<p className="text-muted-foreground">
-						Loading financial data...
-					</p>
-				</div>
-			</div>
-		);
+		return <FinancialStatusPageLoading />;
 	}
 
 	if (!data) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="text-center">
-					<p className="mb-4 text-lg font-semibold text-destructive">
-						Failed to load financial data
-					</p>
-					<Link href="/dashboard">
-						<Button>Back to Dashboard</Button>
-					</Link>
-				</div>
-			</div>
-		);
+		return <FinancialStatusNoDataState />;
 	}
 
 	return (

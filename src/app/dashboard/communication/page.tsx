@@ -1,5 +1,4 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-// app/communication/page.tsx
 "use client";
 
 import { useEffect, useMemo } from "react";
@@ -30,6 +29,8 @@ import {
 } from "recharts";
 import { ChannelManager } from "@/components/communication/channel-manager";
 import { useCommunicationStore } from "@/zustand/providers/communication-store-provider";
+import { CommunicationPageLoading } from "@/components/communication/communication-loading";
+import { CommunicationNoDataState } from "@/components/communication/communication-no-data";
 
 export default function CommunicationPage() {
 	const data = useCommunicationStore((state) => state.data);
@@ -101,31 +102,11 @@ export default function CommunicationPage() {
 	}, [data?.messagesByChannel, showAllMessages, selectedChannelId]);
 
 	if (loading) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="text-center">
-					<div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-border border-t-primary" />
-					<p className="text-muted-foreground">
-						Loading communication data...
-					</p>
-				</div>
-			</div>
-		);
+		return <CommunicationPageLoading />;
 	}
 
 	if (!data) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="text-center">
-					<p className="mb-4 text-lg font-semibold text-destructive">
-						Failed to load communication data
-					</p>
-					<Link href="/dashboard">
-						<Button>Back to Dashboard</Button>
-					</Link>
-				</div>
-			</div>
-		);
+		return <CommunicationNoDataState />;
 	}
 
 	return (

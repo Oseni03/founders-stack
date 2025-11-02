@@ -125,7 +125,7 @@ export function useIntegrationOnboarding() {
 			toast.success(`${selected.length} resources added successfully`);
 
 			setDialogOpen(false);
-			router.push("/integrations");
+			router.push("/dashboard/code");
 		} catch (error) {
 			toast.error(
 				error instanceof Error

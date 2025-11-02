@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
 	ArrowLeft,
@@ -22,6 +22,10 @@ import { CommitPRChart } from "@/components/code/commit-pr-chart";
 import { SuccessRateChart } from "@/components/code/success-rate-chart";
 import { ContributorsCard } from "@/components/code/contributors-card";
 import { DeploymentsCard } from "@/components/code/deployments-card";
+import { CodeCIErrorState } from "@/components/code/code-ci-error-state";
+import { CodeCINoRepositoriesState } from "@/components/code/code-ci-no-repositories-state";
+import CodeCIPageLoading from "@/components/code/code-ci-page-loading";
+import { useIntegrationsStore } from "@/zustand/providers/integrations-store-provider";
 
 export default function CodeCIPage() {
 	const repositories = useCodeStore((state) => state.repositories);
@@ -32,6 +36,7 @@ export default function CodeCIPage() {
 		(state) => state.setSelectedRepository
 	);
 	const setRepositories = useCodeStore((state) => state.setRepositories);
+	const integrations = useIntegrationsStore((state) => state.integrations);
 
 	// Local state for data fetching
 	const [data, setData] = useState<CodeCIMetrics | null>(null);
@@ -94,57 +99,30 @@ export default function CodeCIPage() {
 		}
 	}, [selectedRepositoryId, fetchRepoData]);
 
+	const hasCodeCIIntegration = useMemo(() => {
+		return !!integrations.find((i) => i.category === "DEVELOPMENT");
+	}, [integrations]);
+
 	// Loading state
 	if (loading && !data) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="text-center">
-					<div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-border border-t-primary" />
-					<p className="text-muted-foreground">Loading...</p>
-				</div>
-			</div>
-		);
+		return <CodeCIPageLoading />; // From previous response
 	}
 
 	// Error state
 	if (error && !data) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="text-center">
-					<p className="mb-4 text-lg font-semibold text-destructive">
-						{error}
-					</p>
-					<Link href="/dashboard">
-						<Button>Back to Dashboard</Button>
-					</Link>
-				</div>
-			</div>
-		);
+		return <CodeCIErrorState error={error} onRetry={fetchRepositories} />;
 	}
 
 	// No repositories
 	if (!loading && repositories.length === 0) {
 		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="text-center text-muted-foreground">
-					No repositories found. Please add a repository.
-				</div>
-			</div>
+			<CodeCINoRepositoriesState hasIntegration={hasCodeCIIntegration} />
 		);
 	}
 
 	// No data yet
 	if (!data) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="text-center">
-					<div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-border border-t-primary" />
-					<p className="text-muted-foreground">
-						Loading repository data...
-					</p>
-				</div>
-			</div>
-		);
+		return <CodeCIPageLoading />;
 	}
 
 	const buildStatusColor =

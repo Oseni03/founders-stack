@@ -1,4 +1,3 @@
-// app/feedback/page.tsx
 "use client";
 
 import { useEffect, useMemo } from "react";
@@ -32,18 +31,26 @@ import {
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { useFeedbackStore } from "@/zustand/providers/feedback-store-provider";
+import { FeedbackPageLoading } from "@/components/feedbacks/feedback-loading";
+import { FeedbackNoDataState } from "@/components/feedbacks/feedback-no-data";
 
 export default function FeedbackPage() {
-	const data = useFeedbackStore((state)=>state.data)
-	const loading = useFeedbackStore((state)=>state.loading)
-	const timeRange = useFeedbackStore((state)=>state.timeRange)
-	const selectedStatus = useFeedbackStore((state)=>state.selectedStatus)
-	const selectedCategory = useFeedbackStore((state)=>state.selectedCategory)
-	const setData = useFeedbackStore((state)=>state.setData)
-	const setLoading = useFeedbackStore((state)=>state.setLoading)
-	const setTimeRange = useFeedbackStore((state)=>state.setTimeRange)
-	const setSelectedStatus = useFeedbackStore((state)=>state.setSelectedStatus)
-	const setSelectedCategory = useFeedbackStore((state)=>state.setSelectedCategory)
+	const data = useFeedbackStore((state) => state.data);
+	const loading = useFeedbackStore((state) => state.loading);
+	const timeRange = useFeedbackStore((state) => state.timeRange);
+	const selectedStatus = useFeedbackStore((state) => state.selectedStatus);
+	const selectedCategory = useFeedbackStore(
+		(state) => state.selectedCategory
+	);
+	const setData = useFeedbackStore((state) => state.setData);
+	const setLoading = useFeedbackStore((state) => state.setLoading);
+	const setTimeRange = useFeedbackStore((state) => state.setTimeRange);
+	const setSelectedStatus = useFeedbackStore(
+		(state) => state.setSelectedStatus
+	);
+	const setSelectedCategory = useFeedbackStore(
+		(state) => state.setSelectedCategory
+	);
 
 	useEffect(() => {
 		fetchMetrics();
@@ -103,31 +110,11 @@ export default function FeedbackPage() {
 	};
 
 	if (loading) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="text-center">
-					<div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-border border-t-primary" />
-					<p className="text-muted-foreground">
-						Loading feedback data...
-					</p>
-				</div>
-			</div>
-		);
+		return <FeedbackPageLoading />;
 	}
 
 	if (!data) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="text-center">
-					<p className="mb-4 text-lg font-semibold text-destructive">
-						Failed to load feedback data
-					</p>
-					<Link href="/dashboard">
-						<Button>Back to Dashboard</Button>
-					</Link>
-				</div>
-			</div>
-		);
+		return <FeedbackNoDataState />;
 	}
 
 	return (
@@ -253,7 +240,6 @@ export default function FeedbackPage() {
 												`${name}: ${value}`
 											}
 											outerRadius={80}
-											fill="#8884d8"
 											dataKey="value"
 										>
 											<Cell fill="var(--chart-1)" />

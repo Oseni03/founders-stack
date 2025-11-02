@@ -29,11 +29,9 @@ import {
 	ResponsiveContainer,
 } from "recharts";
 import { useProjectStore } from "@/zustand/providers/project-store-provider";
+import { TasksPageLoading } from "@/components/tasks/tasks-loading";
+import { TasksNoDataState } from "@/components/tasks/tasks-no-data";
 
-/**
- * Project Health Detail Page
- * Comprehensive view of task management, velocity, and project status
- */
 export default function TasksPage() {
 	const data = useProjectStore((s) => s.data);
 	const loading = useProjectStore((s) => s.loading);
@@ -46,31 +44,11 @@ export default function TasksPage() {
 	}, [range]);
 
 	if (loading) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="text-center">
-					<div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-border border-t-primary" />
-					<p className="text-muted-foreground">
-						Loading project health...
-					</p>
-				</div>
-			</div>
-		);
+		return <TasksPageLoading />;
 	}
 
 	if (error || !data) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="text-center">
-					<p className="mb-4 text-lg font-semibold text-destructive">
-						{error || "Failed to load project data"}
-					</p>
-					<Link href="/dashboard">
-						<Button>Back to Dashboard</Button>
-					</Link>
-				</div>
-			</div>
-		);
+		return <TasksNoDataState />;
 	}
 
 	const velocityData = data.velocity.map((v, i) => ({
