@@ -116,6 +116,32 @@ export class AsanaConnector {
 					data: {
 						resource: resourceGid,
 						target: targetUrl,
+						filters: [
+							{
+								resource_type: "task",
+								action: "changed",
+							},
+							{
+								resource_type: "task",
+								action: "added",
+							},
+							{
+								resource_type: "task",
+								action: "removed",
+							},
+							{
+								resource_type: "project",
+								action: "changed",
+							},
+							{
+								resource_type: "project",
+								action: "removed",
+							},
+							{
+								resource_type: "story",
+								action: "added",
+							},
+						],
 					},
 				}
 			);
