@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { withAuth } from "@/lib/middleware";
+import { calculateMRRTrend } from "@/server/categories/finance";
 
 const querySchema = z.object({
 	range: z.enum(["7d", "30d", "90d"]).default("7d"),
@@ -167,6 +168,34 @@ export async function GET(req: NextRequest) {
 				type: i.amountPaid > 0 ? "payment" : "invoice",
 				date: i.issuedDate.toISOString(),
 			}));
+
+			// Calculate MRR trend data
+			const mrrTrendData = await calculateMRRTrend(orgId, range);
+
+			// Calculate actual churn rate from subscriptions
+			const churnedSubs = await prisma.financeSubscription.count({
+				where: {
+					organizationId: orgId,
+					endDate: {
+						gte: startDate,
+						lte: new Date(),
+					},
+					status: { in: ["cancelled", "expired"] },
+				},
+			});
+
+			const totalSubsAtStart = await prisma.financeSubscription.count({
+				where: {
+					organizationId: orgId,
+					startDate: { lte: startDate },
+					OR: [{ endDate: null }, { endDate: { gte: startDate } }],
+				},
+			});
+
+			const churnRate =
+				totalSubsAtStart > 0
+					? (churnedSubs / totalSubsAtStart) * 100
+					: 0;
 
 			const financeInsight =
 				mrr > 10000
@@ -472,9 +501,10 @@ export async function GET(req: NextRequest) {
 				},
 				finance: {
 					mrr: Math.round(mrr),
-					churn: 5.2,
+					churn: parseFloat(churnRate.toFixed(1)), // Use calculated churn instead of hardcoded
 					activeSubscriptions: activeSubs,
 					recentTransactions,
+					mrrTrendData, // Add this line
 					insight: financeInsight,
 				},
 				analytics,

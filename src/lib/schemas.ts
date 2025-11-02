@@ -93,6 +93,13 @@ export const MetricsResponseSchema = z.object({
 				date: z.string(),
 			})
 		),
+		mrrTrendData: z.array(
+			z.object({
+				name: z.string(),
+				mrr: z.number(),
+				churn: z.number(),
+			})
+		),
 		insight: z.string(),
 	}),
 	analytics: z.object({
@@ -175,6 +182,13 @@ export const MetricsResponseSchema = z.object({
 				id: z.string(),
 				channel: z.string(),
 				preview: z.string(),
+				mentions: z.number(),
+			})
+		),
+		messageVolumeTrendData: z.array(
+			z.object({
+				name: z.string(),
+				messages: z.number(),
 				mentions: z.number(),
 			})
 		),

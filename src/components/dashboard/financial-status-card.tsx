@@ -26,11 +26,7 @@ interface FinancialStatusCardProps {
 
 export function FinancialStatusCard({ data }: FinancialStatusCardProps) {
 	// Simulate MRR trend data
-	const mrrTrendData = [
-		{ name: "Week 1", mrr: 4500, churn: 6.2 },
-		{ name: "Week 2", mrr: 4800, churn: 5.8 },
-		{ name: "Week 3", mrr: 5000, churn: 5.2 },
-	];
+	const mrrTrendData = data.mrrTrendData || [];
 
 	const mrrColor = data.mrr > 4500 ? "text-green-600" : "text-orange-600";
 
