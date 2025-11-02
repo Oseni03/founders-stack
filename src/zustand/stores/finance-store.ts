@@ -11,6 +11,18 @@ interface Transaction {
 	date: string;
 }
 
+interface MrrTrendData {
+	name: string;
+	mrr: number;
+	churn: number;
+}
+
+interface TransactionVolumeData {
+	name: string;
+	subscriptions: number;
+	payments: number;
+}
+
 interface FinanceData {
 	mrr: number;
 	churn: number;
@@ -40,6 +52,8 @@ interface FinanceData {
 		pending: number;
 		overdue: number;
 	};
+	mrrTrendData: MrrTrendData[];
+	transactionVolumeData: TransactionVolumeData[];
 }
 
 export interface FinanceState {

@@ -60,27 +60,6 @@ export default function FinancialStatusPage() {
 		}
 	};
 
-	// Generate mock MRR trend data
-	const mrrTrendData = useMemo(() => {
-		if (!data) return [];
-		return Array.from({ length: 12 }, (_, i) => ({
-			name: `M${i + 1}`,
-			mrr: data.mrr - Math.random() * 500,
-			churn: data.churn + Math.random() * 2,
-		}));
-	}, [data]);
-
-	// Generate mock transaction volume data
-	const transactionVolumeData = useMemo(
-		() =>
-			Array.from({ length: 7 }, (_, i) => ({
-				name: `Day ${i + 1}`,
-				subscriptions: Math.floor(Math.random() * 50) + 20,
-				payments: Math.floor(Math.random() * 100) + 50,
-			})),
-		[]
-	);
-
 	const ltv = useMemo(() => {
 		if (!data) return 0;
 		return Math.round((data.mrr * 12) / (data.churn || 1));
@@ -228,7 +207,7 @@ export default function FinancialStatusPage() {
 						<CardContent>
 							<div className="h-80 w-full">
 								<ResponsiveContainer width="100%" height="100%">
-									<LineChart data={mrrTrendData}>
+									<LineChart data={data.mrrTrendData}>
 										<CartesianGrid
 											strokeDasharray="3 3"
 											stroke="var(--border)"
@@ -288,7 +267,7 @@ export default function FinancialStatusPage() {
 						<CardContent>
 							<div className="h-80 w-full">
 								<ResponsiveContainer width="100%" height="100%">
-									<BarChart data={transactionVolumeData}>
+									<BarChart data={data.transactionVolumeData}>
 										<CartesianGrid
 											strokeDasharray="3 3"
 											stroke="var(--border)"

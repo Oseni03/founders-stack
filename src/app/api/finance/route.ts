@@ -22,9 +22,7 @@ export async function GET(request: NextRequest) {
 
 			// Fetch all balances from all source tools
 			const balances = await prisma.balance.findMany({
-				where: {
-					organizationId,
-				},
+				where: { organizationId },
 			});
 
 			// Aggregate balances by currency
@@ -194,6 +192,112 @@ export async function GET(request: NextRequest) {
 				overdue: overdueInvoices,
 			};
 
+			// Fetch historical MRR and churn data for the past 12 months
+			const twelveMonthsAgo = new Date();
+			twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+			const monthlyMetrics = await Promise.all(
+				Array.from({ length: 12 }, (_, i) => {
+					const monthStart = new Date();
+					monthStart.setMonth(monthStart.getMonth() - (11 - i));
+					monthStart.setDate(1);
+					monthStart.setHours(0, 0, 0, 0);
+
+					const monthEnd = new Date(monthStart);
+					monthEnd.setMonth(monthEnd.getMonth() + 1);
+
+					return (async () => {
+						// Fetch subscriptions active during this month
+						const subscriptions =
+							await prisma.financeSubscription.findMany({
+								where: {
+									organizationId,
+									OR: [
+										{ startDate: { lte: monthEnd } },
+										{ startDate: { gte: monthStart } },
+									],
+									status: "active",
+								},
+							});
+
+						// Calculate MRR for the month
+						const monthlyMrr = subscriptions.reduce((sum, sub) => {
+							let monthlyAmount = sub.amount;
+							if (sub.billingCycle === "yearly") {
+								monthlyAmount = sub.amount / 12;
+							} else if (sub.billingCycle === "quarterly") {
+								monthlyAmount = sub.amount / 3;
+							}
+							return sum + monthlyAmount;
+						}, 0);
+
+						// Calculate churn for the month
+						const churned = await prisma.financeSubscription.count({
+							where: {
+								organizationId,
+								status: { in: ["canceled", "expired"] },
+								endDate: {
+									gte: monthStart,
+									lte: monthEnd,
+								},
+							},
+						});
+
+						const totalSubs = subscriptions.length + churned;
+						const monthlyChurn =
+							totalSubs > 0 ? (churned / totalSubs) * 100 : 0;
+
+						return {
+							name: monthStart.toLocaleString("default", {
+								month: "short",
+							}),
+							mrr: Math.round(monthlyMrr),
+							churn: parseFloat(monthlyChurn.toFixed(2)),
+						};
+					})();
+				})
+			);
+
+			// Fetch transaction volume data for the last 7 days
+			const sevenDaysAgo = new Date();
+			sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+			const dailyTransactions = await Promise.all(
+				Array.from({ length: 7 }, (_, i) => {
+					const dayStart = new Date();
+					dayStart.setDate(dayStart.getDate() - (6 - i));
+					dayStart.setHours(0, 0, 0, 0);
+
+					const dayEnd = new Date(dayStart);
+					dayEnd.setHours(23, 59, 59, 999);
+
+					return (async () => {
+						const invoices = await prisma.invoice.findMany({
+							where: {
+								organizationId,
+								issuedDate: {
+									gte: dayStart,
+									lte: dayEnd,
+								},
+							},
+						});
+
+						const subscriptions = invoices.filter(
+							(inv) => inv.subscriptionId
+						).length;
+						const payments = invoices.filter(
+							(inv) => !inv.subscriptionId
+						).length;
+
+						return {
+							name: `Day ${i + 1}`,
+							subscriptions,
+							payments,
+						};
+					})();
+				})
+			);
+
 			// Generate insight
 			const insight = await generateFinancialInsight({
 				mrr,
@@ -214,7 +318,6 @@ export async function GET(request: NextRequest) {
 					pending: primaryBalance.pending,
 					currency: primaryCurrency,
 				},
-				// Include all balances broken down by source and currency
 				balanceBreakdown: balances.map((bal) => ({
 					sourceTool: bal.sourceTool,
 					currency: bal.currency,
@@ -224,6 +327,8 @@ export async function GET(request: NextRequest) {
 				})),
 				subscriptionBreakdown: subscriptionBreakdownFormatted,
 				invoiceStats,
+				mrrTrendData: monthlyMetrics,
+				transactionVolumeData: dailyTransactions,
 			});
 		} catch (error) {
 			console.error("[Finance API] Error:", error);
