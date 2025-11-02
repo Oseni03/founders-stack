@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { withAuth } from "@/lib/middleware";
 import { calculateMRRTrend } from "@/server/categories/finance";
+import { startOfDay, subDays, startOfWeek, subWeeks } from "date-fns";
 
 const querySchema = z.object({
 	range: z.enum(["7d", "30d", "90d"]).default("7d"),
@@ -480,11 +481,67 @@ export async function GET(req: NextRequest) {
 					})
 				);
 
+			// Message volume trend (daily for 7d, weekly for 30d/90d)
+			const messageTrendData = await (async () => {
+				if (range === "7d") {
+					// Daily aggregation for 7 days
+					const days = Array.from({ length: 7 }, (_, i) =>
+						subDays(new Date(), 6 - i)
+					);
+					const counts = await Promise.all(
+						days.map(async (day) => {
+							const nextDay = new Date(day);
+							nextDay.setDate(day.getDate() + 1);
+							const count = await prisma.message.count({
+								where: {
+									organizationId: orgId,
+									timestamp: {
+										gte: startOfDay(day),
+										lt: startOfDay(nextDay),
+									},
+								},
+							});
+							return {
+								name: day.toLocaleDateString("en-US", {
+									weekday: "short",
+								}),
+								volume: count,
+							};
+						})
+					);
+					return counts;
+				} else {
+					// Weekly aggregation for 30d or 90d
+					const weeks = range === "30d" ? 4 : 12; // 4 weeks for 30d, 12 weeks for 90d
+					const weekStarts = Array.from({ length: weeks }, (_, i) =>
+						subWeeks(new Date(), weeks - 1 - i)
+					);
+					const counts = await Promise.all(
+						weekStarts.map(async (week, i) => {
+							const nextWeek = new Date(week);
+							nextWeek.setDate(week.getDate() + 7);
+							const count = await prisma.message.count({
+								where: {
+									organizationId: orgId,
+									timestamp: {
+										gte: startOfWeek(week),
+										lt: startOfWeek(nextWeek),
+									},
+								},
+							});
+							return { name: `W${i + 1}`, volume: count };
+						})
+					);
+					return counts;
+				}
+			})();
+
 			const communication = {
 				messageVolume,
 				unreadMentions,
 				sentiment: 0.82, // Future: from NLP
 				recentThreads,
+				messageTrendData, // New field
 				insight:
 					unreadMentions > 10
 						? "High mention volume. Check Slack."

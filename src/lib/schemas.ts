@@ -192,6 +192,12 @@ export const MetricsResponseSchema = z.object({
 				mentions: z.number(),
 			})
 		),
+		messageTrendData: z.array(
+			z.object({
+				name: z.string(),
+				volume: z.number(),
+			})
+		),
 		insight: z.string(),
 	}),
 });

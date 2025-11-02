@@ -1,4 +1,3 @@
-// app/dashboard/page.tsx
 "use client";
 
 import { useEffect } from "react";
@@ -12,9 +11,9 @@ import { CodeCICard } from "@/components/dashboard/code-ci-card";
 import { CommunicationCard } from "@/components/dashboard/communication-card";
 import { Search, Calendar } from "lucide-react";
 import { useDashboardStore } from "@/zustand/providers/dashboard-store-provider";
+import { DashboardContentLoading } from "@/components/dashboard/dashboard-loading";
 
 export default function DashboardContent() {
-	// Split into individual selectors instead of selecting an object
 	const data = useDashboardStore((s) => s.data);
 	const loading = useDashboardStore((s) => s.loading);
 	const error = useDashboardStore((s) => s.error);
@@ -29,16 +28,7 @@ export default function DashboardContent() {
 	}, [range, searchQuery, fetchData]);
 
 	if (loading) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="text-center">
-					<div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-border border-t-primary" />
-					<p className="text-muted-foreground">
-						Loading your metrics...
-					</p>
-				</div>
-			</div>
-		);
+		return <DashboardContentLoading />;
 	}
 
 	if (error || !data) {

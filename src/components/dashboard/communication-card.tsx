@@ -25,13 +25,6 @@ interface CommunicationCardProps {
 }
 
 export function CommunicationCard({ data }: CommunicationCardProps) {
-	// Simulate message volume trend
-	const messageData = [
-		{ name: "Mon", volume: 120 },
-		{ name: "Tue", volume: 135 },
-		{ name: "Wed", volume: 150 },
-	];
-
 	const sentimentPercent = Math.round(data.sentiment * 100);
 
 	return (
@@ -67,7 +60,7 @@ export function CommunicationCard({ data }: CommunicationCardProps) {
 					{/* Message Volume Trend */}
 					<div className="h-40 w-full">
 						<ResponsiveContainer width="100%" height="100%">
-							<LineChart data={messageData}>
+							<LineChart data={data.messageTrendData}>
 								<CartesianGrid
 									strokeDasharray="3 3"
 									stroke="var(--border)"
