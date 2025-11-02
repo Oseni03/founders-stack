@@ -2,12 +2,6 @@
 import { withAuth } from "@/lib/middleware";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod"; // Input validation
-
-// Schema for query params
-const querySchema = z.object({
-	repositoryId: z.string().cuid(), // Validate as Prisma cuid
-});
 
 // Rate limiter setup (optional; configure env vars for Upstash)
 // const redis =
@@ -27,8 +21,12 @@ const querySchema = z.object({
 // }
 
 // GET: Fetch code/CI metrics for a repository
-export async function GET(req: NextRequest) {
+export async function GET(
+	req: NextRequest,
+	{ params }: { params: Promise<{ repositoryId: string }> }
+) {
 	return withAuth(req, async (request, user) => {
+		const { repositoryId } = await params;
 		// // Rate limit check
 		// if (!(await rateLimit(user.id))) {
 		// 	return NextResponse.json(
@@ -37,25 +35,13 @@ export async function GET(req: NextRequest) {
 		// 	);
 		// }
 
-		const { searchParams } = new URL(req.url);
-		const parsed = querySchema.safeParse({
-			repositoryId: searchParams.get("repositoryId"),
-		});
-
-		if (!parsed.success) {
-			return NextResponse.json(
-				{ error: "Invalid repositoryId" },
-				{ status: 400 }
-			);
-		}
-
-		const { repositoryId } = parsed.data;
-		const orgId = user.organizationId; // Assume user model has organizationId
-
 		try {
 			// Verify repo belongs to org
 			const repo = await prisma.repository.findUnique({
-				where: { id: repositoryId },
+				where: {
+					id: repositoryId,
+					organizationId: user.organizationId,
+				},
 				select: {
 					id: true,
 					organizationId: true,
@@ -65,24 +51,12 @@ export async function GET(req: NextRequest) {
 					isPrivate: true,
 				},
 			});
-			if (!repo || repo.organizationId !== orgId) {
+			if (!repo) {
 				return NextResponse.json(
 					{ error: "Repository not found" },
 					{ status: 404 }
 				);
 			}
-
-			// Fetch all repositories for the org (for frontend list)
-			const repositories = await prisma.repository.findMany({
-				where: { organizationId: orgId, isArchived: false },
-				select: {
-					id: true,
-					name: true,
-					owner: true,
-					language: true,
-					isPrivate: true,
-				},
-			});
 
 			// Aggregate commits count (last 30 days for "this period")
 			const thirtyDaysAgo = new Date(
@@ -301,7 +275,6 @@ export async function GET(req: NextRequest) {
 				"Repository health is strong, but monitor open issues."; // AI-generated in future
 
 			return NextResponse.json({
-				repositories,
 				commits,
 				prs,
 				buildStatus,

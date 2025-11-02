@@ -202,7 +202,6 @@ export interface BuildTrend {
 }
 
 export interface CodeCIMetrics {
-	repositories: Repository[];
 	commits: number;
 	prs: number;
 	buildStatus: string;

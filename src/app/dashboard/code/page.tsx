@@ -63,7 +63,7 @@ export default function CodeCIPage() {
 		setError(null);
 		setData(null); // Clear old data immediately
 		try {
-			const url = `/api/code-ci?repositoryId=${repoId}`;
+			const url = `/api/code-ci/repositories/${repoId}`;
 			const res = await fetch(url);
 
 			if (!res.ok) {
