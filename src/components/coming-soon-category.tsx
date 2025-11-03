@@ -4,18 +4,26 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, LucideIcon } from "lucide-react";
+import { icons } from "lucide-react";
 
 interface ComingSoonCategoryProps {
 	category: string;
 	description: string;
-	icon: LucideIcon;
+	iconName: keyof typeof icons; // Use icon name as a string
 }
 
 export default function ComingSoonCategoryPage({
 	category,
 	description,
-	icon: Icon,
+	iconName,
 }: ComingSoonCategoryProps) {
+	const Icon = icons[iconName] as LucideIcon; // Dynamically select the icon
+
+	if (!Icon) {
+		console.warn(`Icon "${iconName}" not found in lucide-react`);
+		return null; // Fallback if icon is invalid
+	}
+
 	return (
 		<main className="min-h-screen bg-gradient-to-b from-background to-muted flex items-center justify-center p-4">
 			<div className="max-w-3xl w-full text-center space-y-8">
