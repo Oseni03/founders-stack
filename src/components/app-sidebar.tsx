@@ -259,8 +259,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 											isActive={item.url == pathname}
 											asChild
 										>
-											{item.icon && <item.icon />}
-											<a href={item.url}>{item.label}</a>
+											<Link href={item.url}>
+												{item.icon && (
+													<item.icon className="h-5 w-5 mr-2" />
+												)}
+												<span>{item.label}</span>
+											</Link>
 										</SidebarMenuButton>
 									</SidebarMenuItem>
 								))}
