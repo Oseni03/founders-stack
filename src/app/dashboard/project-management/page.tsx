@@ -31,6 +31,7 @@ import {
 import { useProjectStore } from "@/zustand/providers/project-store-provider";
 import { TasksPageLoading } from "@/components/tasks/tasks-loading";
 import { TasksNoDataState } from "@/components/tasks/tasks-no-data";
+import { TasksCard } from "@/components/tasks/tasks-card";
 
 export default function TasksPage() {
 	const data = useProjectStore((s) => s.data);
@@ -260,49 +261,7 @@ export default function TasksPage() {
 				</div>
 
 				{/* Top Priorities */}
-				<Card className="mb-8">
-					<CardHeader>
-						<CardTitle>Top Priorities</CardTitle>
-						<CardDescription>
-							High-priority tasks requiring immediate attention
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div className="space-y-3">
-							{data.topPriorities.map((task) => (
-								<div
-									key={task.id}
-									className="flex items-center justify-between rounded-lg border border-border p-4"
-								>
-									<div className="flex-1">
-										<p className="font-medium text-foreground">
-											{task.title}
-										</p>
-										<p className="text-sm text-muted-foreground">
-											Due:{" "}
-											{new Date(
-												task.dueDate
-											).toLocaleDateString()}
-										</p>
-									</div>
-									<span
-										className={`rounded-full px-3 py-1 text-xs font-semibold ${
-											task.priority === "urgent"
-												? "bg-red-100 text-red-700"
-												: task.priority === "high"
-													? "bg-orange-100 text-orange-700"
-													: task.priority === "medium"
-														? "bg-yellow-100 text-yellow-700"
-														: "bg-blue-100 text-blue-700"
-										}`}
-									>
-										{task.priority.toUpperCase()}
-									</span>
-								</div>
-							))}
-						</div>
-					</CardContent>
-				</Card>
+				<TasksCard tasks={data.tasks} />
 
 				{/* Insights */}
 				<Card>

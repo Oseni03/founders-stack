@@ -90,20 +90,18 @@ export async function GET(req: NextRequest) {
 			const velocity = await Promise.all(velocityPromises);
 
 			// Top Priorities: High/Urgent, not done, soonest due
-			const topPriorities = await prisma.task
+			const tasks = await prisma.task
 				.findMany({
 					where: {
 						organizationId: orgId,
-						status: { not: "done" },
-						priority: { in: ["high", "urgent"] },
 					},
 					orderBy: [{ priority: "desc" }, { dueDate: "asc" }],
-					take: 5,
 					select: {
 						id: true,
 						title: true,
 						priority: true,
 						dueDate: true,
+						status: true,
 					},
 				})
 				.then((tasks) =>
@@ -115,6 +113,7 @@ export async function GET(req: NextRequest) {
 							| "medium"
 							| "high"
 							| "urgent",
+						status: t.status,
 						dueDate: t.dueDate?.toISOString() || "",
 					}))
 				);
@@ -128,7 +127,7 @@ export async function GET(req: NextRequest) {
 				openTasks,
 				velocity,
 				overdueTasks,
-				topPriorities,
+				tasks,
 				insight,
 			});
 		} catch (error) {

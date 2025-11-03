@@ -6,12 +6,14 @@ export interface ProjectMetrics {
 	openTasks: number;
 	velocity: number[];
 	overdueTasks: number;
-	topPriorities: {
+	tasks: {
 		id: string;
 		title: string;
 		priority: "low" | "medium" | "high" | "urgent";
 		dueDate: string;
+		status: string;
 	}[];
+
 	insight: string;
 }
 
