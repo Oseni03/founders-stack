@@ -38,7 +38,7 @@ export function ProjectHealthCard({ data }: ProjectHealthCardProps) {
 				: "text-green-500";
 
 	return (
-		<Link href="/dashboard/project-health">
+		<Link href="/dashboard/project-management">
 			<Card className="cursor-pointer transition-all hover:shadow-lg hover:border-primary">
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
