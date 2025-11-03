@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 const SettingsContent = () => {
 	const searchParams = useSearchParams();
 	const router = useRouter();
-	const defaultTab = searchParams.get("tab") || "organization";
+	const defaultTab = searchParams.get("tab") || "project";
 	const [tab, setTab] = useState(defaultTab);
 
 	useEffect(() => {
@@ -39,8 +39,7 @@ const SettingsContent = () => {
 					Settings
 				</h1>
 				<p className="text-sm sm:text-base text-muted-foreground">
-					Manage your organization settings, team members, and
-					subscription
+					Manage your project settings, team members, and subscription
 				</p>
 			</div>
 
@@ -51,11 +50,11 @@ const SettingsContent = () => {
 			>
 				<TabsList className="flex flex-nowrap overflow-x-auto pb-2 sm:pb-0 mb-6 -mx-4 sm:mx-0 px-4 sm:px-0 sm:grid sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
 					<TabsTrigger
-						value="organization"
+						value="project"
 						className="flex items-center gap-2 min-w-[120px] sm:min-w-0 whitespace-nowrap"
 					>
 						<Building2 className="h-4 w-4 flex-shrink-0" />
-						<span>Organization</span>
+						<span>Project</span>
 					</TabsTrigger>
 					<TabsTrigger
 						value="members"
@@ -82,7 +81,7 @@ const SettingsContent = () => {
 
 				<div className="-mx-4 sm:mx-0">
 					<TabsContent
-						value="organization"
+						value="project"
 						className="space-y-4 sm:space-y-6 px-4 sm:px-0"
 					>
 						<OrganizationCard />

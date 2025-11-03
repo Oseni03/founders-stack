@@ -157,7 +157,7 @@ export function TeamSwitcher() {
 					{/* Dialog Content */}
 					<DialogContent showCloseButton={true}>
 						<DialogHeader>
-							<DialogTitle>Create Tenanat</DialogTitle>
+							<DialogTitle>Create Project</DialogTitle>
 							<DialogDescription>
 								Create a new project to get started.
 							</DialogDescription>

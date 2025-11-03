@@ -6,6 +6,7 @@ import {
 	BarChart3,
 	CreditCard,
 	FileText,
+	GitFork,
 	Headphones,
 	Home,
 	LayoutDashboard,
@@ -67,6 +68,18 @@ const data = {
 					label: "Dashboard",
 					icon: Home,
 					url: "/dashboard",
+				},
+			],
+		},
+		{
+			title: "DEVELOPMENT",
+			url: "#",
+			items: [
+				{
+					id: "version-control",
+					label: "Version Control",
+					icon: GitFork,
+					url: "/dashboard/version-control",
 				},
 			],
 		},
