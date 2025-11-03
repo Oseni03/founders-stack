@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { processSlackEvent } from "@/lib/connectors/slack";
+import { processSlackEvent } from "@/server/platforms/slack";
 
 export async function POST(request: NextRequest) {
 	const body = await request.text();

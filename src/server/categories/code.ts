@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
-import { GitHubConnector, syncGitHub } from "@/lib/connectors/github";
+import { GitHubConnector } from "@/lib/connectors/github";
 import { prisma } from "@/lib/prisma";
 import {
 	BranchData,
@@ -11,6 +11,7 @@ import {
 	PullRequestData,
 	RepoData,
 } from "@/types/code";
+import { syncGitHub } from "../platforms/github";
 
 export async function getRepositories(organizationId: string) {
 	const repositories = await prisma.repository.findMany({

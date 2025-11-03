@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { connectJiraIntegration } from "@/lib/connectors/jira";
+import { connectJiraIntegration } from "@/server/platforms/jira";
 import { withAuth } from "@/lib/middleware";
 import { OAUTH_CONFIG, OAuthConfig } from "@/lib/oauth-utils";
 import { prisma } from "@/lib/prisma";

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { processGitHubEvent } from "@/lib/connectors/github";
+import { processGitHubEvent } from "@/server/platforms/github";
 
 export async function POST(request: NextRequest) {
 	const body = await request.text();

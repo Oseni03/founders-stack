@@ -4,10 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { OAUTH_CONFIG, ToolName } from "@/lib/oauth-utils";
 import { z } from "zod";
-import { connectPostHogIntegration } from "@/lib/connectors/posthog";
-import { connectStripeIntegration } from "@/lib/connectors/stripe";
-import { connectAsanaIntegration } from "@/lib/connectors/asana";
-import { connectCannyIntegration } from "@/lib/connectors/canny";
+import { connectPostHogIntegration } from "@/server/platforms/posthog";
+import { connectStripeIntegration } from "@/server/platforms/stripe";
+import { connectAsanaIntegration } from "@/server/platforms/asana";
+import { connectCannyIntegration } from "@/server/platforms/canny";
 
 // Configuration for API-key based integrations
 const API_KEY_INTEGRATIONS = {

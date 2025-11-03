@@ -3,10 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import {
-	determineEventCategory,
-	StripeConnector,
-} from "@/lib/connectors/stripe";
+import { StripeConnector } from "@/lib/connectors/stripe";
+import { determineEventCategory } from "@/lib/stripe-utils";
 
 /**
  * POST handler for Stripe webhooks

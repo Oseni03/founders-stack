@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/middleware";
-import { syncGitHub } from "@/lib/connectors/github";
-import { syncAsana } from "@/lib/connectors/asana";
-import { syncPostHog } from "@/lib/connectors/posthog";
-import { syncStripe } from "@/lib/connectors/stripe";
-import { syncSlack } from "@/lib/connectors/slack";
-import { syncCanny } from "@/lib/connectors/canny";
+import { syncGitHub } from "@/server/platforms/github";
+import { syncAsana } from "@/server/platforms/asana";
+import { syncPostHog } from "@/server/platforms/posthog";
+import { syncStripe } from "@/server/platforms/stripe";
+import { syncSlack } from "@/server/platforms/slack";
+import { syncCanny } from "@/server/platforms/canny";
 
 export async function POST(
 	req: NextRequest,

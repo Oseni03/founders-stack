@@ -1,8 +1,8 @@
 "use server";
 
-import { syncAsana } from "@/lib/connectors/asana";
+import { syncAsana } from "../platforms/asana";
 import { syncJira } from "@/lib/connectors/jira";
-import { syncSlack } from "@/lib/connectors/slack";
+import { syncSlack } from "../platforms/slack";
 import { prisma } from "@/lib/prisma";
 import { ProjectData } from "@/types/connector";
 
