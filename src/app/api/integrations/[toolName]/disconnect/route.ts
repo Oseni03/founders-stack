@@ -1,4 +1,4 @@
-import { disconnectJiraIntegration } from "@/lib/connectors/jira";
+import { disconnectJiraIntegration } from "@/server/platforms/jira";
 import { withAuth } from "@/lib/middleware";
 import { prisma } from "@/lib/prisma";
 import { disconnectAsanaIntegration } from "@/server/platforms/asana";

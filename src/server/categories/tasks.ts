@@ -1,7 +1,7 @@
 "use server";
 
 import { syncAsana } from "../platforms/asana";
-import { syncJira } from "@/lib/connectors/jira";
+import { syncJira } from "@/server/platforms/jira";
 import { syncSlack } from "../platforms/slack";
 import { prisma } from "@/lib/prisma";
 import { ProjectData } from "@/types/connector";
