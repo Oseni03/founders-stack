@@ -64,17 +64,19 @@ export default function ComingSoonCategoryPage({
 							on growth. Stay tuned for tools designed to make
 							your entrepreneurial journey smoother.
 						</p>
-						<Link href="/dashboard">
-							<Button className="flex items-center gap-2">
-								Explore Existing Features
-								<ArrowLeft className="h-4 w-4 transform rotate-180" />
-							</Button>
-						</Link>
+						<div className="flex items-center justify-center">
+							<Link href="/dashboard">
+								<Button className="flex items-center gap-2">
+									Explore Existing Features
+									<ArrowLeft className="h-4 w-4 transform rotate-180" />
+								</Button>
+							</Link>
+						</div>
 					</CardContent>
 				</Card>
 
 				{/* Social Links */}
-				<div className="mt-8">
+				{/* <div className="mt-8">
 					<p className="text-muted-foreground">
 						Stay updated on our progress:
 					</p>
@@ -110,7 +112,7 @@ export default function ComingSoonCategoryPage({
 							</svg>
 						</a>
 					</div>
-				</div>
+				</div> */}
 			</div>
 		</main>
 	);
