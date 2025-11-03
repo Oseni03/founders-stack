@@ -65,8 +65,34 @@ export async function connectAsanaIntegration(
 		}
 
 		// Step 3: Save integration
-		const integration = await prisma.integration.create({
-			data: {
+		const integration = await prisma.integration.upsert({
+			where: {
+				organizationId_toolName: {
+					organizationId,
+					toolName: "asana",
+				},
+			},
+			update: {
+				category: "PROJECT_MGMT",
+				displayName: displayName || `Asana (${workspaceName})`,
+				status: "CONNECTED",
+
+				apiKey,
+				webhookUrl: webhookGid ? webhookUrl : null,
+				webhookId: webhookGid || null,
+				webhookSetupType: webhookGid ? "AUTOMATIC" : "MANUAL",
+
+				metadata: {
+					workspaceGid: workspace,
+					workspaceName,
+					userGid: userInfo.userGid,
+					userName: userInfo.userName,
+					webhookMode,
+				},
+
+				lastSyncAt: new Date(),
+			},
+			create: {
 				organizationId,
 				toolName: "asana",
 				category: "PROJECT_MGMT",
@@ -116,11 +142,16 @@ export async function connectAsanaIntegration(
 // ============================================================================
 
 export async function disconnectAsanaIntegration(
-	integrationId: string
+	organizationId: string
 ): Promise<{ success: boolean; message: string }> {
 	try {
 		const integration = await prisma.integration.findUnique({
-			where: { id: integrationId },
+			where: {
+				organizationId_toolName: {
+					organizationId,
+					toolName: "asana",
+				},
+			},
 		});
 
 		if (!integration || integration.toolName !== "asana") {
@@ -142,7 +173,12 @@ export async function disconnectAsanaIntegration(
 
 		// Update integration status
 		await prisma.integration.update({
-			where: { id: integrationId },
+			where: {
+				organizationId_toolName: {
+					organizationId,
+					toolName: "asana",
+				},
+			},
 			data: {
 				status: "DISCONNECTED",
 				webhookId: null,

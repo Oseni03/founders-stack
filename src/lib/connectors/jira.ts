@@ -72,3 +72,70 @@ export async function syncJira(organizationId: string, projs: Project[] = []) {
 
 	console.log(`✅ Jira sync completed for organization: ${organizationId}`);
 }
+
+// ============================================================================
+// DISCONNECT INTEGRATION
+// ============================================================================
+
+export async function disconnectJiraIntegration(
+	organizationId: string
+): Promise<{ success: boolean; message: string }> {
+	try {
+		const integration = await prisma.integration.findUnique({
+			where: {
+				organizationId_toolName: {
+					organizationId,
+					toolName: "jira",
+				},
+			},
+		});
+
+		if (!integration || integration.toolName !== "jira") {
+			throw new Error("Jira integration not found");
+		}
+
+		const apiKey = integration.apiKey!;
+		const attributes = integration.attributes as Record<string, any>;
+		const cloudId = attributes.cloudId;
+
+		// Delete webhook if exists
+		if (integration.webhookId) {
+			try {
+				const connector = new JiraConnector(apiKey, cloudId);
+				await connector.deleteWebhook(
+					integration.webhookId as unknown as number
+				);
+				console.log(`Deleted webhook ${integration.webhookId}`);
+			} catch (error) {
+				console.warn("Failed to delete webhook:", error);
+			}
+		}
+
+		// Update integration status
+		await prisma.integration.update({
+			where: {
+				organizationId_toolName: {
+					organizationId,
+					toolName: "jira",
+				},
+			},
+			data: {
+				status: "DISCONNECTED",
+				webhookId: null,
+				webhookUrl: null,
+			},
+		});
+
+		return {
+			success: true,
+			message: "Jira integration disconnected successfully",
+		};
+	} catch (error) {
+		console.error("Failed to disconnect Jira:", error);
+		throw new Error(
+			error instanceof Error
+				? error.message
+				: "Failed to disconnect Jira integration"
+		);
+	}
+}

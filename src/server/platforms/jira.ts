@@ -3,7 +3,11 @@
 
 import { prisma } from "@/lib/prisma";
 import { generateWebhookUrl } from "@/lib/utils";
-import { PaginatedResponse, PaginationOptions, ProjectData } from "@/types/connector";
+import {
+	PaginatedResponse,
+	PaginationOptions,
+	ProjectData,
+} from "@/types/connector";
 import { TaskPriority, TaskStatus } from "@prisma/client";
 
 interface IssueData {
@@ -25,11 +29,9 @@ interface IssueData {
 export class JiraConnector {
 	private baseUrl: string;
 	private accessToken: string;
-	private cloudId: string;
 
 	constructor(accessToken: string, cloudId: string) {
 		this.accessToken = accessToken;
-		this.cloudId = cloudId;
 		this.baseUrl = `https://api.atlassian.com/ex/jira/${cloudId}`;
 	}
 

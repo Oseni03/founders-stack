@@ -18,8 +18,22 @@ export async function connectCannyIntegration(input: {
 
 	if (!isValid) throw new Error("Invalid Canny API key");
 
-	const integration = await prisma.integration.create({
-		data: {
+	const integration = await prisma.integration.upsert({
+		where: {
+			organizationId_toolName: {
+				organizationId,
+				toolName: "canny",
+			},
+		},
+		update: {
+			category: "FEEDBACK", // or 'FEEDBACK'
+			displayName: displayName || `Canny-`,
+			status: "CONNECTED",
+			apiKey,
+			webhookSetupType: "MANUAL", // User configures in Canny UI
+			lastSyncAt: new Date(),
+		},
+		create: {
 			organizationId,
 			toolName: "canny",
 			category: "FEEDBACK", // or 'FEEDBACK'

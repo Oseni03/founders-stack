@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
-import { NormalizedAnalyticsEvent, PostHogConnector } from "@/lib/connectors/posthog";
+import {
+	NormalizedAnalyticsEvent,
+	PostHogConnector,
+} from "@/lib/connectors/posthog";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 
@@ -37,17 +40,21 @@ export async function connectPostHogIntegration(
 		const projectInfo = await connector.testConnection();
 
 		// Step 3: Save integration to database
-		const integration = await prisma.integration.create({
-			data: {
-				organizationId,
-				toolName: "posthog",
+		const integration = await prisma.integration.upsert({
+			where: {
+				organizationId_toolName: {
+					organizationId,
+					toolName: "posthog",
+				},
+			},
+			update: {
 				category: "ANALYTICS",
 				displayName:
 					displayName || `PostHog (${projectInfo.projectName})`,
 				status: "CONNECTED",
 
 				apiKey,
-				webhookSetupType: "MANUAL",
+				webhookSetupType: "AUTOMATIC",
 				webhookConfirmed,
 
 				metadata: {
@@ -57,6 +64,26 @@ export async function connectPostHogIntegration(
 					organizationName: projectInfo.organizationName,
 				},
 
+				lastSyncAt: new Date(),
+			},
+			create: {
+				organizationId,
+				toolName: "posthog",
+				category: "ANALYTICS",
+				displayName:
+					displayName || `PostHog (${projectInfo.projectName})`,
+				status: "CONNECTED",
+
+				apiKey,
+				webhookSetupType: "AUTOMATIC",
+				webhookConfirmed,
+
+				metadata: {
+					projectId: projectInfo.projectId,
+					projectName: projectInfo.projectName,
+					organizationId: projectInfo.organizationId,
+					organizationName: projectInfo.organizationName,
+				},
 				lastSyncAt: new Date(),
 			},
 		});
@@ -234,11 +261,16 @@ async function startPostHogInitialSync(
 // ============================================================================
 
 export async function disconnectPostHogIntegration(
-	integrationId: string
+	organizationId: string
 ): Promise<{ success: boolean; message: string }> {
 	try {
 		const integration = await prisma.integration.findUnique({
-			where: { id: integrationId },
+			where: {
+				organizationId_toolName: {
+					organizationId,
+					toolName: "posthog",
+				},
+			},
 		});
 
 		if (!integration || integration.toolName !== "posthog") {
@@ -261,7 +293,12 @@ export async function disconnectPostHogIntegration(
 
 		// Update integration status
 		await prisma.integration.update({
-			where: { id: integrationId },
+			where: {
+				organizationId_toolName: {
+					organizationId,
+					toolName: "posthog",
+				},
+			},
 			data: {
 				status: "DISCONNECTED",
 				webhookId: null,

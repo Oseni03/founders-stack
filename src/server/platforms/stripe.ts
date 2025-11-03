@@ -417,8 +417,40 @@ export async function connectStripeIntegration(
 		console.log("Webhook created successfully:", webhookData.id);
 
 		// Step 5: Save integration to database
-		const integration = await prisma.integration.create({
-			data: {
+		const integration = await prisma.integration.upsert({
+			where: {
+				organizationId_toolName: { organizationId, toolName: "stripe" },
+			},
+			update: {
+				category: "PAYMENT",
+				displayName:
+					displayName ||
+					`Stripe (${accountInfo.businessName || accountInfo.email || "Account"})`,
+				status: "CONNECTED",
+
+				// Encrypt sensitive data
+				apiKey,
+				webhookSecret: webhookData.secret,
+
+				// Webhook configuration
+				webhookUrl: webhookData.url,
+				webhookId: webhookData.id,
+				webhookEvents: webhookData.enabledEvents,
+				webhookSetupType: "AUTOMATIC",
+
+				// Account metadata
+				metadata: {
+					accountId: accountInfo.accountId,
+					businessName: accountInfo.businessName,
+					country: accountInfo.country,
+					email: accountInfo.email,
+					currency: accountInfo.currency,
+					webhookStatus: webhookData.status,
+				},
+
+				lastSyncAt: new Date(),
+			},
+			create: {
 				organizationId,
 				toolName: "stripe",
 				category: "PAYMENT",
@@ -897,5 +929,64 @@ export async function updateBalance(organizationId: string): Promise<void> {
 	} catch (error) {
 		console.error("Failed to update balance:", error);
 		// Don't throw - balance update is not critical
+	}
+}
+
+export async function disconnectStripeIntegration(
+	organizationId: string
+): Promise<{ success: boolean; message: string }> {
+	try {
+		const integration = await prisma.integration.findUnique({
+			where: {
+				organizationId_toolName: {
+					organizationId,
+					toolName: "stripe",
+				},
+			},
+		});
+
+		if (!integration || integration.toolName !== "stripe") {
+			throw new Error("Stripe integration not found");
+		}
+
+		const apiKey = integration.apiKey!;
+
+		// Delete webhook if exists
+		if (integration.webhookId) {
+			try {
+				const connector = new StripeConnector(apiKey);
+				await connector.deleteWebhookEndpoint(integration.webhookId);
+				console.log(`Deleted webhook ${integration.webhookId}`);
+			} catch (error) {
+				console.warn("Failed to delete webhook:", error);
+			}
+		}
+
+		// Update integration status
+		await prisma.integration.update({
+			where: {
+				organizationId_toolName: {
+					organizationId,
+					toolName: "stripe",
+				},
+			},
+			data: {
+				status: "DISCONNECTED",
+				webhookId: null,
+				webhookUrl: null,
+			},
+		});
+
+		return {
+			success: true,
+			message: "Stripe integration disconnected successfully",
+		};
+	} catch (error) {
+		console.error("Failed to disconnect Stripe:", error);
+		throw new Error(
+			error instanceof Error
+				? error.message
+				: "Failed to disconnect Stripe integration"
+		);
 	}
 }
