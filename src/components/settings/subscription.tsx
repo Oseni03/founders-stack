@@ -21,7 +21,7 @@ const SubscriptionCard = () => {
 	const handleSubscriptionUpgrade = async () => {
 		try {
 			if (!activeOrganization) {
-				toast.error("No active organization selected");
+				toast.error("No active project selected");
 				return;
 			}
 

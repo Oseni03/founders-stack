@@ -37,7 +37,7 @@ export async function handleSubscriptionUpdated(payload: any) {
 
 		if (!existingSubscription) {
 			console.error(
-				"❌ No local subscription found for organization:",
+				"❌ No local subscription found for project:",
 				organizationId
 			);
 			return;

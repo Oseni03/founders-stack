@@ -52,7 +52,7 @@ export function TeamSwitcher() {
 
 			if (error) {
 				console.error(error);
-				toast.error("Failed to switch organization");
+				toast.error("Failed to switch project");
 				return;
 			}
 
@@ -72,10 +72,10 @@ export function TeamSwitcher() {
 				setAdmin(isAdmin);
 			}
 
-			toast.success("Organization switched successfully");
+			toast.success("Project switched successfully");
 		} catch (error) {
 			console.error(error);
-			toast.error("Failed to switch organization");
+			toast.error("Failed to switch project");
 		}
 	};
 
@@ -120,7 +120,7 @@ export function TeamSwitcher() {
 							sideOffset={4}
 						>
 							<DropdownMenuLabel className="text-muted-foreground text-xs">
-								Tenants
+								Projects
 							</DropdownMenuLabel>
 							{organizations?.map((org, index) => (
 								<DropdownMenuItem
@@ -148,7 +148,7 @@ export function TeamSwitcher() {
 									<Plus className="size-4" />
 								</div>
 								<div className="text-muted-foreground font-medium">
-									Add Tenant
+									Add Project
 								</div>
 							</DropdownMenuItem>
 						</DropdownMenuContent>
@@ -159,7 +159,7 @@ export function TeamSwitcher() {
 						<DialogHeader>
 							<DialogTitle>Create Tenanat</DialogTitle>
 							<DialogDescription>
-								Create a new tenant to get started.
+								Create a new project to get started.
 							</DialogDescription>
 						</DialogHeader>
 						<CreateOrganizationForm />

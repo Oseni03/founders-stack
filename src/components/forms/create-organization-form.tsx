@@ -44,7 +44,7 @@ export function CreateOrganizationForm() {
 
 	async function onSubmit(values: z.infer<typeof formSchema>) {
 		try {
-			toast.loading("Creating Tenant...");
+			toast.loading("Creating project...");
 			setIsLoading(true);
 
 			if (!user) return;
@@ -53,17 +53,17 @@ export function CreateOrganizationForm() {
 
 			if (!data || !success) {
 				toast.dismiss();
-				toast.error("Failed to create tenant");
+				toast.error("Failed to create project");
 				return;
 			}
 
 			addOrganization(data as Organization);
 			toast.dismiss();
-			toast.success("Organization created successfully");
+			toast.success("Project created successfully");
 		} catch (error) {
 			console.error(error);
 			toast.dismiss();
-			toast.error("Failed to create tenant");
+			toast.error("Failed to create project");
 		} finally {
 			setIsLoading(false);
 		}
@@ -77,9 +77,9 @@ export function CreateOrganizationForm() {
 					name="name"
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Name</FormLabel>
+							<FormLabel>Project Name</FormLabel>
 							<FormControl>
-								<Input placeholder="My Tenant" {...field} />
+								<Input placeholder="My project" {...field} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -93,7 +93,7 @@ export function CreateOrganizationForm() {
 						<FormItem>
 							<FormLabel>Slug</FormLabel>
 							<FormControl>
-								<Input placeholder="my-tenant" {...field} />
+								<Input placeholder="my-project" {...field} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -102,7 +102,7 @@ export function CreateOrganizationForm() {
 
 				<DialogFooter>
 					<Button disabled={isLoading} type="submit">
-						Create Tenant
+						Create Project
 						{isLoading && (
 							<Loader2 className="size-4 animate-spin" />
 						)}

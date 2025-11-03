@@ -36,7 +36,7 @@ export function DisconnectButton({
 	const handleDisconnect = async () => {
 		setIsLoading(true);
 		if (!organizationId || !integrationId) {
-			toast.error("Organization or Integration ID is missing.");
+			toast.error("Project or Integration ID is missing.");
 			setIsLoading(false);
 			return;
 		}
@@ -75,8 +75,8 @@ export function DisconnectButton({
 					</AlertDialogTitle>
 					<AlertDialogDescription>
 						This will disconnect {integrationName} from your
-						organization. You will no longer receive synced data
-						from this integration. You can reconnect at any time.
+						project. You will no longer receive synced data from
+						this integration. You can reconnect at any time.
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>

@@ -208,7 +208,7 @@ export async function syncJira(organizationId: string, projs: Project[] = []) {
 		await Promise.all(batch.map((fn) => fn()));
 	}
 
-	console.log(`✅ Jira sync completed for organization: ${organizationId}`);
+	console.log(`✅ Jira sync completed for project: ${organizationId}`);
 }
 
 // ============================================================================

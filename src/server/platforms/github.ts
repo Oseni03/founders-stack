@@ -206,7 +206,7 @@ export async function syncGitHub(
 		await Promise.all(batch.map((fn) => fn()));
 	}
 
-	console.log(`✅ GitHub sync completed for organization: ${organizationId}`);
+	console.log(`✅ GitHub sync completed for project: ${organizationId}`);
 }
 
 // Main event processor

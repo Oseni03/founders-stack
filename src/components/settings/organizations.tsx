@@ -52,7 +52,7 @@ const OrganizationCard = () => {
 
 	const handleDeleteConfirm = async () => {
 		try {
-			toast.loading("Deleting tenant...");
+			toast.loading("Deleting project...");
 			setIsLoading(true);
 
 			const { data, success } = await deleteOrganization(
@@ -61,19 +61,19 @@ const OrganizationCard = () => {
 
 			if (!success) {
 				toast.dismiss();
-				toast.error("Failed to delete tenant");
+				toast.error("Failed to delete project");
 			}
 
 			if (data) {
 				removeOrganization(data.id);
 
 				toast.dismiss();
-				toast.success("Tenant deleted successfully");
+				toast.success("Project deleted successfully");
 			}
 		} catch (error) {
 			console.error(error);
 			toast.dismiss();
-			toast.error("Failed to delete tenant");
+			toast.error("Failed to delete project");
 		} finally {
 			setIsLoading(false);
 			setDeleteDialogOpen(false);
@@ -89,7 +89,7 @@ const OrganizationCard = () => {
 					<div className="flex items-center justify-between">
 						<h3 className="text-lg font-semibold flex items-center gap-2">
 							<Building2 className="w-6 h-6" />
-							Tenant Information
+							Project Information
 						</h3>
 						<div className="flex items-center gap-2">
 							{isAdmin && (
@@ -159,9 +159,9 @@ const OrganizationCard = () => {
 			<Dialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen}>
 				<DialogContent showCloseButton={true}>
 					<DialogHeader>
-						<DialogTitle>Update Tenant</DialogTitle>
+						<DialogTitle>Update Project</DialogTitle>
 						<DialogDescription>
-							Make changes to your tenant information here. Click
+							Make changes to your project information here. Click
 							save when you&rsquo;re done.
 						</DialogDescription>
 					</DialogHeader>
@@ -183,7 +183,7 @@ const OrganizationCard = () => {
 						</AlertDialogTitle>
 						<AlertDialogDescription>
 							This action cannot be undone. This will permanently
-							delete the tenant{" "}
+							delete the project{" "}
 							<strong>{activeOrganization?.name}</strong> and
 							remove all associated data from our servers.
 						</AlertDialogDescription>
@@ -194,7 +194,7 @@ const OrganizationCard = () => {
 							onClick={handleDeleteConfirm}
 							className="bg-red-600 hover:bg-red-700"
 						>
-							Delete Tenant
+							Delete Project
 							{isLoading && (
 								<Loader2 className="size-4 animate-spin" />
 							)}

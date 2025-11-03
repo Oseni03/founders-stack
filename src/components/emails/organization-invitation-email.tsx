@@ -11,8 +11,8 @@ import {
 	Hr,
 } from "@react-email/components";
 
-const OrganizationInvitationEmail = (data: {
-	organizationName: string;
+const ProjectInvitationEmail = (data: {
+	projectName: string;
 	inviterName: string;
 	inviteeEmail: string;
 	invitationId: string;
@@ -32,9 +32,9 @@ const OrganizationInvitationEmail = (data: {
 				<Container style={container}>
 					{/* Header */}
 					<Section style={header}>
-						<Heading style={h1}>Organization Invitation</Heading>
+						<Heading style={h1}>Project Invitation</Heading>
 						<Text style={subtitle}>
-							You&rsquo;re invited to join {data.organizationName}
+							You&rsquo;re invited to join {data.projectName}
 						</Text>
 					</Section>
 
@@ -46,8 +46,8 @@ const OrganizationInvitationEmail = (data: {
 
 						<Text style={paragraph}>
 							<strong>{data.inviterName}</strong> has invited you
-							to join <strong>{data.organizationName}</strong> as
-							an <strong>{data.role}</strong>.
+							to join <strong>{data.projectName}</strong> as an{" "}
+							<strong>{data.role}</strong>.
 						</Text>
 
 						<Text style={paragraphGray}>
@@ -184,4 +184,4 @@ const footerText = {
 	margin: "0 0 8px",
 };
 
-export default OrganizationInvitationEmail;
+export default ProjectInvitationEmail;

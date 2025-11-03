@@ -5,6 +5,7 @@ import { getCurrentUser } from "./users";
 import { isAdmin } from "./permissions";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import slugify from "@sindresorhus/slugify";
 
 export async function getOrganizations() {
 	const { currentUser } = await getCurrentUser();
@@ -115,10 +116,10 @@ export async function updateOrganization(
 		});
 		return { data: result, success: true };
 	} catch (error) {
-		console.error("Error updating organization: ", error);
+		console.error("Error updating project: ", error);
 		return {
 			success: false,
-			error: "Failed to upgrade organization",
+			error: "Failed to upgrade project",
 		};
 	}
 }
@@ -170,7 +171,7 @@ export async function createOrganization(
 
 		return { data: organization, success: true };
 	} catch (error) {
-		console.error("Error creating organization: ", error);
+		console.error("Error creating project: ", error);
 		return { success: false, error };
 	}
 }
@@ -184,10 +185,10 @@ export async function setActiveOrganization(organizationId: string) {
 			// This endpoint requires session cookies.
 			headers: await headers(),
 		});
-		console.log("Set active organization result:", result);
+		console.log("Set active project result:", result);
 		return { data: result, success: true };
 	} catch (error) {
-		console.error("Error creating organization: ", error);
+		console.error("Error creating project: ", error);
 		return { success: false, error };
 	}
 }

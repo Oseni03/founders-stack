@@ -140,7 +140,7 @@ export const MembersCard = () => {
 					<DialogHeader>
 						<DialogTitle>Invite User</DialogTitle>
 						<DialogDescription>
-							Invite a new user to your tenant.
+							Invite a new user to your project.
 						</DialogDescription>
 					</DialogHeader>
 					<InvitationForm onSuccess={() => setIsInviteOpen(false)} />
@@ -450,8 +450,9 @@ export const MembersCard = () => {
 															Update Member
 														</DialogTitle>
 														<DialogDescription>
-															Update member role
-															of your tenant.
+															Update the member
+															role of your
+															project.
 														</DialogDescription>
 													</DialogHeader>
 													<UpdateMemberRoleForm
@@ -495,7 +496,7 @@ export const MembersCard = () => {
 															This action cannot
 															be undone. This will
 															permanently remove
-															user from Tenant.
+															user from Project.
 														</AlertDialogDescription>
 													</AlertDialogHeader>
 													<AlertDialogFooter>
@@ -527,7 +528,7 @@ export const MembersCard = () => {
 				<div className="text-center py-12">
 					<Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
 					<p className="text-muted-foreground">
-						No users found for this tenant.
+						No users found for this project.
 					</p>
 				</div>
 			)}

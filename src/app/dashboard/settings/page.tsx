@@ -2,17 +2,10 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import {
-	Building2,
-	Users2,
-	LineChart,
-	CreditCard,
-	Settings2,
-} from "lucide-react";
+import { Building2, Users2, LineChart, CreditCard } from "lucide-react";
 import OrganizationCard from "@/components/settings/organizations";
 import SubscriptionCard from "@/components/settings/subscription";
 import { UsageCard } from "@/components/settings/usage";
-import { QuickActions } from "@/components/settings/quick-actions";
 
 import { MembersCard } from "@/components/settings/members";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -85,13 +78,6 @@ const SettingsContent = () => {
 						<CreditCard className="h-4 w-4 flex-shrink-0" />
 						<span>Subscription</span>
 					</TabsTrigger>
-					<TabsTrigger
-						value="actions"
-						className="flex items-center gap-2 min-w-[120px] sm:min-w-0 whitespace-nowrap"
-					>
-						<Settings2 className="h-4 w-4 flex-shrink-0" />
-						<span>Actions</span>
-					</TabsTrigger>
 				</TabsList>
 
 				<div className="-mx-4 sm:mx-0">
@@ -122,13 +108,6 @@ const SettingsContent = () => {
 					>
 						<SubscriptionCard />
 					</TabsContent>
-
-					<TabsContent
-						value="actions"
-						className="space-y-4 sm:space-y-6 px-4 sm:px-0"
-					>
-						<QuickActions />
-					</TabsContent>
 				</div>
 			</Tabs>
 		</div>
@@ -148,7 +127,7 @@ const SettingsLoading = () => (
 		<div className="space-y-6">
 			{/* TabsList Skeleton */}
 			<div className="flex flex-nowrap overflow-x-auto gap-2 pb-2 -mx-4 sm:mx-0 px-4 sm:px-0">
-				{[1, 2, 3, 4, 5].map((i) => (
+				{[1, 2, 3, 4].map((i) => (
 					<Skeleton
 						key={i}
 						className="h-10 w-32 sm:w-40 rounded-md flex-shrink-0"
@@ -182,12 +161,6 @@ const SettingsLoading = () => (
 						<div className="space-y-2">
 							<Skeleton className="h-4 w-28" />
 							<Skeleton className="h-20 w-full" />
-						</div>
-
-						{/* Buttons */}
-						<div className="flex gap-2 pt-4">
-							<Skeleton className="h-10 w-24" />
-							<Skeleton className="h-10 w-24" />
 						</div>
 					</CardContent>
 				</Card>

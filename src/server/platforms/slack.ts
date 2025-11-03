@@ -66,7 +66,7 @@ export async function syncSlack(organizationId: string, projs: Project[] = []) {
 		await Promise.all(batch.map((fn) => fn()));
 	}
 
-	console.log(`✅ Slack sync completed for organization: ${organizationId}`);
+	console.log(`✅ Slack sync completed for project: ${organizationId}`);
 }
 
 // Main event processor

@@ -45,23 +45,23 @@ export function UpdateOrganizationForm({
 
 	async function onSubmit(values: z.infer<typeof formSchema>) {
 		try {
-			toast.loading("Updating Tenants...");
+			toast.loading("Updating Project...");
 			setIsLoading(true);
 
 			const { data } = await updateOrganization(organization.id, values);
 
 			if (data) {
 				toast.dismiss();
-				toast.success("Organization updated successfully");
+				toast.success("Project updated successfully");
 				updateOrganizationState(data as Organization);
 			} else {
 				toast.dismiss();
-				toast.error("Failed to update organization");
+				toast.error("Failed to update project");
 			}
 		} catch (error) {
 			console.error(error);
 			toast.dismiss();
-			toast.error("Failed to update tenant");
+			toast.error("Failed to update project");
 		} finally {
 			setIsLoading(false);
 		}
@@ -77,7 +77,7 @@ export function UpdateOrganizationForm({
 						<FormItem>
 							<FormLabel>Name</FormLabel>
 							<FormControl>
-								<Input placeholder="My Tenant" {...field} />
+								<Input placeholder="My Project" {...field} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -91,7 +91,7 @@ export function UpdateOrganizationForm({
 						<FormItem>
 							<FormLabel>Slug</FormLabel>
 							<FormControl>
-								<Input placeholder="my-tenant" {...field} />
+								<Input placeholder="my-project" {...field} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>
@@ -100,7 +100,7 @@ export function UpdateOrganizationForm({
 
 				<DialogFooter>
 					<Button disabled={isLoading} type="submit">
-						Update Tenant
+						Update Project
 						{isLoading && (
 							<Loader2 className="size-4 animate-spin" />
 						)}

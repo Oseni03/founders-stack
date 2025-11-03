@@ -14,7 +14,7 @@ import { handleSubscriptionWebhook } from "@/server/polar";
 import { SUBSCRIPTION_PLANS } from "./utils";
 import { createFreeSubscription } from "@/server/subscription";
 import { sendEmail } from "./resend";
-import OrganizationInvitationEmail from "@/components/emails/organization-invitation-email";
+import ProjectInvitationEmail from "@/components/emails/organization-invitation-email";
 import MagicLinkEmail from "@/components/emails/magic-link-email";
 
 const polarClient = new Polar({
@@ -104,8 +104,8 @@ export const auth = betterAuth({
 				const { success, error } = await sendEmail({
 					to: data.email,
 					subject: `Invitation to join ${data.organization.name} on Founders' Stack`,
-					react: OrganizationInvitationEmail({
-						organizationName: data.organization.name,
+					react: ProjectInvitationEmail({
+						projectName: data.organization.name,
 						inviterName: data.inviter.user.name || "Someone",
 						inviteeEmail: data.email,
 						invitationId: data.id,

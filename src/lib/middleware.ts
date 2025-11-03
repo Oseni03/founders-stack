@@ -36,7 +36,7 @@ export async function withAuth(
 
 		if (!activeOrgId) {
 			return NextResponse.json(
-				{ error: "Unauthorized - No active organization" },
+				{ error: "Unauthorized - No active project" },
 				{ status: 401 }
 			);
 		}
@@ -47,7 +47,7 @@ export async function withAuth(
 
 		if (!member) {
 			return NextResponse.json(
-				{ error: "Unauthorized - Not a member of organization" },
+				{ error: "Unauthorized - Not a member of project" },
 				{ status: 401 }
 			);
 		}
