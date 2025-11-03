@@ -7,6 +7,7 @@ import {
 	CreditCard,
 	FileText,
 	Headphones,
+	Home,
 	LayoutDashboard,
 	MessageSquare,
 	MessagesSquare,
@@ -64,7 +65,7 @@ const data = {
 				{
 					id: "dashboard",
 					label: "Dashboard",
-					icon: CreditCard,
+					icon: Home,
 					url: "/dashboard",
 				},
 			],
@@ -75,7 +76,7 @@ const data = {
 			items: [
 				{
 					id: "payment-processing",
-					label: "Payment & Subscription Management",
+					label: "Payment & Subscription",
 					icon: CreditCard,
 					url: "/dashboard/financials", // /dashboard/payments
 				},
@@ -122,8 +123,8 @@ const data = {
 				// 	url: "/dashboard/marketing/social",
 				// },
 				{
-					id: "customer-feedback-research",
-					label: "Customer Feedback & Research",
+					id: "customer-feedback",
+					label: "Customer Feedback",
 					icon: MessageSquare,
 					url: "/dashboard/feedback",
 				},
@@ -173,7 +174,7 @@ const data = {
 					id: "team-communication",
 					label: "Team Communication",
 					icon: MessagesSquare,
-					url: "/dashboard/pm/communication",
+					url: "/dashboard/communication",
 				},
 				// {
 				// 	id: "documentation",
@@ -225,7 +226,8 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const pathname = usePathname();
-	const isAccountPage = pathname.includes("/dashboard/account");
+	const isAccountPage =
+		pathname.includes("/account") && !pathname.includes("/accounting");
 	const items = isAccountPage ? data.account : data.navMain;
 	return (
 		<Sidebar collapsible="icon" {...props}>
