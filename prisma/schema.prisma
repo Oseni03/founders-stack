@@ -111,6 +111,8 @@ model Organization {
   events               Event[]
   messages             Message[]
 
+  description String?
+
   @@unique([slug])
   @@map("organization")
 }
@@ -252,7 +254,7 @@ model Integration {
   webhookId        String? // Platform's webhook ID (if created via API)
   webhookEvents    String[] // Events subscribed to
   webhookSetupType WebhookSetupType @default(AUTOMATIC)
-  webhookConfirmed Boolean  @default(false)  // For MANUAL webhook Configuration
+  webhookConfirmed Boolean          @default(false) // For MANUAL webhook Configuration
 
   // Platform-specific metadata
   metadata Json? // Store platform-specific IDs, settings
@@ -310,6 +312,7 @@ model Project {
 }
 
 // Asana task, Jira issue, Linear issue, GitHub issue
+
 model Task {
   id             String        @id @default(cuid())
   organizationId String
@@ -343,6 +346,7 @@ model Task {
 }
 
 // Communication Category
+
 model Message {
   id             String   @id @default(uuid())
   externalId     String
@@ -359,12 +363,15 @@ model Message {
   channel      Project      @relation(fields: [channelId], references: [id])
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  // Optimize lookups
+  // Optimize message queries by channel
   @@unique([externalId, sourceTool])
-  @@index([externalId, sourceTool, organizationId]) // Optimize lookups
-  @@index([channelId]) // Optimize message queries by channel
+  @@index([externalId, sourceTool, organizationId])
+  @@index([channelId])
 }
 
 // Enum for Feedback severity levels (extensible for future refinements)
+
 enum Severity {
   Low
   Medium
@@ -372,6 +379,7 @@ enum Severity {
 }
 
 // Enum for sentiment analysis (derived from NLP in integration engine)
+
 enum Sentiment {
   Positive
   Negative
@@ -379,6 +387,7 @@ enum Sentiment {
 }
 
 // Enum for resolution status (tracks triage progress)
+
 enum Status {
   Open
   InProgress
@@ -424,6 +433,7 @@ model Feed {
 }
 
 // Code/CI Category
+
 model DeploymentEvent {
   id              String    @id @default(cuid())
   organizationId  String
@@ -453,6 +463,7 @@ model DeploymentEvent {
 }
 
 // Supporting Entity for Finance (Customers)
+
 model Customer {
   id             String   @id @default(cuid())
   organizationId String
@@ -552,6 +563,7 @@ model Event {
 }
 
 // Analytics Category
+
 model AnalyticsEvent {
   id                    String  @id @default(cuid())
   sourceTool            String // e.g., "postHog", "amplitude", "google-analytics"
@@ -738,6 +750,7 @@ model Branch {
 }
 
 // Contributor model
+
 model Contributor {
   id                String    @id @default(cuid())
   organizationId    String

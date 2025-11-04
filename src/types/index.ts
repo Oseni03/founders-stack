@@ -28,6 +28,7 @@ export interface Member {
 export interface Organization {
 	id: string;
 	name: string;
+	description?: string;
 	slug: string;
 	subscription?: Subscription;
 	createdAt: Date;

@@ -62,8 +62,8 @@ export const auth = betterAuth({
 					const { data, success } = await createOrganization(
 						user.id,
 						{
-							name: user.email.split("@")[0],
-							slug: user.email.split("@")[0].toLowerCase(),
+							name: "Project 1",
+							description: "First project",
 						}
 					);
 
@@ -100,6 +100,17 @@ export const auth = betterAuth({
 	plugins: [
 		organization({
 			creatorRole: "admin",
+			schema: {
+				organization: {
+					additionalFields: {
+						description: {
+							type: "string",
+							input: true,
+							required: false,
+						},
+					},
+				},
+			},
 			async sendInvitationEmail(data) {
 				const { success, error } = await sendEmail({
 					to: data.email,

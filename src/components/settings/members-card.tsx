@@ -29,20 +29,27 @@ import {
 	AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { removeMember } from "@/server/members";
 import { cancelInvitation } from "@/server/invitations";
 import { authClient } from "@/lib/auth-client";
+import { Member, Organization } from "@/types";
+import { Invitation } from "@prisma/client";
 
-export const MembersCard = () => {
-	const {
-		activeOrganization,
-		members,
-		invitations,
-		isAdmin,
-		removeInvite,
-		removeMember: removeMemberState,
-	} = useOrganizationStore((state) => state);
+export const MembersCard = ({
+	organization,
+	members,
+	invitations,
+	isAdmin,
+	removeInvite,
+	removeMemberState,
+}: {
+	organization: Organization;
+	members: Member[];
+	invitations: Invitation[];
+	isAdmin: boolean;
+	removeInvite: (invitationId: string) => Promise<void>;
+	removeMemberState: (memberId: string) => Promise<void>;
+}) => {
 	const { user } = authClient.useSession().data || {};
 	const [isInviteOpen, setIsInviteOpen] = useState(false);
 	const [isMemberOpen, setIsMemberOpen] = useState(false);
@@ -51,7 +58,7 @@ export const MembersCard = () => {
 		try {
 			toast.loading("Removing member...");
 
-			if (!activeOrganization) return;
+			if (!organization) return;
 
 			if (!isAdmin) {
 				toast.dismiss();
@@ -60,7 +67,7 @@ export const MembersCard = () => {
 			}
 
 			const { data, error } = await removeMember(
-				activeOrganization.id,
+				organization.id,
 				memberId
 			);
 
@@ -87,7 +94,7 @@ export const MembersCard = () => {
 		try {
 			toast.loading("Canceling invite...");
 
-			if (!activeOrganization) return;
+			if (!organization) return;
 
 			const { data, success, error } =
 				await cancelInvitation(invitationId);
@@ -114,13 +121,13 @@ export const MembersCard = () => {
 
 	return (
 		<div className="space-y-6">
-			{/* Header */}
+			{/* User Management Header */}
 			<Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
 				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 					<div>
-						<h1 className="text-lg sm:text-xl font-bold text-foreground">
+						<h2 className="text-lg sm:text-xl font-bold text-foreground">
 							User Management
-						</h1>
+						</h2>
 						<p className="text-sm text-muted-foreground">
 							{members?.length || 0} of 5 users
 						</p>
@@ -135,7 +142,6 @@ export const MembersCard = () => {
 						</Button>
 					</DialogTrigger>
 				</div>
-				{/* Create Dialog Content */}
 				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>Invite User</DialogTitle>
@@ -159,7 +165,6 @@ export const MembersCard = () => {
 						<div className="text-2xl font-bold">
 							{members?.length}
 						</div>
-						<div className="text-xs text-muted-foreground">2</div>
 					</CardContent>
 				</Card>
 
@@ -219,9 +224,9 @@ export const MembersCard = () => {
 				invitations?.filter((inv) => inv.status === "pending").length >
 					0 && (
 					<div className="space-y-4">
-						<h2 className="text-lg font-semibold">
+						<h3 className="text-lg font-semibold">
 							Pending Invitations
-						</h2>
+						</h3>
 						<div className="grid gap-4">
 							{invitations
 								?.filter((inv) => inv.status === "pending")
@@ -240,11 +245,11 @@ export const MembersCard = () => {
 													</Avatar>
 													<div>
 														<div className="flex items-center gap-2">
-															<h3 className="font-medium">
+															<h4 className="font-medium">
 																{
 																	invitation.email
 																}
-															</h3>
+															</h4>
 															<Badge
 																variant="outline"
 																className="text-orange-600 border-orange-200"
@@ -269,15 +274,6 @@ export const MembersCard = () => {
 																	"MMM dd, yyyy"
 																)}
 															</div>
-															{/* <div className="flex items-center gap-1">
-                                                                <User className="w-3 h-3" />
-                                                                By{" "}
-                                                                {
-                                                                    invitation
-                                                                        .invitedBy
-                                                                        ?.name
-                                                                }
-                                                            </div> */}
 														</div>
 													</div>
 												</div>
@@ -285,11 +281,6 @@ export const MembersCard = () => {
 													<Button
 														variant="outline"
 														size="sm"
-														// onClick={() =>
-														// 	handleResendInvitation(
-														// 		invitation.id
-														// 	)
-														// }
 														disabled={!isAdmin}
 													>
 														<Send className="w-3 h-3 mr-1" />
@@ -366,10 +357,10 @@ export const MembersCard = () => {
 					</div>
 				)}
 
-			{/* Users List */}
+			{/* Team Members */}
 			{members.length > 0 && (
 				<div className="space-y-4">
-					<h2 className="text-lg font-semibold">Team Members</h2>
+					<h3 className="text-lg font-semibold">Team Members</h3>
 					<div className="grid gap-4">
 						{members?.map((member) => (
 							<Card key={member.id}>
@@ -386,9 +377,9 @@ export const MembersCard = () => {
 											</Avatar>
 											<div>
 												<div className="flex items-center gap-2">
-													<h3 className="font-medium">
+													<h4 className="font-medium">
 														{member.user.name}
-													</h3>
+													</h4>
 													<Badge
 														variant={
 															member.role ===
@@ -443,7 +434,6 @@ export const MembersCard = () => {
 														Edit
 													</Button>
 												</DialogTrigger>
-												{/* Update Dialog Content */}
 												<DialogContent>
 													<DialogHeader>
 														<DialogTitle>

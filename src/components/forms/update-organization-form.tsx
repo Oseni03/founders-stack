@@ -23,7 +23,7 @@ import { updateOrganization } from "@/server/organizations";
 
 const formSchema = z.object({
 	name: z.string().min(2).max(50),
-	slug: z.string().min(2).max(50),
+	description: z.string(),
 });
 
 export function UpdateOrganizationForm({
@@ -39,7 +39,7 @@ export function UpdateOrganizationForm({
 		resolver: zodResolver(formSchema),
 		defaultValues: {
 			name: organization.name,
-			slug: organization.slug,
+			description: organization.description,
 		},
 	});
 
@@ -86,10 +86,10 @@ export function UpdateOrganizationForm({
 
 				<FormField
 					control={form.control}
-					name="slug"
+					name="description"
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Slug</FormLabel>
+							<FormLabel>Description</FormLabel>
 							<FormControl>
 								<Input placeholder="my-project" {...field} />
 							</FormControl>

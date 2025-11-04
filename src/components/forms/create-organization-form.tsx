@@ -24,7 +24,7 @@ import { Organization } from "@/types";
 
 const formSchema = z.object({
 	name: z.string().min(2).max(50),
-	slug: z.string().min(2).max(50),
+	description: z.string(),
 });
 
 export function CreateOrganizationForm() {
@@ -38,7 +38,7 @@ export function CreateOrganizationForm() {
 		resolver: zodResolver(formSchema),
 		defaultValues: {
 			name: "",
-			slug: "",
+			description: "",
 		},
 	});
 
@@ -88,12 +88,12 @@ export function CreateOrganizationForm() {
 
 				<FormField
 					control={form.control}
-					name="slug"
+					name="description"
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Slug</FormLabel>
+							<FormLabel>Description</FormLabel>
 							<FormControl>
-								<Input placeholder="my-project" {...field} />
+								<Input placeholder="" {...field} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>

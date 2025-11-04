@@ -5,7 +5,7 @@ import { getCurrentUser } from "./users";
 import { isAdmin } from "./permissions";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import slugify from "@sindresorhus/slugify";
+import { slugifyWithCounter } from "@sindresorhus/slugify";
 
 export async function getOrganizations() {
 	const { currentUser } = await getCurrentUser();
@@ -103,7 +103,7 @@ export async function getOrganizationById(orgId: string) {
 
 export async function updateOrganization(
 	organizationId: string,
-	data: { name: string; slug: string }
+	data: { name: string; description: string }
 ) {
 	try {
 		const result = await auth.api.updateOrganization({
@@ -148,14 +148,34 @@ export async function deleteOrganization(organizationId: string) {
 
 export async function createOrganization(
 	userId: string,
-	data: { name: string; slug: string }
+	data: { name: string; description: string }
 ) {
 	try {
+		// Generate slug from name
+		const slugify = slugifyWithCounter();
+
+		// Ensure slug is unique
+		let slug = slugify(data.name);
+		let isUnique = false;
+
+		while (!isUnique) {
+			const existing = await prisma.organization.findUnique({
+				where: { slug },
+			});
+
+			if (!existing) {
+				isUnique = true;
+			} else {
+				slug = slugify(data.name);
+			}
+		}
+
 		// Direct database creation bypassing auth API
 		const organization = await prisma.organization.create({
 			data: {
 				name: data.name,
-				slug: data.slug,
+				slug,
+				description: data.description,
 				createdAt: new Date(),
 				members: {
 					create: {
