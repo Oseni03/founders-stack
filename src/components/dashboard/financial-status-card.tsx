@@ -31,7 +31,7 @@ export function FinancialStatusCard({ data }: FinancialStatusCardProps) {
 	const mrrColor = data.mrr > 4500 ? "text-green-600" : "text-orange-600";
 
 	return (
-		<Link href="/dashboard/financial-status">
+		<Link href="/dashboard/financials">
 			<Card className="cursor-pointer transition-all hover:shadow-lg hover:border-primary">
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">

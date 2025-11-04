@@ -44,12 +44,12 @@ export function CodeCICard({ data }: CodeCICardProps) {
 		);
 
 	return (
-		<Link href="/dashboard/code-ci">
+		<Link href="/dashboard/version-control">
 			<Card className="cursor-pointer transition-all hover:shadow-lg hover:border-primary">
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
 						<GitBranch className="h-5 w-5" />
-						Code & CI/CD
+						Version Control
 					</CardTitle>
 					<CardDescription>
 						Dev pipeline & deployments

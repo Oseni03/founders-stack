@@ -25,7 +25,7 @@ const polarClient = new Polar({
 
 export const auth = betterAuth({
 	trustedOrigins: ["http://localhost:3000"],
-	appName: "Founders' Stack",
+	appName: "Builders' Stack",
 	baseURL: process.env.NEXT_PUBLIC_APP_URL,
 	session: {
 		cookieCache: {
@@ -114,7 +114,7 @@ export const auth = betterAuth({
 			async sendInvitationEmail(data) {
 				const { success, error } = await sendEmail({
 					to: data.email,
-					subject: `Invitation to join ${data.organization.name} on Founders' Stack`,
+					subject: `Invitation to join ${data.organization.name} on Builders' Stack`,
 					react: ProjectInvitationEmail({
 						projectName: data.organization.name,
 						inviterName: data.inviter.user.name || "Someone",

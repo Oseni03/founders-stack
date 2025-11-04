@@ -2,7 +2,6 @@
 
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import ProjectCard from "@/components/settings/project-card";
 import { MembersCard } from "@/components/settings/members-card";
@@ -20,37 +19,45 @@ function SettingPage() {
 
 	if (!activeOrganization) {
 		return (
-			<div className="space-y-6">
-				<Card>
-					<CardContent className="p-6">
-						<div className="animate-pulse space-y-2">
-							<div className="h-4 bg-gray-200 rounded w-3/4"></div>
-							<div className="h-4 bg-gray-200 rounded w-1/2"></div>
-							<div className="h-4 bg-gray-200 rounded w-2/3"></div>
-						</div>
-					</CardContent>
-				</Card>
-			</div>
+			<main className="min-h-screen bg-background">
+				<div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+					<div className="space-y-6">
+						<Card>
+							<CardContent className="p-6">
+								<div className="animate-pulse space-y-2">
+									<div className="h-4 bg-gray-200 rounded w-3/4"></div>
+									<div className="h-4 bg-gray-200 rounded w-1/2"></div>
+									<div className="h-4 bg-gray-200 rounded w-2/3"></div>
+								</div>
+							</CardContent>
+						</Card>
+					</div>
+				</div>
+			</main>
 		);
 	}
 
 	return (
-		<div className="space-y-6">
-			<ProjectCard
-				organization={activeOrganization}
-				isAdmin={isAdmin}
-				removeOrganization={removeOrganization}
-			/>
+		<main className="min-h-screen bg-background">
+			<div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+				<div className="space-y-6">
+					<ProjectCard
+						organization={activeOrganization}
+						isAdmin={isAdmin}
+						removeOrganization={removeOrganization}
+					/>
 
-			<MembersCard
-				organization={activeOrganization}
-				isAdmin={isAdmin}
-				invitations={invitations}
-				members={members}
-				removeInvite={removeInvite}
-				removeMemberState={removeMemberState}
-			/>
-		</div>
+					<MembersCard
+						organization={activeOrganization}
+						isAdmin={isAdmin}
+						invitations={invitations}
+						members={members}
+						removeInvite={removeInvite}
+						removeMemberState={removeMemberState}
+					/>
+				</div>
+			</div>
+		</main>
 	);
 }
 
