@@ -53,6 +53,7 @@ export async function connectAsanaIntegration(
 				workspace,
 				webhookUrl
 			);
+			console.log("Webhook creation response: ", webhook);
 			webhookGid = webhook.gid;
 			webhookMode = "automatic";
 			console.log("Webhook created successfully:", webhookGid);

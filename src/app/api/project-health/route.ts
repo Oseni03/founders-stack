@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
 					tasks.map((t) => ({
 						id: t.id,
 						title: t.title,
-						priority: t.priority as
+						priority: (t.priority || "low") as
 							| "low"
 							| "medium"
 							| "high"
@@ -117,7 +117,6 @@ export async function GET(req: NextRequest) {
 						dueDate: t.dueDate?.toISOString() || "",
 					}))
 				);
-
 			const insight =
 				openTasks > 50
 					? "High task volume. Prioritize overdue items to improve velocity."

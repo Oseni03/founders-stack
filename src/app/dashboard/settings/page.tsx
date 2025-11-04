@@ -7,7 +7,7 @@ import { useOrganizationStore } from "@/zustand/providers/organization-store-pro
 import ProjectCard from "@/components/settings/project-card";
 import { MembersCard } from "@/components/settings/members-card";
 
-export const Page = () => {
+function SettingPage() {
 	const {
 		activeOrganization,
 		members,
@@ -52,4 +52,6 @@ export const Page = () => {
 			/>
 		</div>
 	);
-};
+}
+
+export default SettingPage;

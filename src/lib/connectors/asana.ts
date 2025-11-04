@@ -142,6 +142,7 @@ export class AsanaConnector {
 					},
 				}
 			);
+			console.log("Asana webhook creation immediate resp: ", response);
 
 			return {
 				gid: response.data.gid,
