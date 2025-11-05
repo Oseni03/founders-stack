@@ -40,19 +40,38 @@ export async function syncStripe(
 		errors: [],
 	};
 
+	const startTime = Date.now();
+	console.log(
+		`[${new Date().toISOString()}] Starting Stripe sync for organization ${organizationId}`
+	);
+
 	try {
 		let connector;
-		// Initialize Stripe connector
+		console.log(
+			`[${new Date().toISOString()}] Initializing Stripe connector`
+		);
 		if (apiKey) {
 			connector = new StripeConnector(apiKey);
+			console.log(
+				`[${new Date().toISOString()}] Using provided API key for Stripe connector`
+			);
 		} else {
 			const integration = await getIntegration(organizationId, "stripe");
 			if (!integration?.apiKey) {
-				throw new Error("Stripe not integrated");
+				const errorMsg = "Stripe not integrated";
+				console.error(`[${new Date().toISOString()}] ${errorMsg}`);
+				throw new Error(errorMsg);
 			}
 			connector = new StripeConnector(integration.apiKey);
+			console.log(
+				`[${new Date().toISOString()}] Initialized connector with integration API key`
+			);
 		}
 
+		console.log(
+			`[${new Date().toISOString()}] Fetching Stripe data (customers, subscriptions, invoices, balance, events)`
+		);
+		const fetchStart = Date.now();
 		const [customers, subscriptions, invoices, balance, events] =
 			await Promise.all([
 				connector.getCustomers(),
@@ -61,58 +80,78 @@ export async function syncStripe(
 				connector.getBalance(),
 				connector.getEvents({ limit: 100 }),
 			]);
-		// 1. saving Customers
+		const fetchDuration = Date.now() - fetchStart;
+		console.log(
+			`[${new Date().toISOString()}] Fetched Stripe data in ${fetchDuration}ms: ` +
+				`Customers(${customers?.length || 0}), Subscriptions(${subscriptions?.length || 0}), ` +
+				`Invoices(${invoices?.length || 0}), Events(${events?.length || 0})`
+		);
+
+		// 1. Saving Customers
 		if (customers) {
-			try {
-				for (const customer of customers) {
-					try {
-						await prisma.customer.upsert({
-							where: {
-								externalId_sourceTool: {
-									externalId: customer.externalId,
-									sourceTool: customer.sourceTool,
-								},
-							},
-							update: {
-								email: customer.email,
-								name: customer.name,
-								// metadata: customer.metadata,
-							},
-							create: {
-								organizationId,
+			const customerStart = Date.now();
+			console.log(
+				`[${new Date().toISOString()}] Syncing ${customers.length} customers`
+			);
+			for (const customer of customers) {
+				try {
+					console.log(
+						`[${new Date().toISOString()}] Upserting customer ${customer.externalId}`
+					);
+					await prisma.customer.upsert({
+						where: {
+							externalId_sourceTool: {
 								externalId: customer.externalId,
-								sourceTool: "stripe",
-								email: customer.email,
-								name: customer.name,
-								createdAt: customer.createdAt,
+								sourceTool: customer.sourceTool,
 							},
-						});
-						result.stats.customers++;
-					} catch (error) {
-						console.error(
-							`Failed to sync customer ${customer.externalId}:`,
-							error
-						);
-						result.errors.push(
-							`Customer ${customer.externalId}: ${error instanceof Error ? error.message : "Unknown error"}`
-						);
-					}
+						},
+						update: {
+							email: customer.email,
+							name: customer.name,
+						},
+						create: {
+							organizationId,
+							externalId: customer.externalId,
+							sourceTool: "stripe",
+							email: customer.email,
+							name: customer.name,
+							createdAt: customer.createdAt,
+						},
+					});
+					result.stats.customers++;
+					console.log(
+						`[${new Date().toISOString()}] Successfully upserted customer ${customer.externalId}`
+					);
+				} catch (error) {
+					const errorMsg =
+						error instanceof Error
+							? error.message
+							: "Unknown error";
+					console.error(
+						`[${new Date().toISOString()}] Failed to sync customer ${customer.externalId}: ${errorMsg}`
+					);
+					result.errors.push(
+						`Customer ${customer.externalId}: ${errorMsg}`
+					);
 				}
-				console.log(`Synced ${customers.length} customers`);
-			} catch (error) {
-				console.error("Failed to fetch customers:", error);
-				result.errors.push(
-					`Customers sync failed: ${error instanceof Error ? error.message : "Unknown error"}`
-				);
 			}
+			const customerDuration = Date.now() - customerStart;
+			console.log(
+				`[${new Date().toISOString()}] Synced ${result.stats.customers}/${customers.length} customers in ${customerDuration}ms`
+			);
 		}
 
-		// 2. saving Subscriptions
-		console.log("Syncing subscriptions...");
+		// 2. Saving Subscriptions
+		const subscriptionStart = Date.now();
+		console.log(
+			`[${new Date().toISOString()}] Syncing ${subscriptions?.length || 0} subscriptions`
+		);
 		try {
 			for (const subscription of subscriptions) {
 				try {
-					// Find the customer ID from the external ID
+					console.log(
+						`[${new Date().toISOString()}] Processing subscription ${subscription.externalId}`
+					);
 					const customer = await prisma.customer.findFirst({
 						where: {
 							externalId: subscription.customerExternalId,
@@ -123,9 +162,11 @@ export async function syncStripe(
 					});
 
 					if (!customer) {
-						result.errors.push(
-							`Subscription ${subscription.externalId}: Customer ${subscription.customerExternalId} not found`
+						const errorMsg = `Subscription ${subscription.externalId}: Customer ${subscription.customerExternalId} not found`;
+						console.warn(
+							`[${new Date().toISOString()}] ${errorMsg}`
 						);
+						result.errors.push(errorMsg);
 						continue;
 					}
 
@@ -145,7 +186,6 @@ export async function syncStripe(
 							startDate: subscription.startDate,
 							endDate: subscription.endDate,
 							nextBillingDate: subscription.nextBillingDate,
-							// metadata: subscription.metadata,
 						},
 						create: {
 							organizationId,
@@ -159,34 +199,49 @@ export async function syncStripe(
 							startDate: subscription.startDate,
 							endDate: subscription.endDate,
 							nextBillingDate: subscription.nextBillingDate,
-							// metadata: subscription.metadata,
 						},
 					});
 					result.stats.subscriptions++;
+					console.log(
+						`[${new Date().toISOString()}] Successfully upserted subscription ${subscription.externalId}`
+					);
 				} catch (error) {
+					const errorMsg =
+						error instanceof Error
+							? error.message
+							: "Unknown error";
 					console.error(
-						`Failed to sync subscription ${subscription.externalId}:`,
-						error
+						`[${new Date().toISOString()}] Failed to sync subscription ${subscription.externalId}: ${errorMsg}`
 					);
 					result.errors.push(
-						`Subscription ${subscription.externalId}: ${error instanceof Error ? error.message : "Unknown error"}`
+						`Subscription ${subscription.externalId}: ${errorMsg}`
 					);
 				}
 			}
-			console.log(`Synced ${subscriptions.length} subscriptions`);
-		} catch (error) {
-			console.error("Failed to fetch subscriptions:", error);
-			result.errors.push(
-				`Subscriptions sync failed: ${error instanceof Error ? error.message : "Unknown error"}`
+			const subscriptionDuration = Date.now() - subscriptionStart;
+			console.log(
+				`[${new Date().toISOString()}] Synced ${result.stats.subscriptions}/${subscriptions.length} subscriptions in ${subscriptionDuration}ms`
 			);
+		} catch (error) {
+			const errorMsg =
+				error instanceof Error ? error.message : "Unknown error";
+			console.error(
+				`[${new Date().toISOString()}] Subscriptions sync failed: ${errorMsg}`
+			);
+			result.errors.push(`Subscriptions sync failed: ${errorMsg}`);
 		}
 
 		// 3. Sync Invoices
-		console.log("Saving invoices...");
+		const invoiceStart = Date.now();
+		console.log(
+			`[${new Date().toISOString()}] Syncing ${invoices?.length || 0} invoices`
+		);
 		try {
 			for (const invoice of invoices) {
 				try {
-					// Find the customer ID
+					console.log(
+						`[${new Date().toISOString()}] Processing invoice ${invoice.externalId}`
+					);
 					let customer = await prisma.customer.findFirst({
 						where: {
 							externalId: invoice.customerExternalId,
@@ -197,12 +252,18 @@ export async function syncStripe(
 					});
 
 					if (!customer) {
-						result.errors.push(
-							`Invoice ${invoice.externalId}: Customer ${invoice.customerExternalId} not found`
+						if (!invoice.customerEmail) {
+							console.warn(
+								`[${new Date().toISOString()}] Skipping invoice ${invoice.externalId}: No customer email`
+							);
+							result.errors.push(
+								`Invoice ${invoice.externalId}: Customer ${invoice.customerExternalId} not found`
+							);
+							continue;
+						}
+						console.log(
+							`[${new Date().toISOString()}] Creating customer for invoice ${invoice.externalId}`
 						);
-						continue;
-					} else {
-						if (!invoice.customerEmail) continue;
 						customer = await prisma.customer.upsert({
 							where: {
 								externalId_sourceTool: {
@@ -224,6 +285,9 @@ export async function syncStripe(
 							},
 							select: { id: true },
 						});
+						console.log(
+							`[${new Date().toISOString()}] Created customer ${invoice.customerExternalId} for invoice`
+						);
 					}
 
 					await prisma.invoice.upsert({
@@ -260,26 +324,38 @@ export async function syncStripe(
 						},
 					});
 					result.stats.invoices++;
+					console.log(
+						`[${new Date().toISOString()}] Successfully upserted invoice ${invoice.externalId}`
+					);
 				} catch (error) {
+					const errorMsg =
+						error instanceof Error
+							? error.message
+							: "Unknown error";
 					console.error(
-						`Failed to sync invoice ${invoice.externalId}:`,
-						error
+						`[${new Date().toISOString()}] Failed to sync invoice ${invoice.externalId}: ${errorMsg}`
 					);
 					result.errors.push(
-						`Invoice ${invoice.externalId}: ${error instanceof Error ? error.message : "Unknown error"}`
+						`Invoice ${invoice.externalId}: ${errorMsg}`
 					);
 				}
 			}
-			console.log(`Synced ${invoices.length} invoices`);
-		} catch (error) {
-			console.error("Failed to fetch invoices:", error);
-			result.errors.push(
-				`Invoices sync failed: ${error instanceof Error ? error.message : "Unknown error"}`
+			const invoiceDuration = Date.now() - invoiceStart;
+			console.log(
+				`[${new Date().toISOString()}] Synced ${result.stats.invoices}/${invoices.length} invoices in ${invoiceDuration}ms`
 			);
+		} catch (error) {
+			const errorMsg =
+				error instanceof Error ? error.message : "Unknown error";
+			console.error(
+				`[${new Date().toISOString()}] Invoices sync failed: ${errorMsg}`
+			);
+			result.errors.push(`Invoices sync failed: ${errorMsg}`);
 		}
 
 		// 4. Sync Balance
-		console.log("Saving balance...");
+		const balanceStart = Date.now();
+		console.log(`[${new Date().toISOString()}] Syncing balance`);
 		try {
 			await prisma.balance.upsert({
 				where: {
@@ -305,19 +381,30 @@ export async function syncStripe(
 				},
 			});
 			result.stats.balanceUpdated = true;
-			console.log("Balance synced");
-		} catch (error) {
-			console.error("Failed to fetch balance:", error);
-			result.errors.push(
-				`Balance sync failed: ${error instanceof Error ? error.message : "Unknown error"}`
+			const balanceDuration = Date.now() - balanceStart;
+			console.log(
+				`[${new Date().toISOString()}] Balance synced successfully in ${balanceDuration}ms`
 			);
+		} catch (error) {
+			const errorMsg =
+				error instanceof Error ? error.message : "Unknown error";
+			console.error(
+				`[${new Date().toISOString()}] Balance sync failed: ${errorMsg}`
+			);
+			result.errors.push(`Balance sync failed: ${errorMsg}`);
 		}
 
-		// 5. Sync Recent Events (last 100)
-		console.log("Syncing events...");
+		// 5. Sync Recent Events
+		const eventStart = Date.now();
+		console.log(
+			`[${new Date().toISOString()}] Syncing ${events?.length || 0} events`
+		);
 		try {
 			for (const event of events) {
 				try {
+					console.log(
+						`[${new Date().toISOString()}] Processing event ${event.externalId}`
+					);
 					await prisma.event.upsert({
 						where: {
 							externalId_sourceTool: {
@@ -326,7 +413,6 @@ export async function syncStripe(
 							},
 						},
 						update: {
-							// Events typically don't change, but we can update status if needed
 							status: event.status,
 						},
 						create: {
@@ -335,33 +421,50 @@ export async function syncStripe(
 						},
 					});
 					result.stats.events++;
+					console.log(
+						`[${new Date().toISOString()}] Successfully upserted event ${event.externalId}`
+					);
 				} catch (error) {
+					const errorMsg =
+						error instanceof Error
+							? error.message
+							: "Unknown error";
 					console.error(
-						`Failed to sync event ${event.externalId}:`,
-						error
+						`[${new Date().toISOString()}] Failed to sync event ${event.externalId}: ${errorMsg}`
 					);
 					result.errors.push(
-						`Event ${event.externalId}: ${error instanceof Error ? error.message : "Unknown error"}`
+						`Event ${event.externalId}: ${errorMsg}`
 					);
 				}
 			}
-			console.log(`Synced ${result.stats.events} events`);
-		} catch (error) {
-			console.error("Failed to fetch events:", error);
-			result.errors.push(
-				`Events sync failed: ${error instanceof Error ? error.message : "Unknown error"}`
+			const eventDuration = Date.now() - eventStart;
+			console.log(
+				`[${new Date().toISOString()}] Synced ${result.stats.events}/${events.length} events in ${eventDuration}ms`
 			);
+		} catch (error) {
+			const errorMsg =
+				error instanceof Error ? error.message : "Unknown error";
+			console.error(
+				`[${new Date().toISOString()}] Events sync failed: ${errorMsg}`
+			);
+			result.errors.push(`Events sync failed: ${errorMsg}`);
 		}
 
 		result.success = result.errors.length === 0;
+		const totalDuration = Date.now() - startTime;
+		console.log(
+			`[${new Date().toISOString()}] Stripe sync completed in ${totalDuration}ms: ` +
+				`Success=${result.success}, Stats=${JSON.stringify(result.stats)}, Errors=${result.errors.length}`
+		);
 
-		console.log("Stripe sync completed:", result.stats);
 		return result;
 	} catch (error) {
-		console.error("Stripe sync failed:", error);
-		result.errors.push(
-			`Fatal error: ${error instanceof Error ? error.message : "Unknown error"}`
+		const errorMsg =
+			error instanceof Error ? error.message : "Unknown error";
+		console.error(
+			`[${new Date().toISOString()}] Fatal Stripe sync error: ${errorMsg}`
 		);
+		result.errors.push(`Fatal error: ${errorMsg}`);
 		return result;
 	}
 }
@@ -387,36 +490,68 @@ export async function connectStripeIntegration(
 	input: CreateIntegrationInput
 ): Promise<WebhookCreationResult> {
 	const { organizationId, apiKey, displayName } = input;
+	const startTime = Date.now();
+	console.log(
+		`[${new Date().toISOString()}] Starting Stripe integration for organization ${organizationId}`
+	);
 
 	// Validate inputs
+	console.log(`[${new Date().toISOString()}] Validating input parameters`);
 	if (!organizationId || !apiKey) {
-		throw new Error("Missing required fields: organizationId or apiKey");
+		const errorMsg = "Missing required fields: organizationId or apiKey";
+		console.error(`[${new Date().toISOString()}] ${errorMsg}`);
+		throw new Error(errorMsg);
 	}
 
-	// Validate API key format
 	if (!apiKey.startsWith("sk_test_") && !apiKey.startsWith("sk_live_")) {
-		throw new Error(
-			"Invalid Stripe API key format. Must start with sk_test_ or sk_live_"
-		);
+		const errorMsg =
+			"Invalid Stripe API key format. Must start with sk_test_ or sk_live_";
+		console.error(`[${new Date().toISOString()}] ${errorMsg}`);
+		throw new Error(errorMsg);
 	}
 
 	try {
 		// Step 1: Initialize Stripe connector
+		console.log(
+			`[${new Date().toISOString()}] Initializing Stripe connector`
+		);
 		const stripeConnector = new StripeConnector(apiKey);
 
 		// Step 2: Test connection and get account info
+		console.log(`[${new Date().toISOString()}] Testing Stripe connection`);
+		const accountInfoStart = Date.now();
 		const accountInfo = await stripeConnector.testConnection();
+		const accountInfoDuration = Date.now() - accountInfoStart;
+		console.log(
+			`[${new Date().toISOString()}] Stripe connection tested successfully in ${accountInfoDuration}ms: ` +
+				`Account=${accountInfo.accountId}, Business=${accountInfo.businessName || accountInfo.email}`
+		);
 
 		// Step 3: Generate webhook URL
+		console.log(`[${new Date().toISOString()}] Generating webhook URL`);
 		const webhookUrl = generateWebhookUrl(organizationId, "stripe");
+		console.log(
+			`[${new Date().toISOString()}] Generated webhook URL: ${webhookUrl}`
+		);
 
 		// Step 4: Create webhook endpoint in Stripe
+		console.log(
+			`[${new Date().toISOString()}] Creating Stripe webhook endpoint`
+		);
+		const webhookStart = Date.now();
 		const webhookData =
 			await stripeConnector.createWebhookEndpoint(webhookUrl);
-
-		console.log("Webhook created successfully:", webhookData.id);
+		const webhookDuration = Date.now() - webhookStart;
+		console.log(
+			`[${new Date().toISOString()}] Stripe webhook created successfully in ${webhookDuration}ms: ` +
+				`WebhookID=${webhookData.id}, URL=${webhookData.url}, Events=${webhookData.enabledEvents.join(", ")}`
+		);
 
 		// Step 5: Save integration to database
+		console.log(
+			`[${new Date().toISOString()}] Saving integration to database`
+		);
+		const dbStart = Date.now();
 		const integration = await prisma.integration.upsert({
 			where: {
 				organizationId_toolName: { organizationId, toolName: "stripe" },
@@ -427,18 +562,12 @@ export async function connectStripeIntegration(
 					displayName ||
 					`Stripe (${accountInfo.businessName || accountInfo.email || "Account"})`,
 				status: "CONNECTED",
-
-				// Encrypt sensitive data
 				apiKey,
 				webhookSecret: webhookData.secret,
-
-				// Webhook configuration
 				webhookUrl: webhookData.url,
 				webhookId: webhookData.id,
 				webhookEvents: webhookData.enabledEvents,
 				webhookSetupType: "AUTOMATIC",
-
-				// Account metadata
 				metadata: {
 					accountId: accountInfo.accountId,
 					businessName: accountInfo.businessName,
@@ -447,7 +576,6 @@ export async function connectStripeIntegration(
 					currency: accountInfo.currency,
 					webhookStatus: webhookData.status,
 				},
-
 				lastSyncAt: new Date(),
 			},
 			create: {
@@ -458,18 +586,12 @@ export async function connectStripeIntegration(
 					displayName ||
 					`Stripe (${accountInfo.businessName || accountInfo.email || "Account"})`,
 				status: "CONNECTED",
-
-				// Encrypt sensitive data
 				apiKey,
 				webhookSecret: webhookData.secret,
-
-				// Webhook configuration
 				webhookUrl: webhookData.url,
 				webhookId: webhookData.id,
 				webhookEvents: webhookData.enabledEvents,
 				webhookSetupType: "AUTOMATIC",
-
-				// Account metadata
 				metadata: {
 					accountId: accountInfo.accountId,
 					businessName: accountInfo.businessName,
@@ -478,25 +600,42 @@ export async function connectStripeIntegration(
 					currency: accountInfo.currency,
 					webhookStatus: webhookData.status,
 				},
-
 				lastSyncAt: new Date(),
 			},
 		});
+		const dbDuration = Date.now() - dbStart;
+		console.log(
+			`[${new Date().toISOString()}] Integration saved successfully in ${dbDuration}ms: IntegrationID=${integration.id}`
+		);
 
-		// Step 6: Start initial data sync (async - don't wait)
-		// This runs in the background
+		// Step 6: Start initial data sync (async)
+		console.log(
+			`[${new Date().toISOString()}] Initiating background data sync for integration ${integration.id}`
+		);
 		startInitialSync(integration.id, apiKey).catch((error) => {
-			console.error("Initial sync failed:", error);
-			// Update integration status to show error
-			prisma.integration.update({
-				where: { id: integration.id },
-				data: {
-					status: "ERROR",
-				},
-			});
+			const errorMsg =
+				error instanceof Error ? error.message : "Unknown error";
+			console.error(
+				`[${new Date().toISOString()}] Initial sync failed for integration ${integration.id}: ${errorMsg}`
+			);
+			prisma.integration
+				.update({
+					where: { id: integration.id },
+					data: { status: "ERROR" },
+				})
+				.then(() => {
+					console.log(
+						`[${new Date().toISOString()}] Updated integration ${integration.id} status to ERROR due to sync failure`
+					);
+				});
 		});
 
 		// Step 7: Return success response
+		const totalDuration = Date.now() - startTime;
+		console.log(
+			`[${new Date().toISOString()}] Stripe integration completed in ${totalDuration}ms: ` +
+				`IntegrationID=${integration.id}, WebhookID=${webhookData.id}`
+		);
 		return {
 			integrationId: integration.id,
 			webhookId: webhookData.id,
@@ -506,16 +645,14 @@ export async function connectStripeIntegration(
 				"Stripe integration connected successfully. Syncing historical data...",
 		};
 	} catch (error) {
-		console.error("Failed to connect Stripe integration:", error);
-
-		// If we created a webhook but DB save failed, try to clean up
-		// (You might want to add webhook cleanup logic here)
-
-		throw new Error(
+		const errorMsg =
 			error instanceof Error
 				? error.message
-				: "Failed to connect Stripe integration"
+				: "Failed to connect Stripe integration";
+		console.error(
+			`[${new Date().toISOString()}] Failed to connect Stripe integration: ${errorMsg}`
 		);
+		throw new Error(errorMsg);
 	}
 }
 
@@ -527,42 +664,62 @@ async function startInitialSync(
 	integrationId: string,
 	apiKey: string
 ): Promise<void> {
+	const startTime = Date.now();
+	console.log(
+		`[${new Date().toISOString()}] Starting initial sync for integration ${integrationId}`
+	);
+
 	try {
 		const integration = await prisma.integration.findUnique({
 			where: { id: integrationId },
 		});
 
 		if (!integration) {
-			throw new Error("Integration not found");
+			const errorMsg = "Integration not found";
+			console.error(
+				`[${new Date().toISOString()}] ${errorMsg} for integration ${integrationId}`
+			);
+			throw new Error(errorMsg);
 		}
 
-		// Update status to syncing
+		console.log(
+			`[${new Date().toISOString()}] Updating integration ${integrationId} status to SYNCING`
+		);
 		await prisma.integration.update({
 			where: { id: integrationId },
 			data: { status: "SYNCING" },
 		});
 
-		await syncStripe(integration.organizationId, apiKey);
+		console.log(
+			`[${new Date().toISOString()}] Running Stripe sync for organization ${integration.organizationId}`
+		);
+		const syncResult = await syncStripe(integration.organizationId, apiKey);
+		const syncDuration = Date.now() - startTime;
+		console.log(
+			`[${new Date().toISOString()}] Initial sync completed in ${syncDuration}ms: ` +
+				`Success=${syncResult.success}, Stats=${JSON.stringify(syncResult.stats)}, Errors=${syncResult.errors.length}`
+		);
 
-		// Update status to connected after successful sync
+		console.log(
+			`[${new Date().toISOString()}] Updating integration ${integrationId} status to CONNECTED`
+		);
 		await prisma.integration.update({
 			where: { id: integrationId },
 			data: { status: "CONNECTED", lastSyncAt: new Date() },
 		});
 	} catch (error) {
+		const errorMsg =
+			error instanceof Error ? error.message : "Unknown error";
 		console.error(
-			`Initial sync failed for integration ${integrationId}:`,
-			error
+			`[${new Date().toISOString()}] Initial sync failed for integration ${integrationId}: ${errorMsg}`
 		);
-
-		// Update integration with error status
 		await prisma.integration.update({
 			where: { id: integrationId },
-			data: {
-				status: "ERROR",
-			},
+			data: { status: "ERROR" },
 		});
-
+		console.log(
+			`[${new Date().toISOString()}] Updated integration ${integrationId} status to ERROR`
+		);
 		throw error;
 	}
 }
@@ -579,32 +736,116 @@ export async function handleCustomerEvent(
 	event: Stripe.Event,
 	organizationId: string
 ): Promise<void> {
+	const startTime = Date.now();
+	const eventId = event.id;
+	console.log(
+		`[${new Date().toISOString()}] Processing customer event ${eventId} for organization ${organizationId}`
+	);
+
 	const customer = mapCustomerToNormalized(
 		event.data.object as Stripe.Customer
 	);
+	if (!customer) {
+		console.warn(
+			`[${new Date().toISOString()}] No customer data in event ${eventId}`
+		);
+		return;
+	}
 
-	if (!customer) return;
-
-	await prisma.customer.upsert({
-		where: {
-			externalId_sourceTool: {
-				externalId: customer.externalId,
-				sourceTool: "stripe",
+	try {
+		console.log(
+			`[${new Date().toISOString()}] Upserting customer ${customer.externalId}`
+		);
+		await prisma.customer.upsert({
+			where: {
+				externalId_sourceTool: {
+					externalId: customer.externalId,
+					sourceTool: "stripe",
+				},
 			},
-		},
-		create: {
-			organizationId,
-			...customer,
-			metadata: customer.metadata as Prisma.InputJsonValue, // ← cast
-		},
-		update: {
-			email: customer.email,
-			name: customer.name,
-			metadata: customer.metadata as Prisma.InputJsonValue, // ← cast
-		},
-	});
+			create: {
+				organizationId,
+				...customer,
+				metadata: customer.metadata as Prisma.InputJsonValue,
+			},
+			update: {
+				email: customer.email,
+				name: customer.name,
+				metadata: customer.metadata as Prisma.InputJsonValue,
+			},
+		});
+		const duration = Date.now() - startTime;
+		console.log(
+			`[${new Date().toISOString()}] Customer ${customer.externalId} upserted successfully in ${duration}ms`
+		);
+	} catch (error) {
+		const errorMsg =
+			error instanceof Error ? error.message : "Unknown error";
+		console.error(
+			`[${new Date().toISOString()}] Failed to process customer event ${eventId} for customer ${customer.externalId}: ${errorMsg}`
+		);
+		throw error;
+	}
+}
 
-	console.log(`Customer ${customer.externalId} upserted successfully`);
+export async function handleInvoiceEvent(
+	event: Stripe.Event,
+	organizationId: string
+): Promise<void> {
+	const startTime = Date.now();
+	const eventId = event.id;
+	console.log(
+		`[${new Date().toISOString()}] Processing invoice event ${eventId} for organization ${organizationId}`
+	);
+
+	const invoice = mapInvoiceToNormalized(event.data.object as Stripe.Invoice);
+	try {
+		console.log(
+			`[${new Date().toISOString()}] Ensuring customer exists for invoice ${invoice.externalId}`
+		);
+		const customer = await ensureCustomerExists(
+			invoice.customerExternalId,
+			organizationId
+		);
+
+		console.log(
+			`[${new Date().toISOString()}] Upserting invoice ${invoice.externalId}`
+		);
+		await prisma.invoice.upsert({
+			where: {
+				externalId_sourceTool: {
+					externalId: invoice.externalId,
+					sourceTool: "stripe",
+				},
+			},
+			create: {
+				organizationId,
+				...invoice,
+				customerId: customer.id,
+				metadata: invoice.metadata as Prisma.InputJsonValue,
+			},
+			update: {
+				amountDue: invoice.amountDue,
+				amountPaid: invoice.amountPaid,
+				amountRemaining: invoice.amountRemaining,
+				status: invoice.status || "draft",
+				dueDate: invoice.dueDate,
+				pdfUrl: invoice.pdfUrl,
+				metadata: invoice.metadata as Prisma.InputJsonValue,
+			},
+		});
+		const duration = Date.now() - startTime;
+		console.log(
+			`[${new Date().toISOString()}] Invoice ${invoice.externalId} upserted successfully in ${duration}ms`
+		);
+	} catch (error) {
+		const errorMsg =
+			error instanceof Error ? error.message : "Unknown error";
+		console.error(
+			`[${new Date().toISOString()}] Failed to process invoice event ${eventId} for invoice ${invoice.externalId}: ${errorMsg}`
+		);
+		throw error;
+	}
 }
 
 export async function handleCustomerDeleted(
@@ -727,45 +968,6 @@ export async function handleSubscriptionTrialEnding(
 	console.log(
 		`Subscription ${subscription.externalId} trial ending notification recorded`
 	);
-}
-
-export async function handleInvoiceEvent(
-	event: Stripe.Event,
-	organizationId: string
-): Promise<void> {
-	const invoice = mapInvoiceToNormalized(event.data.object as Stripe.Invoice);
-
-	// Ensure customer exists
-	const customer = await ensureCustomerExists(
-		invoice.customerExternalId,
-		organizationId
-	);
-
-	await prisma.invoice.upsert({
-		where: {
-			externalId_sourceTool: {
-				externalId: invoice.externalId,
-				sourceTool: "stripe",
-			},
-		},
-		create: {
-			organizationId,
-			...invoice,
-			customerId: customer.id,
-			metadata: invoice.metadata as Prisma.InputJsonValue,
-		},
-		update: {
-			amountDue: invoice.amountDue,
-			amountPaid: invoice.amountPaid,
-			amountRemaining: invoice.amountRemaining,
-			status: invoice.status || "draft",
-			dueDate: invoice.dueDate,
-			pdfUrl: invoice.pdfUrl,
-			metadata: invoice.metadata as Prisma.InputJsonValue,
-		},
-	});
-
-	console.log(`Invoice ${invoice.externalId} upserted successfully`);
 }
 
 export async function handleInvoicePaid(
@@ -935,7 +1137,15 @@ export async function updateBalance(organizationId: string): Promise<void> {
 export async function disconnectStripeIntegration(
 	organizationId: string
 ): Promise<{ success: boolean; message: string }> {
+	const startTime = Date.now();
+	console.log(
+		`[${new Date().toISOString()}] Starting Stripe disconnection for organization ${organizationId}`
+	);
+
 	try {
+		console.log(
+			`[${new Date().toISOString()}] Fetching Stripe integration`
+		);
 		const integration = await prisma.integration.findUnique({
 			where: {
 				organizationId_toolName: {
@@ -946,23 +1156,33 @@ export async function disconnectStripeIntegration(
 		});
 
 		if (!integration || integration.toolName !== "stripe") {
-			throw new Error("Stripe integration not found");
+			const errorMsg = "Stripe integration not found";
+			console.error(`[${new Date().toISOString()}] ${errorMsg}`);
+			throw new Error(errorMsg);
 		}
 
-		const apiKey = integration.apiKey!;
-
-		// Delete webhook if exists
 		if (integration.webhookId) {
+			console.log(
+				`[${new Date().toISOString()}] Deleting webhook ${integration.webhookId}`
+			);
 			try {
-				const connector = new StripeConnector(apiKey);
+				const connector = new StripeConnector(integration.apiKey!);
 				await connector.deleteWebhookEndpoint(integration.webhookId);
-				console.log(`Deleted webhook ${integration.webhookId}`);
+				console.log(
+					`[${new Date().toISOString()}] Webhook ${integration.webhookId} deleted successfully`
+				);
 			} catch (error) {
-				console.warn("Failed to delete webhook:", error);
+				const errorMsg =
+					error instanceof Error ? error.message : "Unknown error";
+				console.warn(
+					`[${new Date().toISOString()}] Failed to delete webhook ${integration.webhookId}: ${errorMsg}`
+				);
 			}
 		}
 
-		// Update integration status
+		console.log(
+			`[${new Date().toISOString()}] Updating integration status to DISCONNECTED`
+		);
 		await prisma.integration.update({
 			where: {
 				organizationId_toolName: {
@@ -977,16 +1197,22 @@ export async function disconnectStripeIntegration(
 			},
 		});
 
+		const duration = Date.now() - startTime;
+		console.log(
+			`[${new Date().toISOString()}] Stripe integration disconnected successfully in ${duration}ms`
+		);
 		return {
 			success: true,
 			message: "Stripe integration disconnected successfully",
 		};
 	} catch (error) {
-		console.error("Failed to disconnect Stripe:", error);
-		throw new Error(
+		const errorMsg =
 			error instanceof Error
 				? error.message
-				: "Failed to disconnect Stripe integration"
+				: "Failed to disconnect Stripe integration";
+		console.error(
+			`[${new Date().toISOString()}] Failed to disconnect Stripe: ${errorMsg}`
 		);
+		throw new Error(errorMsg);
 	}
 }
