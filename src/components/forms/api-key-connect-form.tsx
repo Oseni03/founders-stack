@@ -25,6 +25,8 @@ import {
 import { Checkbox } from "../ui/checkbox";
 import { Alert, AlertDescription } from "../ui/alert";
 import { CopyButton } from "../ui/copy-button";
+import { generateWebhookUrl } from "@/lib/utils";
+import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 
 // Define explicit type for form values to match connect function
 interface FormValues {
@@ -61,6 +63,7 @@ export const APIKeyConnectForm = ({
 }) => {
 	const connect = useIntegrationsStore((s) => s.connect);
 	const integration = INTEGRATIONS.find((i) => i.id === integrationId)!;
+	const organization = useOrganizationStore((s) => s.activeOrganization);
 
 	// -----------------------------------------------------------------
 	// 1. Form state (API key + optional fields)
@@ -183,7 +186,7 @@ export const APIKeyConnectForm = ({
 						)}
 
 						{/* ---------- STEP 2: WEBHOOK ---------- */}
-						{showWebhookStep && webhook && (
+						{showWebhookStep && webhook && organization && (
 							<div className="space-y-4">
 								<Alert>
 									<AlertDescription
@@ -196,10 +199,18 @@ export const APIKeyConnectForm = ({
 								<div className="flex items-center gap-2">
 									<Input
 										readOnly
-										value={webhook.url}
+										value={generateWebhookUrl(
+											organization.id,
+											integration.id
+										)}
 										className="flex-1"
 									/>
-									<CopyButton text={webhook.url} />
+									<CopyButton
+										text={generateWebhookUrl(
+											organization.id,
+											integration.id
+										)}
+									/>
 								</div>
 
 								<div className="flex items-center space-x-2">

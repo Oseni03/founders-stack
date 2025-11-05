@@ -14,8 +14,6 @@ export interface Integration {
 	metadata?: null | {
 		/** Only for API-key integrations that need a manual webhook */
 		webhook?: {
-			/** The exact URL the user must copy */
-			url: string;
 			/** Markdown/HTML that explains where to paste it */
 			instructions: string;
 			/** Text for the checkbox (default: "I have added the webhook") */
@@ -74,6 +72,9 @@ export const OAUTH_CONFIG: Record<string, OAuthConfig> = {
 			"read:jira-work",
 			"manage:jira-project",
 			"manage:jira-webhook",
+			"manage:jira-configuration",
+			"write:jira-work",
+			"manage:jira-data-provider",
 		],
 		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/jira`,
 		category: "PROJECT_MGMT",
@@ -161,7 +162,6 @@ export const INTEGRATIONS: Integration[] = [
 		docsUrl: "https://developers.canny.io/api-reference",
 		metadata: {
 			webhook: {
-				url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/canny`,
 				instructions: `
 ### Setting up Canny Webhooks
 
@@ -200,7 +200,6 @@ Your webhook will now receive real-time notifications when these events occur in
 		docsUrl: "https://posthog.com/docs/api",
 		metadata: {
 			webhook: {
-				url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/posthog`,
 				instructions: `
 ### Setting up PostHog Webhooks
 
