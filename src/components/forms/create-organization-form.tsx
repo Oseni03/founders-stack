@@ -21,6 +21,7 @@ import { createOrganization } from "@/server/organizations";
 import { authClient } from "@/lib/auth-client";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { Organization } from "@/types";
+import { Textarea } from "../ui/textarea";
 
 const formSchema = z.object({
 	name: z.string().min(2).max(50),
@@ -93,7 +94,7 @@ export function CreateOrganizationForm() {
 						<FormItem>
 							<FormLabel>Description</FormLabel>
 							<FormControl>
-								<Input placeholder="" {...field} />
+								<Textarea placeholder="" {...field} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>

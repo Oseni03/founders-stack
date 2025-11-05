@@ -20,6 +20,7 @@ import { Organization } from "@/types";
 import { DialogFooter } from "../ui/dialog";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { updateOrganization } from "@/server/organizations";
+import { Textarea } from "../ui/textarea";
 
 const formSchema = z.object({
 	name: z.string().min(2).max(50),
@@ -91,7 +92,7 @@ export function UpdateOrganizationForm({
 						<FormItem>
 							<FormLabel>Description</FormLabel>
 							<FormControl>
-								<Input placeholder="my-project" {...field} />
+								<Textarea placeholder="my-project" {...field} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>

@@ -16,7 +16,7 @@ const API_KEY_INTEGRATIONS = {
 		handler: connectPostHogIntegration as (
 			params: any
 		) => Promise<ConnectionHandlerResult>,
-		redirectPath: "/dashboard/integrations/analytics",
+		redirectPath: "/dashboard/analytics",
 		requiredFields: ["apiKey", "projectId"] as const,
 		mapParams: (body: any, user: any) => ({
 			projectId: body.projectId,
@@ -31,7 +31,7 @@ const API_KEY_INTEGRATIONS = {
 		handler: connectStripeIntegration as (
 			params: any
 		) => Promise<ConnectionHandlerResult>,
-		redirectPath: "/dashboard/integrations/finance",
+		redirectPath: "/dashboard/financials",
 		requiredFields: ["apiKey"] as const,
 		mapParams: (body: any, user: any) => ({
 			userId: user.id,
