@@ -106,7 +106,7 @@ export function useIntegrationOnboarding() {
 		const selected = resources.filter((r) =>
 			selectedResources.includes(r.externalId)
 		);
-
+		setLoading(true);
 		try {
 			const response = await fetch(
 				`/api/integrations/${tool}/add-resources`,
@@ -125,14 +125,16 @@ export function useIntegrationOnboarding() {
 			toast.success(`${selected.length} resources added successfully`);
 
 			setDialogOpen(false);
-			router.push("/dashboard/version-control");
+            setLoading(false);
+			router.push("/dashboard/integrations");
 		} catch (error) {
-			toast.error(
-				error instanceof Error
-					? error.message
-					: `Failed to add ${tool} resources`
+            toast.error(
+                error instanceof Error
+                ? error.message
+                : `Failed to add ${tool} resources`
 			);
 			console.error(`[SAVE_${tool?.toUpperCase()}]`, error);
+            setLoading(false)
 		}
 	};
 

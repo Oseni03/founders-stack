@@ -50,10 +50,12 @@ const createFormSchema = (integrationId: string) => {
 };
 
 export const APIKeyConnectForm = ({
+	loading,
 	isOpen,
 	onClose,
 	integrationId,
 }: {
+	loading: boolean;
 	isOpen: boolean;
 	onClose: () => void;
 	integrationId: string;
@@ -205,13 +207,17 @@ export const APIKeyConnectForm = ({
 
 							<Button
 								type="submit"
-								disabled={showWebhookStep && !webhookConfirmed}
+								disabled={
+									(showWebhookStep && !webhookConfirmed) ||
+									loading
+								}
 							>
 								{showWebhookStep
 									? "Finish"
 									: webhook
 										? "Next"
 										: "Connect"}
+								{loading && "..."}
 							</Button>
 						</DialogFooter>
 					</form>

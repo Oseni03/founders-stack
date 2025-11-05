@@ -5,9 +5,11 @@ import { Plug } from "lucide-react";
 import { APIKeyConnectForm } from "../forms/api-key-connect-form";
 
 export const ConnectButton = ({
+	loading,
 	integration,
 	onConnect,
 }: {
+	loading: boolean;
 	integration: Integration;
 	onConnect: (toolName: string) => void;
 }) => {
@@ -28,6 +30,7 @@ export const ConnectButton = ({
 			</Button>
 			{integration.authType === "api_key" && (
 				<APIKeyConnectForm
+					loading={loading}
 					isOpen={isAPIKeyFormOpen}
 					onClose={() => setAPIKeyFormOpen(false)}
 					integrationId={integration.id}

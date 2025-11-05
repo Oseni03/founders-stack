@@ -12,7 +12,7 @@ import { ConnectButton } from "@/components/integrations/connect-button";
 import { DisconnectButton } from "@/components/integrations/disconnect-button";
 
 export default function IntegrationsPage() {
-	const { integrations, error, connect, fetchIntegrations } =
+	const { integrations, loading, error, connect, fetchIntegrations } =
 		useIntegrationsStore((state) => state);
 
 	useEffect(() => {
@@ -155,6 +155,7 @@ export default function IntegrationsPage() {
 									)}
 									{integration.status === "DISCONNECTED" && (
 										<ConnectButton
+                                            loading={loading}
 											integration={integration}
 											onConnect={connect}
 										/>
