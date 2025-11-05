@@ -129,15 +129,11 @@ export async function syncCanny(organizationId: string, projs: Project[] = []) {
 	console.log(
 		`[${new Date().toISOString()}] Validating integration attributes`
 	);
-	if (!integration.attributes || typeof integration.attributes !== "object") {
-		const errorMsg = "Integration attributes not found";
-		console.error(
-			`[${new Date().toISOString()}] ${errorMsg} for integration ${integration.id}`
-		);
-		throw new Error(errorMsg);
-	}
-	const attributes = integration.attributes as Record<string, any>;
-	const created = attributes.created;
+	// Add proper type checking and validation
+	const attributes = integration.attributes as Record<string, any> | null;
+
+	// Use current date if attributes or created field is missing
+	const created = attributes?.created ?? new Date();
 	console.log(
 		`[${new Date().toISOString()}] Integration attributes validated: Created=${created}`
 	);

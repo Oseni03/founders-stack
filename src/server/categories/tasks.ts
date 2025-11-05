@@ -24,11 +24,13 @@ export async function saveProjects(
 					},
 					update: {
 						...project,
+						attributes: project.attributes,
 					},
 					create: {
 						...project,
 						organizationId,
 						sourceTool,
+						attributes: project.attributes,
 					},
 				})
 			)
