@@ -10,6 +10,7 @@ import {
 	Headphones,
 	Home,
 	LayoutDashboard,
+	Mail,
 	MessageSquare,
 	MessagesSquare,
 	Settings,
@@ -123,12 +124,12 @@ const data = {
 				// 	icon: Search,
 				// 	url: "/dashboard/marketing/seo",
 				// },
-				// {
-				// 	id: "email-marketing",
-				// 	label: "Email Marketing",
-				// 	icon: Mail,
-				// 	url: "/dashboard/marketing/email",
-				// },
+				{
+					id: "email-marketing",
+					label: "Email Marketing",
+					icon: Mail,
+					url: "/dashboard/email-marketing",
+				},
 				// {
 				// 	id: "social-media-management",
 				// 	label: "Social Media Management",

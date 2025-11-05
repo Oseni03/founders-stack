@@ -25,7 +25,6 @@ import { SidebarMenuButton } from "./ui/sidebar";
 import { Send } from "lucide-react";
 
 export function FeedbackMenuItem() {
-	const [open, setOpen] = React.useState(false);
 	const { form, onSubmit, loading } = useFeedbackForm();
 
 	const handleSubmit = async (values: { title: string; details: string }) => {
