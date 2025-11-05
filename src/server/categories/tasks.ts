@@ -5,6 +5,7 @@ import { syncJira } from "@/server/platforms/jira";
 import { syncSlack } from "../platforms/slack";
 import { prisma } from "@/lib/prisma";
 import { ProjectData } from "@/types/connector";
+import { syncCanny } from "../platforms/canny";
 
 export async function saveProjects(
 	organizationId: string,
@@ -40,7 +41,7 @@ export async function saveProjects(
 		} else if (sourceTool === "slack") {
 			await syncSlack(organizationId, projs);
 		} else if (sourceTool === "canny") {
-			await syncSlack(organizationId, projs);
+			await syncCanny(organizationId, projs);
 		} else {
 			console.error("Sync function not available for ", sourceTool);
 		}
