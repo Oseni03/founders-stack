@@ -1,3 +1,4 @@
+import { ConnectionRouteResult } from "@/types/connector";
 import { Integration } from "@prisma/client";
 import { toast } from "sonner";
 import { create } from "zustand";
@@ -80,14 +81,25 @@ export const createIntegrationsStore = () => {
 								);
 							}
 
-							// NEW: check for redirect header
-							const location = resp.headers.get("Location");
-							if (location) {
-								window.location.href = location; // <-- will go to /integrations/[tool]/onboarding
-								return;
+							const data: ConnectionRouteResult =
+								await resp.json();
+
+							if (data.status === "CONNECTED") {
+								toast.success(
+									`${toolName} connected successfully`
+								);
+							} else if (data.status === "PENDING_SETUP") {
+								toast.info("Additional setup still pending");
+							} else {
+								toast.error(
+									data.message ||
+										`${toolName} connection failed`
+								);
 							}
 
-							toast.success(`${toolName} connected successfully`);
+							if (data.redirectUrl) {
+								window.location.href = data.redirectUrl; // <-- will go to /integrations/[tool]/onboarding
+							}
 						} else {
 							// OAuth2 flow for other integrations
 							const resp = await fetch(

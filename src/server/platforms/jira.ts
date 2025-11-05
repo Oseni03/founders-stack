@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { Project } from "@prisma/client";
 import { JiraConnector } from "@/lib/connectors/jira";
 import { generateWebhookUrl } from "@/lib/utils";
+import { ConnectionHandlerResult } from "@/types/connector";
 
 export interface JiraAccessibleResource {
 	id: string;
@@ -61,7 +62,7 @@ export async function connectJiraIntegration(input: {
 	accessToken: string;
 	refreshToken?: string;
 	expiresIn: number;
-}) {
+}): Promise<ConnectionHandlerResult> {
 	const { organizationId, accessToken, expiresIn, refreshToken } = input;
 	const startTime = Date.now();
 	console.log(
@@ -207,7 +208,7 @@ export async function connectJiraIntegration(input: {
 		return {
 			status: "CONNECTED",
 			message: "Jira integration connected with real-time webhook",
-			cloudId,
+			integrationId: integration.id,
 		};
 	} catch (error) {
 		const errorMsg =

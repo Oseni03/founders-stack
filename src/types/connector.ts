@@ -26,3 +26,15 @@ export interface ProjectData {
 	description?: string;
 	attributes: Record<string, any>;
 }
+
+export interface ConnectionHandlerResult {
+	integrationId: string;
+	status: "CONNECTED" | "PENDING_SETUP" | "ERROR";
+	message: string;
+}
+
+export interface ConnectionRouteResult {
+	status: "CONNECTED" | "PENDING_SETUP" | "ERROR";
+	message: string;
+	redirectUrl?: string;
+}

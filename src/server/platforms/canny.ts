@@ -5,12 +5,13 @@ import { CannyConnector } from "@/lib/connectors/canny";
 import { prisma } from "@/lib/prisma";
 import { getIntegration } from "../integrations";
 import { Project } from "@prisma/client";
+import { ConnectionHandlerResult } from "@/types/connector";
 
 export async function connectCannyIntegration(input: {
 	organizationId: string;
 	apiKey: string;
 	displayName?: string;
-}) {
+}): Promise<ConnectionHandlerResult> {
 	const { organizationId, apiKey, displayName } = input;
 	const startTime = Date.now();
 	console.log(

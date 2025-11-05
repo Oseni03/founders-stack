@@ -11,6 +11,7 @@ import {
 	mapInvoiceToNormalized,
 	mapSubscriptionToNormalized,
 } from "@/lib/stripe-utils";
+import { ConnectionHandlerResult } from "@/types/connector";
 
 interface SyncResult {
 	success: boolean;
@@ -475,20 +476,12 @@ interface CreateIntegrationInput {
 	displayName?: string;
 }
 
-interface WebhookCreationResult {
-	integrationId: string;
-	webhookId: string;
-	webhookUrl: string;
-	status: "CONNECTED" | "PENDING_SETUP" | "ERROR";
-	message: string;
-}
-
 /**
  * Main server action to connect Stripe integration and create webhook
  */
 export async function connectStripeIntegration(
 	input: CreateIntegrationInput
-): Promise<WebhookCreationResult> {
+): Promise<ConnectionHandlerResult> {
 	const { organizationId, apiKey, displayName } = input;
 	const startTime = Date.now();
 	console.log(
@@ -638,8 +631,6 @@ export async function connectStripeIntegration(
 		);
 		return {
 			integrationId: integration.id,
-			webhookId: webhookData.id,
-			webhookUrl: webhookData.url,
 			status: "CONNECTED",
 			message:
 				"Stripe integration connected successfully. Syncing historical data...",

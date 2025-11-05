@@ -6,6 +6,7 @@ import {
 	PostHogConnector,
 } from "@/lib/connectors/posthog";
 import { prisma } from "@/lib/prisma";
+import { ConnectionHandlerResult } from "@/types/connector";
 import { Prisma } from "@prisma/client";
 
 interface ConnectPostHogInput {
@@ -18,13 +19,7 @@ interface ConnectPostHogInput {
 
 export async function connectPostHogIntegration(
 	input: ConnectPostHogInput
-): Promise<{
-	integrationId: string;
-	projectId: string;
-	webhookId?: string;
-	status: string;
-	message: string;
-}> {
+): Promise<ConnectionHandlerResult> {
 	const { organizationId, apiKey, projectId, displayName, webhookConfirmed } =
 		input;
 
@@ -134,7 +129,6 @@ export async function connectPostHogIntegration(
 
 		return {
 			integrationId: integration.id,
-			projectId: project.id,
 			status: "CONNECTED",
 			message: "PostHog webhook not set yet by user",
 		};

@@ -3,6 +3,7 @@
 import { AsanaConnector } from "@/lib/connectors/asana";
 import { prisma } from "@/lib/prisma";
 import { generateWebhookUrl } from "@/lib/utils";
+import { ConnectionHandlerResult } from "@/types/connector";
 import { Project } from "@prisma/client";
 
 interface ConnectAsanaInput {
@@ -14,12 +15,7 @@ interface ConnectAsanaInput {
 
 export async function connectAsanaIntegration(
 	input: ConnectAsanaInput
-): Promise<{
-	integrationId: string;
-	webhookMode: "automatic" | "polling";
-	status: string;
-	message: string;
-}> {
+): Promise<ConnectionHandlerResult> {
 	const { organizationId, apiKey, workspaceGid, displayName } = input;
 	const startTime = Date.now();
 	console.log(
@@ -157,7 +153,6 @@ export async function connectAsanaIntegration(
 
 		return {
 			integrationId: integration.id,
-			webhookMode,
 			status: "CONNECTED",
 			message:
 				webhookMode === "automatic"

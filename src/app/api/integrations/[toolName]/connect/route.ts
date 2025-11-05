@@ -8,11 +8,14 @@ import { connectPostHogIntegration } from "@/server/platforms/posthog";
 import { connectStripeIntegration } from "@/server/platforms/stripe";
 import { connectAsanaIntegration } from "@/server/platforms/asana";
 import { connectCannyIntegration } from "@/server/platforms/canny";
+import { ConnectionHandlerResult } from "@/types/connector";
 
 // Configuration for API-key based integrations
 const API_KEY_INTEGRATIONS = {
 	posthog: {
-		handler: connectPostHogIntegration as (params: any) => Promise<any>,
+		handler: connectPostHogIntegration as (
+			params: any
+		) => Promise<ConnectionHandlerResult>,
 		redirectPath: "/integrations/analytics",
 		requiredFields: ["apiKey", "projectId"] as const,
 		mapParams: (body: any, user: any) => ({
@@ -25,7 +28,9 @@ const API_KEY_INTEGRATIONS = {
 		}),
 	},
 	stripe: {
-		handler: connectStripeIntegration as (params: any) => Promise<any>,
+		handler: connectStripeIntegration as (
+			params: any
+		) => Promise<ConnectionHandlerResult>,
 		redirectPath: "/integrations/finance",
 		requiredFields: ["apiKey"] as const,
 		mapParams: (body: any, user: any) => ({
@@ -35,7 +40,9 @@ const API_KEY_INTEGRATIONS = {
 		}),
 	},
 	asana: {
-		handler: connectAsanaIntegration as (params: any) => Promise<any>,
+		handler: connectAsanaIntegration as (
+			params: any
+		) => Promise<ConnectionHandlerResult>,
 		redirectPath: (toolName: string) =>
 			`/integrations/${toolName}/onboarding`,
 		requiredFields: ["apiKey"] as const,
@@ -45,7 +52,9 @@ const API_KEY_INTEGRATIONS = {
 		}),
 	},
 	canny: {
-		handler: connectCannyIntegration as (params: any) => Promise<any>,
+		handler: connectCannyIntegration as (
+			params: any
+		) => Promise<ConnectionHandlerResult>,
 		redirectPath: (toolName: string) =>
 			`/integrations/${toolName}/onboarding`,
 		requiredFields: ["apiKey"] as const,
@@ -204,7 +213,11 @@ export async function POST(
 						: integration.redirectPath;
 
 				const redirectUrl = new URL(redirectPath, request.url);
-				return NextResponse.redirect(redirectUrl, 303);
+				return NextResponse.json({
+					status: response.status,
+					message: response.message,
+					redirectUrl,
+				});
 			}
 
 			// Return success response without redirect
