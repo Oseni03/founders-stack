@@ -22,11 +22,8 @@ import {
 	FormLabel,
 	FormMessage,
 } from "../ui/form";
-import { Checkbox } from "../ui/checkbox";
-import { Alert, AlertDescription } from "../ui/alert";
-import { CopyButton } from "../ui/copy-button";
-import { generateWebhookUrl } from "@/lib/utils";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
+import WebhookSetup from "../integrations/webhook-setup";
 
 // Define explicit type for form values to match connect function
 interface FormValues {
@@ -187,49 +184,13 @@ export const APIKeyConnectForm = ({
 
 						{/* ---------- STEP 2: WEBHOOK ---------- */}
 						{showWebhookStep && webhook && organization && (
-							<div className="space-y-4">
-								<Alert>
-									<AlertDescription
-										dangerouslySetInnerHTML={{
-											__html: webhook.instructions,
-										}}
-									/>
-								</Alert>
-
-								<div className="flex items-center gap-2">
-									<Input
-										readOnly
-										value={generateWebhookUrl(
-											organization.id,
-											integration.id
-										)}
-										className="flex-1"
-									/>
-									<CopyButton
-										text={generateWebhookUrl(
-											organization.id,
-											integration.id
-										)}
-									/>
-								</div>
-
-								<div className="flex items-center space-x-2">
-									<Checkbox
-										id="webhook-ok"
-										checked={webhookConfirmed}
-										onCheckedChange={(c) =>
-											setWebhookConfirmed(c === true)
-										}
-									/>
-									<label
-										htmlFor="webhook-ok"
-										className="text-sm"
-									>
-										{webhook.confirmLabel ??
-											"I have added the webhook URL"}
-									</label>
-								</div>
-							</div>
+							<WebhookSetup
+								organization={organization}
+								webhook={webhook}
+								integration={integration}
+								webhookConfirmed={webhookConfirmed}
+								setWebhookConfirmed={setWebhookConfirmed}
+							/>
 						)}
 
 						{/* ---------- FOOTER ---------- */}
