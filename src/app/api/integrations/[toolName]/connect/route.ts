@@ -2,7 +2,7 @@
 import { withAuth } from "@/lib/middleware";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { OAUTH_CONFIG, ToolName } from "@/lib/oauth-utils";
+import { OAUTH_CONFIG, OAuthConfig, ToolName } from "@/lib/oauth-utils";
 import { z } from "zod";
 import { connectPostHogIntegration } from "@/server/platforms/posthog";
 import { connectStripeIntegration } from "@/server/platforms/stripe";
@@ -73,14 +73,18 @@ function isApiKeyIntegration(toolName: string): toolName is ApiKeyToolName {
 
 // OAuth URL builders for special cases
 const OAUTH_PARAM_BUILDERS = {
-	jira: (authUrl: URL) => {
+	jira: (authUrl: URL, config: OAuthConfig) => {
+		// Jira requires the audience and the requested scopes
 		authUrl.searchParams.set("audience", "api.atlassian.com");
+		if (config && "scopes" in config) {
+			authUrl.searchParams.set("scope", config.scopes.join(" "));
+		}
 	},
 	slack: (authUrl: URL, config: any) => {
 		authUrl.searchParams.set("scope", ""); // Bot scopes
 		authUrl.searchParams.set("user_scope", config.userScopes.join(","));
 	},
-	default: (authUrl: URL, config: any) => {
+	default: (authUrl: URL, config: OAuthConfig) => {
 		if ("scopes" in config) {
 			authUrl.searchParams.set("scope", config.scopes.join(" "));
 		}
