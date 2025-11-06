@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 					pending: 0,
 				};
 
-			// Fetch active subscriptions (from all source tools)
+			// Fetch active subscriptions
 			const activeSubscriptions =
 				await prisma.financeSubscription.findMany({
 					where: {
@@ -66,9 +66,8 @@ export async function GET(request: NextRequest) {
 					},
 				});
 
-			// Calculate MRR (Monthly Recurring Revenue)
+			// Calculate MRR
 			const mrr = activeSubscriptions.reduce((sum, sub) => {
-				// Normalize to monthly amount
 				let monthlyAmount = sub.amount;
 				if (sub.billingCycle === "yearly") {
 					monthlyAmount = sub.amount / 12;
@@ -79,7 +78,6 @@ export async function GET(request: NextRequest) {
 			}, 0);
 
 			// Calculate churn rate
-			// Get subscriptions that ended in the last 30 days
 			const thirtyDaysAgo = new Date();
 			thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -102,7 +100,7 @@ export async function GET(request: NextRequest) {
 					? (churnedSubscriptions / totalSubscriptionsLastMonth) * 100
 					: 0;
 
-			// Fetch recent invoices for transactions (from all source tools)
+			// Fetch recent invoices for transactions
 			const recentInvoices = await prisma.invoice.findMany({
 				where: {
 					organizationId,
@@ -134,7 +132,7 @@ export async function GET(request: NextRequest) {
 				customerName: invoice.customer.name || invoice.customer.email,
 			}));
 
-			// Get subscription breakdown by plan (from all source tools)
+			// Get subscription breakdown by plan
 			const subscriptionBreakdown =
 				await prisma.financeSubscription.groupBy({
 					by: ["planId"],
@@ -158,7 +156,7 @@ export async function GET(request: NextRequest) {
 				})
 			);
 
-			// Get invoice stats (from all source tools)
+			// Get invoice stats
 			const [
 				totalInvoices,
 				paidInvoices,
@@ -192,7 +190,7 @@ export async function GET(request: NextRequest) {
 				overdue: overdueInvoices,
 			};
 
-			// Fetch historical MRR and churn data for the past 12 months
+			// Fetch historical revenue and customer data for the past 12 months
 			const twelveMonthsAgo = new Date();
 			twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
@@ -221,42 +219,42 @@ export async function GET(request: NextRequest) {
 							});
 
 						// Calculate MRR for the month
-						const monthlyMrr = subscriptions.reduce((sum, sub) => {
-							let monthlyAmount = sub.amount;
-							if (sub.billingCycle === "yearly") {
-								monthlyAmount = sub.amount / 12;
-							} else if (sub.billingCycle === "quarterly") {
-								monthlyAmount = sub.amount / 3;
-							}
-							return sum + monthlyAmount;
-						}, 0);
-
-						// Calculate churn for the month
-						const churned = await prisma.financeSubscription.count({
-							where: {
-								organizationId,
-								status: { in: ["canceled", "expired"] },
-								endDate: {
-									gte: monthStart,
-									lte: monthEnd,
-								},
+						const monthlyRevenue = subscriptions.reduce(
+							(sum, sub) => {
+								let monthlyAmount = sub.amount;
+								if (sub.billingCycle === "yearly") {
+									monthlyAmount = sub.amount / 12;
+								} else if (sub.billingCycle === "quarterly") {
+									monthlyAmount = sub.amount / 3;
+								}
+								return sum + monthlyAmount;
 							},
-						});
+							0
+						);
 
-						const totalSubs = subscriptions.length + churned;
-						const monthlyChurn =
-							totalSubs > 0 ? (churned / totalSubs) * 100 : 0;
+						// Count active customers
+						const customerCount = subscriptions.length;
 
 						return {
-							name: monthStart.toLocaleString("default", {
+							month: monthStart.toLocaleString("default", {
 								month: "short",
 							}),
-							mrr: Math.round(monthlyMrr),
-							churn: parseFloat(monthlyChurn.toFixed(2)),
+							revenue: Math.round(monthlyRevenue),
+							customers: customerCount,
 						};
 					})();
 				})
 			);
+
+			// Split into revenueTrendData and customerGrowthData
+			const revenueTrendData = monthlyMetrics.map((metric) => ({
+				month: metric.month,
+				revenue: metric.revenue,
+			}));
+			const customerGrowthData = monthlyMetrics.map((metric) => ({
+				month: metric.month,
+				customers: metric.customers,
+			}));
 
 			// Fetch transaction volume data for the last 7 days
 			const sevenDaysAgo = new Date();
@@ -327,7 +325,8 @@ export async function GET(request: NextRequest) {
 				})),
 				subscriptionBreakdown: subscriptionBreakdownFormatted,
 				invoiceStats,
-				mrrTrendData: monthlyMetrics,
+				revenueTrendData,
+				customerGrowthData,
 				transactionVolumeData: dailyTransactions,
 			});
 		} catch (error) {

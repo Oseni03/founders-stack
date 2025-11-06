@@ -11,10 +11,14 @@ interface Transaction {
 	date: string;
 }
 
-interface MrrTrendData {
-	name: string;
-	mrr: number;
-	churn: number;
+interface RevenueTrendData {
+	month: string;
+	revenue: number;
+}
+
+interface CustomerGrowthData {
+	month: string;
+	customers: number;
 }
 
 interface TransactionVolumeData {
@@ -52,7 +56,8 @@ interface FinanceData {
 		pending: number;
 		overdue: number;
 	};
-	mrrTrendData: MrrTrendData[];
+	revenueTrendData: RevenueTrendData[];
+	customerGrowthData: CustomerGrowthData[];
 	transactionVolumeData: TransactionVolumeData[];
 }
 
@@ -133,7 +138,6 @@ export const createFinanceStore = () => {
 					set((state) => {
 						if (state.data) {
 							state.data.recentTransactions.unshift(transaction);
-							// Keep only the 10 most recent
 							state.data.recentTransactions =
 								state.data.recentTransactions.slice(0, 10);
 						}

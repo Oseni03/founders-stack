@@ -195,35 +195,31 @@ export default function FinancialStatusPage() {
 
 				{/* Charts Grid */}
 				<div className="mb-8 grid gap-6 lg:grid-cols-2">
-					{/* MRR & Churn Trend */}
+					{/* Revenue Trend */}
 					<Card>
 						<CardHeader>
-							<CardTitle>MRR & Churn Trend</CardTitle>
+							<CardTitle>Revenue Trend</CardTitle>
 							<CardDescription>
-								Monthly recurring revenue and churn rate over 12
-								months
+								Monthly recurring revenue over 12 months
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<div className="h-80 w-full">
 								<ResponsiveContainer width="100%" height="100%">
-									<LineChart data={data.mrrTrendData}>
+									<LineChart data={data.revenueTrendData}>
 										<CartesianGrid
 											strokeDasharray="3 3"
 											stroke="var(--border)"
 										/>
 										<XAxis
-											dataKey="name"
+											dataKey="month"
 											stroke="var(--muted-foreground)"
 										/>
 										<YAxis
-											yAxisId="left"
 											stroke="var(--muted-foreground)"
-										/>
-										<YAxis
-											yAxisId="right"
-											orientation="right"
-											stroke="var(--muted-foreground)"
+											tickFormatter={(value) =>
+												`$${value.toLocaleString()}`
+											}
 										/>
 										<Tooltip
 											contentStyle={{
@@ -231,26 +227,58 @@ export default function FinancialStatusPage() {
 												border: "1px solid var(--border)",
 												borderRadius: "var(--radius)",
 											}}
+											formatter={(value: number) =>
+												`$${value.toLocaleString()}`
+											}
 										/>
 										<Line
-											yAxisId="left"
 											type="monotone"
-											dataKey="mrr"
+											dataKey="revenue"
 											stroke="var(--chart-1)"
 											strokeWidth={2}
 											dot={false}
-											name="MRR"
-										/>
-										<Line
-											yAxisId="right"
-											type="monotone"
-											dataKey="churn"
-											stroke="var(--chart-2)"
-											strokeWidth={2}
-											dot={false}
-											name="Churn %"
+											name="Revenue"
 										/>
 									</LineChart>
+								</ResponsiveContainer>
+							</div>
+						</CardContent>
+					</Card>
+
+					{/* Customer Growth */}
+					<Card>
+						<CardHeader>
+							<CardTitle>Customer Growth</CardTitle>
+							<CardDescription>
+								Active customers over 12 months
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<div className="h-80 w-full">
+								<ResponsiveContainer width="100%" height="100%">
+									<BarChart data={data.customerGrowthData}>
+										<CartesianGrid
+											strokeDasharray="3 3"
+											stroke="var(--border)"
+										/>
+										<XAxis
+											dataKey="month"
+											stroke="var(--muted-foreground)"
+										/>
+										<YAxis stroke="var(--muted-foreground)" />
+										<Tooltip
+											contentStyle={{
+												backgroundColor: "var(--card)",
+												border: "1px solid var(--border)",
+												borderRadius: "var(--radius)",
+											}}
+										/>
+										<Bar
+											dataKey="customers"
+											fill="var(--chart-3)"
+											name="Customers"
+										/>
+									</BarChart>
 								</ResponsiveContainer>
 							</div>
 						</CardContent>
