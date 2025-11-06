@@ -205,18 +205,6 @@ const data = {
 			],
 		},
 		{
-			title: "OPERATIONS & ACCOUNTING",
-			url: "#",
-			items: [
-				{
-					id: "invoicing-accounting",
-					label: "Invoicing & Accounting",
-					icon: FileText,
-					url: "/dashboard/accounting",
-				},
-			],
-		},
-		{
 			title: "APPLICATION",
 			url: "#",
 			items: [
