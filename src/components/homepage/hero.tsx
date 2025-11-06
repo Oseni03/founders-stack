@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "../ui/button";
 import { ArrowRight, Link } from "lucide-react";
+import Image from "next/image";
 
 export const Hero = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
 	return (
@@ -47,11 +48,17 @@ export const Hero = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
 			{/* Hero Image */}
 			<div className="w-full max-w-6xl mt-8 animate-fade-in">
 				<div className="relative rounded-lg border border-border bg-card p-2 shadow-2xl hover:scale-[1.02] transition-transform duration-300">
-					<div className="relative w-full aspect-video bg-muted rounded-md">
-						{/* Replace with actual dashboard image */}
-						<div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-							Dashboard Preview
-						</div>
+					<div className="relative w-full aspect-video bg-muted rounded-md overflow-hidden">
+						<Image
+							src="/homepage/hero-image-dark.png"
+							alt="Dashboard Preview"
+							className="w-full h-full object-cover block dark:hidden"
+						/>
+						<Image
+							src="/homepage/hero-image-light.png"
+							alt="Dashboard Preview"
+							className="w-full h-full object-cover hidden dark:block"
+						/>
 					</div>
 				</div>
 			</div>
