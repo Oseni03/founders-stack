@@ -145,20 +145,37 @@ export class JiraConnector {
 	/**
 	 * Create a webhook programmatically
 	 */
-	async createWebhook(webhookUrl: string, events: string[]): Promise<any> {
+	async createWebhook(
+		webhookUrl: string,
+		events: string[],
+		projectKeys: string[]
+	): Promise<any> {
 		try {
+			// Build JQL filter for multiple projects
+			const jqlFilter =
+				projectKeys.length > 0
+					? `project IN (${projectKeys.join(", ")})`
+					: undefined;
+
+			const requestBody: any = {
+				name: "Integration Webhook",
+				url: webhookUrl,
+				events,
+				excludeBody: false,
+			};
+
+			// Only add jqlFilter if project keys are provided
+			if (jqlFilter) {
+				requestBody.jqlFilter = jqlFilter;
+			}
+
 			const response = await fetch(`${this.baseUrl}/rest/api/3/webhook`, {
 				method: "POST",
 				headers: {
 					...this.getHeaders(),
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify({
-					name: "Integration Webhook",
-					url: webhookUrl,
-					events,
-					excludeBody: false,
-				}),
+				body: JSON.stringify(requestBody),
 			});
 
 			await this.handleResponse(response);

@@ -7,6 +7,7 @@ import { RepoData } from "@/types/code";
 import { saveProjects } from "@/server/categories/tasks";
 import { ChannelData } from "@/lib/connectors/slack";
 import { ProjectData } from "@/types/connector";
+import { createWebhook } from "@/server/platforms/jira";
 
 // Base resource schema
 const BaseResourceSchema = z.object({
@@ -59,8 +60,13 @@ const TOOL_CONFIG = {
 	},
 	jira: {
 		schema: z.array(BaseResourceSchema),
-		handler: async (orgId: string, data: any[]) =>
+		handler: async (orgId: string, data: any[]) => (
 			saveProjects(orgId, "jira", data as ProjectData[]),
+			createWebhook(
+				orgId,
+				data.map((i) => i.externalId)
+			)
+		),
 		validationLabel: "JIRA_VALIDATION",
 		errorMessage: "Failed to save Jira projects",
 	},

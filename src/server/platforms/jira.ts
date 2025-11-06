@@ -57,6 +57,95 @@ export async function getAccessibleResources(
 	}
 }
 
+export async function createWebhook(
+	organizationId: string,
+	projectKeys: string[]
+) {
+	try {
+		const integration = await getIntegration(organizationId, "jira");
+		const attributes = integration?.attributes as Record<string, any>;
+		const cloudId = attributes.cloudId;
+		const accessToken = integration?.accessToken;
+
+		// Validate integration
+		console.log(
+			`[${new Date().toISOString()}] Validating integration existance`
+		);
+		if (!integration || !accessToken || !cloudId) {
+			const errorMsg =
+				"Integration not found: Integration does not exist";
+			console.error(`[${new Date().toISOString()}] ${errorMsg}`);
+			throw new Error(errorMsg);
+		}
+
+		// Create webhook
+		console.log(
+			`[${new Date().toISOString()}] Initializing Jira connector for webhook creation`
+		);
+		const connector = new JiraConnector(accessToken, cloudId);
+		const webhookUrl = generateWebhookUrl(organizationId, "jira");
+		console.log(
+			`[${new Date().toISOString()}] Generated webhook URL: ${webhookUrl}`
+		);
+
+		console.log(
+			`[${new Date().toISOString()}] Creating Jira webhook with events: jira:issue_created, jira:issue_updated, jira:issue_deleted, comment_created, comment_updated, comment_deleted, worklog_updated`
+		);
+		const webhookStart = Date.now();
+		const webhook = await connector.createWebhook(
+			webhookUrl,
+			[
+				"jira:issue_created",
+				"jira:issue_updated",
+				"jira:issue_deleted",
+				"comment_created",
+				"comment_updated",
+				"comment_deleted",
+			],
+			projectKeys
+		);
+		const webhookDuration = Date.now() - webhookStart;
+		console.log(
+			`[${new Date().toISOString()}] Webhook created successfully in ${webhookDuration}ms: WebhookID=${webhook.webhookId}`
+		);
+
+		// Store webhook info
+		console.log(
+			`[${new Date().toISOString()}] Updating integration with webhook details`
+		);
+		const webhookUpdateStart = Date.now();
+		await prisma.integration.update({
+			where: {
+				organizationId_toolName: {
+					organizationId,
+					toolName: "jira",
+				},
+			},
+			data: {
+				webhookUrl,
+				webhookId: webhook.webhookId,
+				webhookSetupType: "AUTOMATIC",
+				attributes: {
+					...(integration.attributes as Record<string, any>),
+				},
+			},
+		});
+		const webhookUpdateDuration = Date.now() - webhookUpdateStart;
+		console.log(
+			`[${new Date().toISOString()}] Integration updated with webhook details in ${webhookUpdateDuration}ms`
+		);
+	} catch (error) {
+		const errorMsg =
+			error instanceof Error
+				? error.message
+				: "Failed to create Jira webhook";
+		console.error(
+			`[${new Date().toISOString()}] Failed to create Jira webhook for organization ${organizationId}: ${errorMsg}`
+		);
+		throw new Error(errorMsg);
+	}
+}
+
 export async function connectJiraIntegration(input: {
 	organizationId: string;
 	accessToken: string;
@@ -144,59 +233,6 @@ export async function connectJiraIntegration(input: {
 		const dbDuration = Date.now() - dbStart;
 		console.log(
 			`[${new Date().toISOString()}] Integration saved successfully in ${dbDuration}ms: IntegrationID=${integration.id}`
-		);
-
-		// Create webhook
-		console.log(
-			`[${new Date().toISOString()}] Initializing Jira connector for webhook creation`
-		);
-		const connector = new JiraConnector(accessToken, cloudId);
-		const webhookUrl = generateWebhookUrl(organizationId, "jira");
-		console.log(
-			`[${new Date().toISOString()}] Generated webhook URL: ${webhookUrl}`
-		);
-
-		console.log(
-			`[${new Date().toISOString()}] Creating Jira webhook with events: jira:issue_created, jira:issue_updated, jira:issue_deleted, comment_created, comment_updated, comment_deleted, worklog_updated`
-		);
-		const webhookStart = Date.now();
-		const webhook = await connector.createWebhook(webhookUrl, [
-			"jira:issue_created",
-			"jira:issue_updated",
-			"jira:issue_deleted",
-			"comment_created",
-			"comment_updated",
-			"comment_deleted",
-		]);
-		const webhookDuration = Date.now() - webhookStart;
-		console.log(
-			`[${new Date().toISOString()}] Webhook created successfully in ${webhookDuration}ms: WebhookID=${webhook.webhookId}`
-		);
-
-		// Store webhook info
-		console.log(
-			`[${new Date().toISOString()}] Updating integration with webhook details`
-		);
-		const webhookUpdateStart = Date.now();
-		await prisma.integration.update({
-			where: {
-				organizationId_toolName: {
-					organizationId,
-					toolName: "jira",
-				},
-			},
-			data: {
-				webhookUrl,
-				webhookId: webhook.webhookId,
-				webhookSetupType: "AUTOMATIC",
-				attributes: {
-					...(integration.attributes as Record<string, any>),
-				},
-			},
-		});
-		const webhookUpdateDuration = Date.now() - webhookUpdateStart;
-		console.log(
-			`[${new Date().toISOString()}] Integration updated with webhook details in ${webhookUpdateDuration}ms`
 		);
 
 		const totalDuration = Date.now() - startTime;
