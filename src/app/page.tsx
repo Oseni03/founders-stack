@@ -212,10 +212,10 @@ const Page = () => {
 	};
 
 	return (
-		<div className="flex min-h-screen flex-col bg-background">
+		<div className="flex min-h-screen flex-col bg-background px-4 sm:px-6 lg:px-8">
 			{/* Header */}
 			<header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-				<div className="container mx-auto px-4 h-16 flex items-center justify-between">
+				<div className="mx-auto w-full max-w-7xl h-16 flex items-center justify-between">
 					<div className="flex items-center gap-2">
 						<div className="w-8 h-8 rounded-lg bg-gradient-to-r from-primary to-primary/80 flex items-center justify-center">
 							<LayoutDashboard className="w-4 h-4 text-primary-foreground" />
@@ -250,7 +250,7 @@ const Page = () => {
 
 			{/* Hero Section */}
 			<main className="flex-1">
-				<section className="container mx-auto px-4 flex flex-col items-center justify-center gap-12 py-24 text-center md:py-32">
+				<section className="mx-auto w-full max-w-7xl flex flex-col items-center justify-center gap-12 py-24 text-center md:py-32">
 					<div className="flex max-w-4xl flex-col items-center gap-8 animate-fade-in">
 						<div className="inline-block rounded-full border border-border bg-muted px-4 py-1.5 text-sm animate-scale-in">
 							Single Pane of Glass for Indie Founders
@@ -299,13 +299,7 @@ const Page = () => {
 					</div>
 
 					{/* Hero Image */}
-					<div
-						className="w-full max-w-6xl mt-8 animate-fade-in"
-						style={{
-							animationDelay: "0.2s",
-							animationFillMode: "both",
-						}}
-					>
+					<div className="w-full max-w-6xl mt-8 animate-fade-in">
 						<div className="relative rounded-lg border border-border bg-card p-2 shadow-2xl hover:scale-[1.02] transition-transform duration-300">
 							<div className="relative w-full aspect-video bg-muted rounded-md">
 								{/* Replace with actual dashboard image */}
@@ -319,7 +313,7 @@ const Page = () => {
 
 				{/* Stats Section */}
 				<section className="border-y border-border bg-muted/30 py-16 animate-fade-in">
-					<div className="container mx-auto px-4">
+					<div className="mx-auto w-full max-w-7xl">
 						<div className="grid gap-8 md:grid-cols-3 text-center">
 							{stats.map((stat, index) => (
 								<div
@@ -339,7 +333,7 @@ const Page = () => {
 				</section>
 
 				{/* Core Features Grid */}
-				<section className="container mx-auto px-4 py-24 md:py-32">
+				<section className="mx-auto w-full max-w-7xl py-24 md:py-32">
 					<div className="flex flex-col items-center gap-4 text-center mb-16 animate-fade-in">
 						<h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
 							Everything You Need in One Place
@@ -350,7 +344,7 @@ const Page = () => {
 						</p>
 					</div>
 
-					<div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+					<div className="grid gap-8 md:grid-cols-2">
 						{coreFeatures.map((feature, index) => (
 							<Card
 								key={index}
@@ -392,8 +386,8 @@ const Page = () => {
 				</section>
 
 				{/* Feature Showcase with Images */}
-				<section className="border-y border-border bg-muted/30 py-24 md:py-32">
-					<div className="container mx-auto px-4">
+				<section className="mx-auto w-full max-w-7xl py-24 md:py-32">
+					<div className="mx-auto w-full max-w-7xl">
 						<div className="grid gap-16 lg:gap-24">
 							{featureShowcase.map((feature, index) => (
 								<div
@@ -462,7 +456,7 @@ const Page = () => {
 				</section>
 
 				{/* Testimonial Section */}
-				<section className="container mx-auto px-4 py-24 md:py-32">
+				<section className="mx-auto w-full max-w-7xl py-24 md:py-32">
 					<div className="flex flex-col items-center gap-4 text-center mb-16">
 						<h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
 							Trusted by Solo Founders
@@ -516,7 +510,7 @@ const Page = () => {
 
 				{/* CTA Section */}
 				<section className="border-t border-border bg-foreground text-background py-24 md:py-32">
-					<div className="container mx-auto px-4 flex flex-col items-center gap-8 text-center">
+					<div className="mx-auto w-full max-w-7xl flex flex-col items-center gap-8 text-center">
 						<h2 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl max-w-3xl">
 							Ready to unify your entire stack?
 						</h2>
@@ -562,7 +556,7 @@ const Page = () => {
 
 			{/* Footer */}
 			<footer className="border-t border-border bg-muted/30 py-12">
-				<div className="container mx-auto px-4">
+				<div className="mx-auto w-full max-w-7xl">
 					<div className="flex flex-col md:flex-row items-center justify-between gap-8">
 						<div className="flex flex-col items-center md:items-start gap-4">
 							<div className="flex items-center gap-2">
