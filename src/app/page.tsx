@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,10 @@ const Page = () => {
 			toast.error("Error signing out");
 		}
 	};
+
+	const isAuthenticated = useMemo(() => {
+		return !!session?.user;
+	}, [session]);
 
 	return (
 		<div className="flex min-h-screen flex-col bg-background px-4 sm:px-6 lg:px-8">
@@ -72,7 +76,7 @@ const Page = () => {
 
 			{/* Hero Section */}
 			<main className="flex-1">
-				<Hero isAuthenticated={!!session?.user} />
+				<Hero isAuthenticated={isAuthenticated} />
 
 				{/* Stats Section */}
 				<Stats />
@@ -87,7 +91,7 @@ const Page = () => {
 				<Testimonials />
 
 				{/* CTA Section */}
-				<CTA isAuthenticated={!!session?.user} />
+				<CTA isAuthenticated={isAuthenticated} />
 			</main>
 
 			{/* Footer */}
