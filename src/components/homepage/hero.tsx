@@ -1,9 +1,14 @@
 import React from "react";
 import { Button } from "../ui/button";
-import { ArrowRight, Link } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 import Image from "next/image";
 
-export const Hero = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
+export const Hero = ({
+	isAuthenticated = false,
+}: {
+	isAuthenticated: boolean;
+}) => {
 	return (
 		<section className="mx-auto w-full max-w-7xl flex flex-col items-center justify-center gap-12 py-24 text-center md:py-32">
 			<div className="flex max-w-4xl flex-col items-center gap-8 animate-fade-in">
