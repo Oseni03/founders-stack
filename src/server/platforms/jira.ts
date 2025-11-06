@@ -167,7 +167,6 @@ export async function connectJiraIntegration(input: {
 			"comment_created",
 			"comment_updated",
 			"comment_deleted",
-			"worklog_updated",
 		]);
 		const webhookDuration = Date.now() - webhookStart;
 		console.log(
