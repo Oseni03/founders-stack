@@ -20,7 +20,7 @@ import MagicLinkEmail from "@/components/emails/magic-link-email";
 const polarClient = new Polar({
 	accessToken: process.env.POLAR_ACCESS_TOKEN!,
 	// Use 'sandbox' for development, 'production' for live
-	server: "sandbox",
+	server: "production",
 });
 
 export const auth = betterAuth({
