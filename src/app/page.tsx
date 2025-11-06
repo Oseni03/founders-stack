@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
 	FileText,
 	Users,
@@ -14,7 +12,6 @@ import {
 	Zap,
 	CheckCircle,
 	ArrowRight,
-	Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
@@ -31,6 +28,9 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import Hero from "@/components/hero";
+import { BentoCard, BentoGrid } from "@/components/ui/bento-grid";
+import { TestimonialsSection } from "@/components/testimonials-with-marquee";
 
 const Page = () => {
 	const { data: session } = authClient.useSession();
@@ -38,55 +38,92 @@ const Page = () => {
 
 	const features = [
 		{
-			icon: <FileText className="w-6 h-6" />,
-			title: "Unified Command Center",
+			icon: FileText,
+			name: "Unified Command Center",
 			description:
 				"Aggregate data and actions from your entire SaaS stack into a single pane of glass.",
+			href: "/dashboard",
+			cta: "Explore Dashboard",
+			background: (
+				<div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 opacity-50" />
+			),
 		},
 		{
-			icon: <Users className="w-6 h-6" />,
-			title: "Cross-tool Metrics",
+			icon: Users,
+			name: "Cross-tool Metrics",
 			description:
 				"Correlate revenue, velocity, and product signals to make faster decisions.",
+			href: "/dashboard",
+			cta: "View Metrics",
+			background: (
+				<div className="absolute inset-0 bg-gradient-to-tl from-secondary/10 to-secondary/5 opacity-50" />
+			),
 		},
 		{
-			icon: <Shield className="w-6 h-6" />,
-			title: "Extensible Integrations",
+			icon: Shield,
+			name: "Extensible Integrations",
 			description:
 				"Connect popular services quickly and add new integrations with our framework.",
+			href: "/dashboard/integrations",
+			cta: "See Integrations",
+			background: (
+				<div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-accent/5 opacity-50" />
+			),
 		},
 		{
-			icon: <Zap className="w-6 h-6" />,
-			title: "Alerts & Automations",
+			icon: Zap,
+			name: "Alerts & Automations",
 			description:
 				"Get notified on anomalies and automate routine cross-tool tasks to save time.",
+			href: "#",
+			cta: "Setup Alerts",
+			background: (
+				<div className="absolute inset-0 bg-gradient-to-tl from-warning/10 to-warning/5 opacity-50" />
+			),
 		},
 		{
-			icon: <CheckCircle className="w-6 h-6" />,
-			title: "Read-first MVP",
+			icon: CheckCircle,
+			name: "Read-first MVP",
 			description:
 				"Launch with aggregated visibility first; enable CRUD and actions in later phases.",
+			href: "#",
+			cta: "Learn More",
+			background: (
+				<div className="absolute inset-0 bg-gradient-to-br from-success/10 to-success/5 opacity-50" />
+			),
 		},
 	];
 
 	const testimonials = [
 		{
-			name: "Alex, Indie Founder",
-			quote: "Builder's Stack saved me hours of context-switching. I see my tasks, revenue, and errors in one place!",
-			role: "Founder of SaaSify",
-			avatar: "AS",
+			author: {
+				name: "Alex, Indie Founder",
+				role: "Founder of SaaSify",
+				avatar: "AS",
+				handle: "@indie",
+			},
+			text: "Builder's Stack saved me hours of context-switching. I see my tasks, revenue, and errors in one place!",
+			href: "/case-studies/saasify",
 		},
 		{
-			name: "Jordan, Growth Hacker",
-			quote: "The MRR-churn correlation metrics helped me spot trends I was missing. Setup took 3 minutes!",
-			role: "Growth Lead at Metrics.io",
-			avatar: "JD",
+			author: {
+				name: "Jordan, Growth Hacker",
+				role: "Growth Lead at Metrics.io",
+				avatar: "JD",
+				handle: "@jordan",
+			},
+			text: "The MRR-churn correlation metrics helped me spot trends I was missing. Setup took 3 minutes!",
+			href: "/case-studies/metrics-io",
 		},
 		{
-			name: "Sam, Team Lead",
-			quote: "Managing my team and integrations in one dashboard is a game-changer for our small startup.",
-			role: "CTO at CollabHub",
-			avatar: "SM",
+			author: {
+				name: "Sam, Team Lead",
+				role: "CTO at CollabHub",
+				avatar: "SM",
+				handle: "@sam",
+			},
+			text: "Managing my team and integrations in one dashboard is a game-changer for our small startup.",
+			href: "/case-studies/collabhub",
 		},
 	];
 
@@ -193,45 +230,7 @@ const Page = () => {
 			</header>
 
 			{/* Hero Section */}
-			<section className="py-20 px-4">
-				<div className="container mx-auto text-center max-w-4xl">
-					<Badge variant="secondary" className="mb-6 animate-fade-in">
-						<Zap className="w-3 h-3 mr-1" />
-						Unified SaaS Visibility
-					</Badge>
-					<h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent animate-fade-in">
-						Builder&apos;s Stack — <br />
-						Your Founder Command Center
-					</h1>
-					<p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto animate-fade-in">
-						Aggregate metrics, alerts, and actions across GitHub,
-						Jira, Stripe, Slack, and 20+ other tools in a single
-						pane of glass built for indie founders.
-					</p>
-					<div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in">
-						{session?.user ? (
-							<Link href="/dashboard">
-								<Button size="lg" className="gap-2">
-									Go to Your Dashboard
-									<ArrowRight className="w-4 h-4" />
-								</Button>
-							</Link>
-						) : (
-							<Link href="/signup">
-								<Button size="lg" className="gap-2">
-									Start Free Now
-									<ArrowRight className="w-4 h-4" />
-								</Button>
-							</Link>
-						)}
-						<Link href="/demo">
-							<Button variant="outline" size="lg">
-								Try Interactive Demo
-							</Button>
-						</Link>
-					</div>
-				</div>
-			</section>
+			<Hero />
 
 			{/* Features Section */}
 			<section className="py-20 px-4 bg-muted/30">
@@ -246,26 +245,20 @@ const Page = () => {
 							workflow.
 						</p>
 					</div>
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+					<BentoGrid className="max-w-6xl mx-auto">
 						{features.map((feature, index) => (
-							<Card
-								key={index}
-								className="text-center hover:shadow-md transition-shadow duration-300 animate-fade-in"
-							>
-								<CardContent className="p-6">
-									<div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4 text-primary">
-										{feature.icon}
-									</div>
-									<h3 className="font-semibold mb-2">
-										{feature.title}
-									</h3>
-									<p className="text-sm text-muted-foreground">
-										{feature.description}
-									</p>
-								</CardContent>
-							</Card>
+							<BentoCard
+								key={feature.name}
+								name={feature.name}
+								className={index === 0 ? "md:col-span-2" : ""}
+								background={feature.background}
+								Icon={feature.icon}
+								description={feature.description}
+								href={session?.user ? feature.href : "/signup"}
+								cta={feature.cta}
+							/>
 						))}
-					</div>
+					</BentoGrid>
 				</div>
 			</section>
 
@@ -327,55 +320,12 @@ const Page = () => {
 			</section>
 
 			{/* Testimonials Section */}
-			<section className="py-20 px-4 bg-muted/30">
-				<div className="container mx-auto max-w-6xl">
-					<div className="text-center mb-12">
-						<h2 className="text-3xl md:text-4xl font-bold mb-4 animate-fade-in">
-							Trusted by Indie Founders
-						</h2>
-						<p className="text-lg text-muted-foreground max-w-2xl mx-auto animate-fade-in">
-							Hear from founders who’ve streamlined their
-							workflows with Builder’s Stack.
-						</p>
-					</div>
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-						{testimonials.map((testimonial, index) => (
-							<Card
-								key={index}
-								className="shadow-sm animate-fade-in"
-							>
-								<CardContent className="p-6">
-									<div className="flex items-center mb-4">
-										<Star className="w-5 h-5 text-yellow-500 fill-current" />
-										<Star className="w-5 h-5 text-yellow-500 fill-current" />
-										<Star className="w-5 h-5 text-yellow-500 fill-current" />
-										<Star className="w-5 h-5 text-yellow-500 fill-current" />
-										<Star className="w-5 h-5 text-yellow-500 fill-current" />
-									</div>
-									<p className="text-sm text-muted-foreground mb-4">
-										“{testimonial.quote}”
-									</p>
-									<div className="flex items-center gap-3">
-										<Avatar>
-											<AvatarFallback className="bg-primary/10 text-primary">
-												{testimonial.avatar}
-											</AvatarFallback>
-										</Avatar>
-										<div>
-											<p className="font-semibold">
-												{testimonial.name}
-											</p>
-											<p className="text-sm text-muted-foreground">
-												{testimonial.role}
-											</p>
-										</div>
-									</div>
-								</CardContent>
-							</Card>
-						))}
-					</div>
-				</div>
-			</section>
+			<TestimonialsSection
+				title="Trusted by Indie Founders"
+				description="Hear from founders who’ve streamlined their workflows with Builder’s Stack."
+				testimonials={testimonials}
+				className="bg-muted/30"
+			/>
 
 			{/* Get Started Section */}
 			<section className="py-16 px-4">
