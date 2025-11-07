@@ -87,8 +87,8 @@ const Page = () => {
 				{/* Feature Showcase with Images */}
 				<FeatureShowcase />
 
-				{/* Testimonial Section */}
-				<Testimonials />
+				{/* Testimonial Section
+				<Testimonials /> */}
 
 				{/* CTA Section */}
 				<CTA isAuthenticated={isAuthenticated} />
