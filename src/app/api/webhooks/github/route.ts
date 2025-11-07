@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
 	const payload = JSON.parse(body);
 
 	try {
+		console.log("GitHub webhook payload: ", payload);
 		// Process the webhook event
 		await processGitHubEvent(event!, payload);
 

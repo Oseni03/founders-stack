@@ -207,12 +207,18 @@ export class GitHubConnector {
 	// COMMIT METHODS
 	// ========================================================================
 
-	async fetchCommits(since?: Date, branch?: string): Promise<CommitData[]> {
+	async fetchCommits(
+		since?: Date,
+		branch?: string,
+		page: number = 1,
+		perPage: number = 100
+	): Promise<CommitData[]> {
 		try {
 			const params: any = {
 				owner: this.owner!,
 				repo: this.repo!,
-				per_page: 100,
+				per_page: perPage,
+				page: page,
 			};
 
 			if (since) {
@@ -257,64 +263,60 @@ export class GitHubConnector {
 		}
 	}
 
-	async fetchSingleCommit(sha: string): Promise<CommitData> {
-		try {
-			const { data } = await this.octokit.rest.repos.getCommit({
-				owner: this.owner!,
-				repo: this.repo!,
-				ref: sha,
-			});
+	// Fetch ALL commits with automatic pagination
+	async fetchAllCommits(
+		since?: Date,
+		branch?: string
+	): Promise<CommitData[]> {
+		const allCommits: CommitData[] = [];
+		let page = 1;
+		const perPage = 100;
 
-			return {
-				externalId: data.sha,
-				sha: data.sha,
-				authorName: data.commit.author?.name || data.author?.login,
-				authorEmail: data.commit.author?.email,
-				committerName:
-					data.commit.committer?.name || data.committer?.login,
-				committerEmail: data.commit.committer?.email,
-				avatarUrl:
-					data.author?.avatar_url || data.committer?.avatar_url,
-				message: data.commit.message,
-				committedAt: new Date(
-					data.commit.committer?.date || Date.now()
-				),
-				url: data.html_url,
-				additions: data.stats?.additions,
-				deletions: data.stats?.deletions,
-				total: data.stats?.total,
-				attributes: {
-					tree_sha: data.commit.tree.sha,
-					parents: data.parents?.map((p) => p.sha),
-					verified: data.commit.verification?.verified,
-					files: data.files?.map((f) => ({
-						filename: f.filename,
-						status: f.status,
-						additions: f.additions,
-						deletions: f.deletions,
-						changes: f.changes,
-					})),
-				},
-			};
-		} catch (error) {
-			console.error("GitHub fetchSingleCommit error:", error);
-			throw new Error("Failed to fetch commit");
+		while (true) {
+			try {
+				const commits = await this.fetchCommits(
+					since,
+					branch,
+					page,
+					perPage
+				);
+
+				if (commits.length === 0) break;
+
+				allCommits.push(...commits);
+
+				// If we got fewer items than perPage, we've reached the end
+				if (commits.length < perPage) break;
+
+				page++;
+
+				// Optional: Add delay to respect rate limits
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			} catch (error) {
+				console.error(`Error fetching commits page ${page}:`, error);
+				break;
+			}
 		}
+
+		return allCommits;
 	}
 
 	// ========================================================================
-	// PULL REQUEST METHODS
+	// PULL REQUEST METHODS (WITH PAGINATION)
 	// ========================================================================
 
 	async fetchPullRequests(
-		state: "open" | "closed" | "all" = "all"
+		state: "open" | "closed" | "all" = "all",
+		page: number = 1,
+		perPage: number = 100
 	): Promise<PullRequestData[]> {
 		try {
 			const { data } = await this.octokit.rest.pulls.list({
 				owner: this.owner!,
 				repo: this.repo!,
 				state,
-				per_page: 100,
+				per_page: perPage,
+				page: page,
 				sort: "updated",
 				direction: "desc",
 			});
@@ -380,19 +382,52 @@ export class GitHubConnector {
 		}
 	}
 
+	// Fetch ALL pull requests with automatic pagination
+	async fetchAllPullRequests(
+		state: "open" | "closed" | "all" = "all"
+	): Promise<PullRequestData[]> {
+		const allPRs: PullRequestData[] = [];
+		let page = 1;
+		const perPage = 100;
+
+		while (true) {
+			try {
+				const prs = await this.fetchPullRequests(state, page, perPage);
+
+				if (prs.length === 0) break;
+
+				allPRs.push(...prs);
+
+				if (prs.length < perPage) break;
+
+				page++;
+
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			} catch (error) {
+				console.error(`Error fetching PRs page ${page}:`, error);
+				break;
+			}
+		}
+
+		return allPRs;
+	}
+
 	// ========================================================================
-	// ISSUE METHODS
+	// ISSUE METHODS (WITH PAGINATION)
 	// ========================================================================
 
 	async fetchIssues(
-		state: "open" | "closed" | "all" = "all"
+		state: "open" | "closed" | "all" = "all",
+		page: number = 1,
+		perPage: number = 100
 	): Promise<IssueData[]> {
 		try {
 			const { data } = await this.octokit.rest.issues.listForRepo({
 				owner: this.owner!,
 				repo: this.repo!,
 				state,
-				per_page: 100,
+				per_page: perPage,
+				page: page,
 				sort: "updated",
 				direction: "desc",
 			});
@@ -446,16 +481,50 @@ export class GitHubConnector {
 		}
 	}
 
+	// Fetch ALL issues with automatic pagination
+	async fetchAllIssues(
+		state: "open" | "closed" | "all" = "all"
+	): Promise<IssueData[]> {
+		const allIssues: IssueData[] = [];
+		let page = 1;
+		const perPage = 100;
+
+		while (true) {
+			try {
+				const issues = await this.fetchIssues(state, page, perPage);
+
+				if (issues.length === 0) break;
+
+				allIssues.push(...issues);
+
+				if (issues.length < perPage) break;
+
+				page++;
+
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			} catch (error) {
+				console.error(`Error fetching issues page ${page}:`, error);
+				break;
+			}
+		}
+
+		return allIssues;
+	}
+
 	// ========================================================================
-	// BRANCH METHODS
+	// BRANCH METHODS (WITH PAGINATION)
 	// ========================================================================
 
-	async fetchBranches(): Promise<BranchData[]> {
+	async fetchBranches(
+		page: number = 1,
+		perPage: number = 100
+	): Promise<BranchData[]> {
 		try {
 			const { data } = await this.octokit.rest.repos.listBranches({
 				owner: this.owner!,
 				repo: this.repo!,
-				per_page: 100,
+				per_page: perPage,
+				page: page,
 			});
 
 			// Get default branch for comparison
@@ -555,16 +624,48 @@ export class GitHubConnector {
 		}
 	}
 
+	// Fetch ALL branches with automatic pagination
+	async fetchAllBranches(): Promise<BranchData[]> {
+		const allBranches: BranchData[] = [];
+		let page = 1;
+		const perPage = 100;
+
+		while (true) {
+			try {
+				const branches = await this.fetchBranches(page, perPage);
+
+				if (branches.length === 0) break;
+
+				allBranches.push(...branches);
+
+				if (branches.length < perPage) break;
+
+				page++;
+
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			} catch (error) {
+				console.error(`Error fetching branches page ${page}:`, error);
+				break;
+			}
+		}
+
+		return allBranches;
+	}
+
 	// ========================================================================
-	// CONTRIBUTOR METHODS
+	// CONTRIBUTOR METHODS (WITH PAGINATION)
 	// ========================================================================
 
-	async fetchContributors(): Promise<ContributorData[]> {
+	async fetchContributors(
+		page: number = 1,
+		perPage: number = 100
+	): Promise<ContributorData[]> {
 		try {
 			const { data } = await this.octokit.rest.repos.listContributors({
 				owner: this.owner!,
 				repo: this.repo!,
-				per_page: 100,
+				per_page: perPage,
+				page: page,
 			});
 
 			// Fetch detailed info for each contributor
@@ -584,13 +685,9 @@ export class GitHubConnector {
 							name = userDetails.name || undefined;
 							email = userDetails.email || undefined;
 						} catch (error) {
-							// User details not available
-							console.error(
-								"GitHub fetchContributors user detail error:",
+							console.warn(
+								`Could not fetch user details for ${contributor.login}:`,
 								error
-							);
-							throw new Error(
-								"Failed to fetch contributor detail"
 							);
 						}
 					}
@@ -611,12 +708,10 @@ export class GitHubConnector {
 							);
 						}
 					} catch (error) {
-						// Could not fetch commits
-						console.error(
-							"GitHub fetchContributor commits fetching error:",
+						console.warn(
+							`Could not fetch commits for ${contributor.login}:`,
 							error
 						);
-						throw new Error("Failed to fetch contributors commits");
 					}
 
 					return {
@@ -642,6 +737,40 @@ export class GitHubConnector {
 			console.error("GitHub fetchContributors error:", error);
 			throw new Error("Failed to fetch contributors");
 		}
+	}
+
+	// Fetch ALL contributors with automatic pagination
+	async fetchAllContributors(): Promise<ContributorData[]> {
+		const allContributors: ContributorData[] = [];
+		let page = 1;
+		const perPage = 100;
+
+		while (true) {
+			try {
+				const contributors = await this.fetchContributors(
+					page,
+					perPage
+				);
+
+				if (contributors.length === 0) break;
+
+				allContributors.push(...contributors);
+
+				if (contributors.length < perPage) break;
+
+				page++;
+
+				await new Promise((resolve) => setTimeout(resolve, 200)); // Longer delay for contributors
+			} catch (error) {
+				console.error(
+					`Error fetching contributors page ${page}:`,
+					error
+				);
+				break;
+			}
+		}
+
+		return allContributors;
 	}
 
 	// ========================================================================

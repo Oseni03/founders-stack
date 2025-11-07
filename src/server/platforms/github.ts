@@ -5,6 +5,7 @@ import { GitHubConnector } from "@/lib/connectors/github";
 import { prisma } from "@/lib/prisma";
 import { getIntegration } from "../integrations";
 import { Repository } from "@prisma/client";
+import { CommitData } from "@/types/code";
 
 export async function syncGitHub(
 	organizationId: string,
@@ -42,7 +43,9 @@ export async function syncGitHub(
 		);
 
 		try {
-			// Parallel fetch from GitHub
+			console.log(`🔄 Starting sync for repo: ${repo.name}`);
+
+			// Fetch all paginated data in parallel
 			const [
 				commits,
 				pullRequests,
@@ -51,19 +54,27 @@ export async function syncGitHub(
 				repoHealth,
 				contributors,
 			] = await Promise.all([
-				connector.fetchCommits(),
-				connector.fetchPullRequests(),
-				connector.fetchIssues(),
-				connector.fetchBranches(),
+				fetchAllCommits(connector),
+				connector.fetchAllPullRequests(),
+				connector.fetchAllIssues(),
+				connector.fetchAllBranches(),
 				connector.computeRepositoryHealth(),
-				connector.fetchContributors(),
+				connector.fetchAllContributors(),
 			]);
+
+			console.log(`📊 Fetched data for ${repo.name}:`, {
+				commits: commits.length,
+				pullRequests: pullRequests.length,
+				issues: issues.length,
+				branches: branches.length,
+				contributors: contributors.length,
+			});
 
 			// Batch upsert using Prisma transaction
 			await prisma.$transaction(async (tx) => {
-				// Upsert commits
-				await tx.commit.createMany({
-					data: commits.map((commit) => ({
+				// Upsert commits in batches to avoid query size limits
+				if (commits.length > 0) {
+					await batchUpsert(tx.commit, commits, 500, (commit) => ({
 						externalId: commit.externalId,
 						authorName: commit.authorName,
 						committerName: commit.committerName,
@@ -81,36 +92,39 @@ export async function syncGitHub(
 						organizationId,
 						sourceTool: "github",
 						repositoryId: repo.id,
-					})),
-					skipDuplicates: true,
-				});
+					}));
+				}
 
-				// Upsert pullRequests - REMOVED externalId_sourceTool
-				await tx.pullRequest.createMany({
-					data: pullRequests.map((pr) => ({
-						externalId: pr.externalId,
-						title: pr.title,
-						status: pr.status,
-						authorId: pr.authorId,
-						attributes: pr.attributes,
-						avgReviewTime: pr.avgReviewTime,
-						number: pr.number,
-						url: pr.url,
-						baseBranch: pr.baseBranch,
-						headBranch: pr.headBranch,
-						isDraft: pr.isDraft,
-						createdAt: pr.createdAt,
-						closedAt: pr.closedAt,
-						organizationId,
-						sourceTool: "github",
-						repositoryId: repo.id,
-					})),
-					skipDuplicates: true,
-				});
+				// Upsert pullRequests in batches
+				if (pullRequests.length > 0) {
+					await batchUpsert(
+						tx.pullRequest,
+						pullRequests,
+						500,
+						(pr) => ({
+							externalId: pr.externalId,
+							title: pr.title,
+							status: pr.status,
+							authorId: pr.authorId,
+							attributes: pr.attributes,
+							avgReviewTime: pr.avgReviewTime,
+							number: pr.number,
+							url: pr.url,
+							baseBranch: pr.baseBranch,
+							headBranch: pr.headBranch,
+							isDraft: pr.isDraft,
+							createdAt: pr.createdAt,
+							closedAt: pr.closedAt,
+							organizationId,
+							sourceTool: "github",
+							repositoryId: repo.id,
+						})
+					);
+				}
 
-				// Upsert issues - REMOVED externalId_sourceTool
-				await tx.issue.createMany({
-					data: issues.map((issue) => ({
+				// Upsert issues in batches
+				if (issues.length > 0) {
+					await batchUpsert(tx.issue, issues, 500, (issue) => ({
 						externalId: issue.externalId,
 						title: issue.title,
 						status: issue.status,
@@ -127,13 +141,12 @@ export async function syncGitHub(
 						organizationId,
 						sourceTool: "github",
 						repositoryId: repo.id,
-					})),
-					skipDuplicates: true,
-				});
+					}));
+				}
 
-				// Upsert branches - REMOVED externalId_sourceTool
-				await tx.branch.createMany({
-					data: branches.map((branch) => ({
+				// Upsert branches in batches
+				if (branches.length > 0) {
+					await batchUpsert(tx.branch, branches, 500, (branch) => ({
 						externalId: branch.externalId,
 						name: branch.name,
 						status: branch.status,
@@ -147,27 +160,30 @@ export async function syncGitHub(
 						organizationId,
 						sourceTool: "github",
 						repositoryId: repo.id,
-					})),
-					skipDuplicates: true,
-				});
+					}));
+				}
 
-				// Upsert contributors - REMOVED externalId_sourceTool
-				await tx.contributor.createMany({
-					data: contributors.map((contributor) => ({
-						externalId: contributor.externalId,
-						login: contributor.login,
-						contributions: contributor.contributions,
-						attributes: contributor.attributes,
-						name: contributor.name,
-						email: contributor.email,
-						avatarUrl: contributor.avatarUrl,
-						lastContributedAt: contributor.lastContributedAt,
-						organizationId,
-						sourceTool: "github",
-						repositoryId: repo.id,
-					})),
-					skipDuplicates: true,
-				});
+				// Upsert contributors in batches
+				if (contributors.length > 0) {
+					await batchUpsert(
+						tx.contributor,
+						contributors,
+						500,
+						(contributor) => ({
+							externalId: contributor.externalId,
+							login: contributor.login,
+							contributions: contributor.contributions,
+							attributes: contributor.attributes,
+							name: contributor.name,
+							email: contributor.email,
+							avatarUrl: contributor.avatarUrl,
+							lastContributedAt: contributor.lastContributedAt,
+							organizationId,
+							sourceTool: "github",
+							repositoryId: repo.id,
+						})
+					);
+				}
 
 				// Upsert repository health
 				await tx.repositoryHealth.upsert({
@@ -207,6 +223,51 @@ export async function syncGitHub(
 	}
 
 	console.log(`✅ GitHub sync completed for project: ${organizationId}`);
+}
+
+// Helper function to fetch all commits with pagination
+async function fetchAllCommits(
+	connector: GitHubConnector
+): Promise<CommitData[]> {
+	const allCommits: CommitData[] = [];
+	let page = 1;
+	const perPage = 100;
+
+	while (true) {
+		try {
+			const commits = await connector.fetchCommits();
+
+			if (commits.length === 0) break;
+
+			allCommits.push(...commits);
+
+			// If we got fewer items than perPage, we've reached the end
+			if (commits.length < perPage) break;
+
+			page++;
+		} catch (error) {
+			console.error(`Error fetching commits page ${page}:`, error);
+			break;
+		}
+	}
+
+	return allCommits;
+}
+
+// Helper function to batch upsert records
+async function batchUpsert<T, R>(
+	model: any,
+	data: T[],
+	batchSize: number,
+	mapper: (item: T) => R
+): Promise<void> {
+	for (let i = 0; i < data.length; i += batchSize) {
+		const batch = data.slice(i, i + batchSize);
+		await model.createMany({
+			data: batch.map(mapper),
+			skipDuplicates: true,
+		});
+	}
 }
 
 // Main event processor

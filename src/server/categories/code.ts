@@ -137,7 +137,7 @@ export async function saveRepositories(
 		);
 
 		// Sync related data (commits, PRs, issues, etc.)
-		await syncGitHub(organizationId, results);
+		syncGitHub(organizationId, results);
 
 		return results; // Return the created/updated repositories
 	} catch (error) {
