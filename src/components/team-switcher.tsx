@@ -31,6 +31,7 @@ import { CreateOrganizationForm } from "./forms/create-organization-form";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { getPlanByProductId } from "@/lib/utils";
 import { Member, Organization } from "@/types";
+import Logo from "./ui/logo";
 
 export function TeamSwitcher() {
 	const { isMobile } = useSidebar();
@@ -100,7 +101,7 @@ export function TeamSwitcher() {
 								className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 							>
 								<div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-									<Building2 className="size-4" />
+									<Logo className="w-4 h-4 text-primary-foreground" />
 								</div>
 								<div className="grid flex-1 text-left text-sm leading-tight">
 									<span className="truncate font-medium">

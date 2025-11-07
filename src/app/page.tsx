@@ -4,7 +4,7 @@ import React, { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard } from "lucide-react";
+import { Logo } from "@/components/ui/logo";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { Hero } from "@/components/homepage/hero";
@@ -44,10 +44,10 @@ const Page = () => {
 				<div className="mx-auto w-full max-w-7xl h-16 flex items-center justify-between">
 					<div className="flex items-center gap-2">
 						<div className="w-8 h-8 rounded-lg bg-gradient-to-r from-primary to-primary/80 flex items-center justify-center">
-							<LayoutDashboard className="w-4 h-4 text-primary-foreground" />
+							<Logo className="w-4 h-4 text-primary-foreground" />
 						</div>
 						<span className="text-xl font-bold tracking-tight">
-							Builder&apos;s Stack
+							Builders&apos; Stack
 						</span>
 					</div>
 					<nav className="flex items-center gap-4">

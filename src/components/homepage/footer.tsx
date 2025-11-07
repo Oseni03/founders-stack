@@ -1,4 +1,4 @@
-import { LayoutDashboard } from "lucide-react";
+import { Logo } from "@/components/ui/logo";
 import Link from "next/link";
 import React from "react";
 
@@ -10,10 +10,10 @@ export const Footer = () => {
 					<div className="flex flex-col items-center md:items-start gap-4">
 						<div className="flex items-center gap-2">
 							<div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-								<LayoutDashboard className="w-3 h-3 text-primary-foreground" />
+								<Logo className="w-3 h-3 text-primary-foreground" />
 							</div>
 							<span className="font-bold">
-								Builder&apos;s Stack
+								Builders&apos; Stack
 							</span>
 						</div>
 						<p className="text-sm text-muted-foreground text-center md:text-left">
@@ -45,7 +45,7 @@ export const Footer = () => {
 
 				<div className="flex items-center justify-between pt-8 mt-8 border-t border-border text-sm text-muted-foreground">
 					<p>
-						© {new Date().getFullYear()} Builder&apos;s Stack. All
+						© {new Date().getFullYear()} Builders&apos; Stack. All
 						rights reserved.
 					</p>
 					<p>v1.0.0</p>

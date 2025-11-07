@@ -18,9 +18,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-	title: "Builder's Stack: SaaS Dashboard for Indie Founders",
+	title: "Builders' Stack: SaaS Dashboard for Indie Founders",
 	description:
-		"Unify your SaaS stack with Builder's Stack—free dashboard for indie founders with 20+ integrations like GitHub, Jira, and Stripe. Start now!",
+		"Unify your SaaS stack with Builders' Stack—dashboard for indie founders with 20+ integrations like GitHub, Jira, and Stripe. Start now!",
 	keywords: [
 		"SaaS dashboard",
 		"indie founders",
@@ -34,19 +34,19 @@ export const metadata: Metadata = {
 		"Slack",
 	],
 	openGraph: {
-		title: "Builder's Stack: SaaS Dashboard for Indie Founders",
+		title: "Builders' Stack: SaaS Dashboard for Indie Founders",
 		description:
-			"Unify your SaaS stack with Builder's Stack—free dashboard for indie founders with 20+ integrations like GitHub, Jira, and Stripe. Start now!",
+			"Unify your SaaS stack with Builders' Stack—dashboard for indie founders with 20+ integrations like GitHub, Jira, and Stripe. Start now!",
 		url:
 			process.env.NEXT_PUBLIC_APP_URL ||
 			"https://builderstack.vercel.app",
-		siteName: "Builder's Stack",
+		siteName: "Builders' Stack",
 		images: [
 			{
 				url: "/og-image.jpg", // Placeholder; replace with actual OG image path
 				width: 1200,
 				height: 630,
-				alt: "Builder's Stack SaaS Dashboard",
+				alt: "Builders' Stack SaaS Dashboard",
 			},
 		],
 		locale: "en_US",
@@ -54,9 +54,9 @@ export const metadata: Metadata = {
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "Builder's Stack: SaaS Dashboard for Indie Founders",
+		title: "Builders' Stack: SaaS Dashboard for Indie Founders",
 		description:
-			"Unify your SaaS stack with Builder's Stack—free dashboard for indie founders with 20+ integrations like GitHub, Jira, and Stripe. Start now!",
+			"Unify your SaaS stack with Builders' Stack—dashboard for indie founders with 20+ integrations like GitHub, Jira, and Stripe. Start now!",
 		images: ["/og-image.jpg"], // Placeholder; replace with actual image path
 		creator: "@Oseni03",
 	},
