@@ -22,6 +22,7 @@ import {
 	FormMessage,
 } from "../ui/form";
 import { Skeleton } from "../ui/skeleton";
+import Logo from "../ui/logo";
 
 const formSchema = z.object({
 	email: z.email("Please enter a valid email address"),
@@ -96,7 +97,7 @@ const AuthContent = ({ className, ...props }: React.ComponentProps<"div">) => {
 								className="flex flex-col items-center gap-2 font-medium"
 							>
 								<div className="flex size-8 items-center justify-center rounded-md">
-									<GalleryVerticalEnd className="size-6" />
+									<Logo className="size-6" />
 								</div>
 								<span className="sr-only">
 									Builders&rsquo; Stack
