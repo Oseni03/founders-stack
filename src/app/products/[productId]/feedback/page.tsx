@@ -114,11 +114,11 @@ export default function FeedbackPage() {
 	};
 
 	if (loading) {
-		return <FeedbackPageLoading />;
+		return <FeedbackPageLoading productId={productId as string} />;
 	}
 
 	if (!data) {
-		return <FeedbackNoDataState />;
+		return <FeedbackNoDataState productId={productId as string} />;
 	}
 
 	return (

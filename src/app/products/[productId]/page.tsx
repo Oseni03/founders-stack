@@ -97,13 +97,22 @@ export default function DashboardContent() {
 				</div>
 
 				<div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-					<ProjectHealthCard data={data.project} />
-					<FinancialStatusCard data={data.finance} />
+					<ProjectHealthCard
+						productId={productId as string}
+						data={data.project}
+					/>
+					<FinancialStatusCard
+						productId={productId as string}
+						data={data.finance}
+					/>
 					<AnalyticsCard
 						productId={productId as string}
 						data={data.analytics}
 					/>
-					<FeedbackCard data={data.feedback} />
+					<FeedbackCard
+						productId={productId as string}
+						data={data.feedback}
+					/>
 					<CodeCICard
 						productId={productId as string}
 						data={data.code}

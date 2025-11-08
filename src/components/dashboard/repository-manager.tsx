@@ -51,7 +51,7 @@ export function RepositoryManager({
 								key={integration.id}
 								onClick={() =>
 									router.push(
-										`/dashboard/integrations/${integration.toolName}/onboarding`
+										`/products/${productId}/integrations/${integration.toolName}/onboarding`
 									)
 								}
 							>

@@ -93,7 +93,7 @@ const getNavs = (productId: string) => {
 						id: "payment-processing",
 						label: "Payment & Subscription",
 						icon: CreditCard,
-						url: `/products/${productId}/financials`, // /dashboard/payments
+						url: `/products/${productId}/financials`,
 					},
 					// {
 					// 	id: "subscription-management",

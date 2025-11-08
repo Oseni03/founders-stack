@@ -21,6 +21,7 @@ import Link from "next/link";
 import type { Metrics } from "@/lib/schemas";
 
 interface FeedbackCardProps {
+	productId: string;
 	data: Metrics["feedback"];
 }
 
@@ -30,9 +31,9 @@ const SENTIMENT_COLORS = {
 	negative: "#ef4444",
 };
 
-export function FeedbackCard({ data }: FeedbackCardProps) {
+export function FeedbackCard({ productId, data }: FeedbackCardProps) {
 	return (
-		<Link href="/dashboard/feedback">
+		<Link href={`/products/${productId}/feedback`}>
 			<Card className="cursor-pointer transition-all hover:shadow-lg hover:border-primary">
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
