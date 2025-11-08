@@ -6,6 +6,14 @@ import { Invitation, Subscription } from "@prisma/client";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+export type OrganizationStats = {
+	totalRevenue: number;
+	revenue30Days: number;
+	totalMRR: number;
+	totalOrganizations: number;
+	totalCustomers: number;
+};
+
 export type OrganizationState = {
 	activeOrganization?: Organization;
 	members: Member[];
@@ -15,6 +23,9 @@ export type OrganizationState = {
 	isAdmin: boolean;
 	isLoading: boolean;
 	error: string | null;
+	organizationStats: OrganizationStats | null;
+	statsLoading: boolean;
+	statsError: string | null;
 };
 
 type OrganizationActions = {
@@ -39,6 +50,8 @@ type OrganizationActions = {
 	updateSubscription: (subscription: Subscription) => void;
 	setLoading: (loading: boolean) => void;
 	setAdmin: (loading: boolean) => void;
+	loadOrganizationStats: () => Promise<void>;
+	setOrganizationStats: (stats: OrganizationStats) => void;
 };
 
 export type OrganizationStore = OrganizationState & OrganizationActions;
@@ -52,6 +65,9 @@ export const defaultInitState: OrganizationState = {
 	isAdmin: false,
 	isLoading: false,
 	error: null,
+	organizationStats: null,
+	statsLoading: false,
+	statsError: null,
 };
 
 export const createOrganizationStore = (
@@ -282,6 +298,53 @@ export const createOrganizationStore = (
 
 				updateSubscription: (subscription: Subscription) => {
 					set((state) => ({ ...state, subscription }));
+				},
+
+				loadOrganizationStats: async () => {
+					set((state) => ({
+						...state,
+						statsLoading: true,
+						statsError: null,
+					}));
+
+					try {
+						const response = await fetch("/api/products");
+
+						if (!response.ok) {
+							throw new Error(
+								"Failed to fetch organization stats"
+							);
+						}
+
+						const data = await response.json();
+
+						set((state) => ({
+							...state,
+							organizations: data.products, // Products are organizations
+							organizationStats: data.stats,
+							statsLoading: false,
+						}));
+					} catch (error) {
+						console.error(
+							"Error loading organization stats:",
+							error
+						);
+						set((state) => ({
+							...state,
+							statsError:
+								error instanceof Error
+									? error.message
+									: "Failed to load organization stats",
+							statsLoading: false,
+						}));
+					}
+				},
+
+				setOrganizationStats: (stats: OrganizationStats) => {
+					set((state) => ({
+						...state,
+						organizationStats: stats,
+					}));
 				},
 			}),
 			{ name: "organization-store" }

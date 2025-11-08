@@ -32,6 +32,7 @@ import { useOrganizationStore } from "@/zustand/providers/organization-store-pro
 import { getPlanByProductId } from "@/lib/utils";
 import { Member, Organization } from "@/types";
 import Logo from "./ui/logo";
+import { getOrganizationById } from "@/server/organizations";
 
 export function TeamSwitcher() {
 	const { isMobile } = useSidebar();
@@ -47,9 +48,7 @@ export function TeamSwitcher() {
 
 	const handleChangeOrganization = async (organizationId: string) => {
 		try {
-			const { error, data } = await authClient.organization.setActive({
-				organizationId,
-			});
+			const { error, data } = await getOrganizationById(organizationId);
 
 			if (error) {
 				console.error(error);

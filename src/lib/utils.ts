@@ -70,3 +70,16 @@ export const generateWebhookUrl = (
 export const generateSlug = (text: string) => {
 	return slugify(text);
 };
+
+// Simple currency formatter — assumes amounts are in whole currency units.
+export const formatCurrency = (value: number) => {
+	try {
+		return new Intl.NumberFormat(undefined, {
+			style: "currency",
+			currency: "USD",
+			maximumFractionDigits: 0,
+		}).format(value ?? 0);
+	} catch {
+		return `$${(value ?? 0).toLocaleString()}`;
+	}
+};

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { useRouter } from "next/navigation";
+import { getOrganizations } from "@/server/organizations";
 
 export default function ProductsLayoutPage({
 	children,
@@ -12,7 +13,6 @@ export default function ProductsLayoutPage({
 }>) {
 	const router = useRouter();
 	const { data: session, isPending } = authClient.useSession();
-	const { data: organizations } = authClient.useListOrganizations();
 	const { setOrganizations } = useOrganizationStore((state) => state);
 
 	// Handle authentication redirect
@@ -27,13 +27,15 @@ export default function ProductsLayoutPage({
 		const fetchOrganizations = async () => {
 			if (!session?.user.id) return; // Don't fetch if no session
 
+			const organizations = await getOrganizations();
+
 			if (organizations) {
 				setOrganizations(organizations || []);
 			}
 		};
 
 		fetchOrganizations();
-	}, [session, organizations, setOrganizations]);
+	}, [session, setOrganizations]);
 
 	// Show loading state while checking auth or redirecting
 	if (isPending || !session?.user.id) {
