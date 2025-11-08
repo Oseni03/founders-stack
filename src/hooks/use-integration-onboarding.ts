@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export function useIntegrationOnboarding() {
-	const { tool } = useParams<{ tool: string }>(); // e.g., "github", "asana"
+	const { productId, tool } = useParams<{
+		productId: string;
+		tool: string;
+	}>(); // e.g., "github", "asana"
 	const router = useRouter();
 	const [resources, setResources] = useState<Resources[]>([]);
 	const [selectedResources, setSelectedResources] = useState<string[]>([]);
@@ -125,16 +128,16 @@ export function useIntegrationOnboarding() {
 			toast.success(`${selected.length} resources added successfully`);
 
 			setDialogOpen(false);
-            setLoading(false);
-			router.push("/dashboard/integrations");
+			setLoading(false);
+			router.push(`/products/${productId}/integrations`);
 		} catch (error) {
-            toast.error(
-                error instanceof Error
-                ? error.message
-                : `Failed to add ${tool} resources`
+			toast.error(
+				error instanceof Error
+					? error.message
+					: `Failed to add ${tool} resources`
 			);
 			console.error(`[SAVE_${tool?.toUpperCase()}]`, error);
-            setLoading(false)
+			setLoading(false);
 		}
 	};
 
@@ -143,7 +146,7 @@ export function useIntegrationOnboarding() {
 		setDialogOpen(open);
 		if (!open) {
 			// Redirect to dashboard if user closes without saving
-			router.push("/dashboard");
+			router.push(`/products/${productId}`);
 		}
 	};
 

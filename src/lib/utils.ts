@@ -1,3 +1,4 @@
+import slugify from "@sindresorhus/slugify";
 import { clsx, type ClassValue } from "clsx";
 import { Building2, Zap } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -64,4 +65,8 @@ export const generateWebhookUrl = (
 ) => {
 	const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/${toolName}/${organizationId}`;
 	return webhookUrl;
+};
+
+export const generateSlug = (text: string) => {
+	return slugify(text);
 };

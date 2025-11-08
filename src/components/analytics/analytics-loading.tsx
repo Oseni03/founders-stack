@@ -12,7 +12,7 @@ export function AnalyticsPageLoading() {
 			<div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
 				{/* Header */}
 				<div className="mb-8 flex items-center gap-4">
-					<Link href="/dashboard">
+					<Link href="/products">
 						<Button variant="ghost" size="icon">
 							<ArrowLeft className="h-5 w-5" />
 						</Button>

@@ -32,7 +32,7 @@ export const Hero = ({
 
 				<div className="flex flex-col gap-4 sm:flex-row">
 					<Button size="lg" asChild className="text-base h-12 px-8">
-						<Link href={isAuthenticated ? "/dashboard" : "/signup"}>
+						<Link href={isAuthenticated ? "/products/" : "/signup"}>
 							{isAuthenticated
 								? "Go to Dashboard"
 								: "Start Free Trial"}
@@ -57,12 +57,18 @@ export const Hero = ({
 						<Image
 							src="/homepage/hero-image-dark.png"
 							alt="Dashboard Preview"
-							className="w-full h-full object-cover block dark:hidden"
+							fill
+							className="object-cover block dark:hidden"
+							sizes="(max-width: 1536px) 100vw, 1536px"
+							priority
 						/>
 						<Image
 							src="/homepage/hero-image-light.png"
 							alt="Dashboard Preview"
-							className="w-full h-full object-cover hidden dark:block"
+							fill
+							className="object-cover hidden dark:block"
+							sizes="(max-width: 1536px) 100vw, 1536px"
+							priority
 						/>
 					</div>
 				</div>

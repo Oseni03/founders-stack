@@ -20,7 +20,7 @@ export async function GET(
 		if (!(provider in OAUTH_CONFIG)) {
 			return NextResponse.redirect(
 				new URL(
-					`/dashboard/integrations?error=unsupported_provider`,
+					`/products/${user.organizationId}/integrations?error=unsupported_provider`,
 					request.url
 				)
 			);
@@ -32,7 +32,7 @@ export async function GET(
 		if (error) {
 			return NextResponse.redirect(
 				new URL(
-					`/dashboard/integrations?error=${encodeURIComponent(error)}`,
+					`/products/${user.organizationId}/integrations?error=${encodeURIComponent(error)}`,
 					request.url
 				)
 			);
@@ -42,7 +42,7 @@ export async function GET(
 		if (!code || !state) {
 			return NextResponse.redirect(
 				new URL(
-					"/dashboard/integrations?error=missing_parameters",
+					`/products/${user.organizationId}/integrations?error=missing_parameters`,
 					request.url
 				)
 			);
@@ -61,7 +61,7 @@ export async function GET(
 		if (!temp || temp.state !== state) {
 			return NextResponse.redirect(
 				new URL(
-					"/dashboard/integrations?error=invalid_state",
+					`/products/${user.organizationId}/integrations?error=invalid_state`,
 					request.url
 				)
 			);
@@ -80,7 +80,7 @@ export async function GET(
 
 			return NextResponse.redirect(
 				new URL(
-					"/dashboard/integrations?error=state_expired",
+					`/products/${user.organizationId}/integrations?error=state_expired`,
 					request.url
 				)
 			);
@@ -155,7 +155,7 @@ export async function GET(
 			// Redirect to integration onboarding page
 			return NextResponse.redirect(
 				new URL(
-					`/dashboard/integrations/${provider}/onboarding`,
+					`/products/${user.organizationId}/integrations/${provider}/onboarding`,
 					request.url
 				)
 			);
@@ -163,7 +163,7 @@ export async function GET(
 			console.error(`${provider} OAuth error:`, error);
 			return NextResponse.redirect(
 				new URL(
-					`/dashboard/integrations?error=${encodeURIComponent(
+					`/products/${user.organizationId}/integrations?error=${encodeURIComponent(
 						error instanceof Error ? error.message : "oauth_failed"
 					)}`,
 					request.url

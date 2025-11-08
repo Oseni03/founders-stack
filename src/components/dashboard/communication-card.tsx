@@ -21,14 +21,15 @@ import Link from "next/link";
 import type { Metrics } from "@/lib/schemas";
 
 interface CommunicationCardProps {
+	productId: string;
 	data: Metrics["communication"];
 }
 
-export function CommunicationCard({ data }: CommunicationCardProps) {
+export function CommunicationCard({ productId, data }: CommunicationCardProps) {
 	const sentimentPercent = Math.round(data.sentiment * 100);
 
 	return (
-		<Link href="/dashboard/communication">
+		<Link href={`/products/${productId}/communication`}>
 			<Card className="cursor-pointer transition-all hover:shadow-lg hover:border-primary">
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">

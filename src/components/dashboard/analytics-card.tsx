@@ -21,12 +21,13 @@ import Link from "next/link";
 import type { Metrics } from "@/lib/schemas";
 
 interface AnalyticsCardProps {
+	productId: string;
 	data: Metrics["analytics"];
 }
 
-export function AnalyticsCard({ data }: AnalyticsCardProps) {
+export function AnalyticsCard({ productId, data }: AnalyticsCardProps) {
 	return (
-		<Link href="/dashboard/analytics">
+		<Link href={`/products/${productId}/analytics`}>
 			<Card className="cursor-pointer transition-all hover:shadow-lg hover:border-primary">
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">

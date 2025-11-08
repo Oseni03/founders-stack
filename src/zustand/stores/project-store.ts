@@ -27,7 +27,10 @@ export interface ProjectState {
 	setLoading: (loading: boolean) => void;
 	setError: (error: string | null) => void;
 	setRange: (range: "7d" | "30d" | "90d") => void;
-	fetchData: (range: "7d" | "30d" | "90d") => Promise<void>;
+	fetchData: (
+		productId: string,
+		range: "7d" | "30d" | "90d"
+	) => Promise<void>;
 }
 
 export const createProjectStore = () => {
@@ -59,14 +62,14 @@ export const createProjectStore = () => {
 						state.range = range;
 					}),
 
-				fetchData: async (range) => {
+				fetchData: async (productId, range) => {
 					const { setLoading, setData, setError, setRange } = get();
 					setLoading(true);
 					setError(null);
 					setRange(range);
 					try {
 						const res = await fetch(
-							`/api/project-health?range=${range}`
+							`/api/products/${productId}/project-health?range=${range}`
 						);
 						if (!res.ok) throw new Error(await res.text());
 						const data: ProjectMetrics = await res.json();
