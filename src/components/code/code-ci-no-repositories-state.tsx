@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 
 export function CodeCINoRepositoriesState({
+	productId,
 	hasIntegration,
 }: {
+	productId: string;
 	hasIntegration: boolean;
 }) {
 	return (
@@ -29,15 +31,19 @@ export function CodeCINoRepositoriesState({
 							</p>
 							<div className="mt-4 flex justify-center gap-4">
 								{hasIntegration ? (
-									<Link href="/dashboard/integrations/github/onboarding">
+									<Link
+										href={`/products/${productId}/integrations/github/onboarding`}
+									>
 										<Button>Add Repository</Button>
 									</Link>
 								) : (
-									<Link href="/dashboard/integrations">
+									<Link
+										href={`/products/${productId}/integrations`}
+									>
 										<Button>Connect Integration</Button>
 									</Link>
 								)}
-								<Link href="/dashboard">
+								<Link href={`/products/${productId}`}>
 									<Button variant="outline">
 										Back to Dashboard
 									</Button>

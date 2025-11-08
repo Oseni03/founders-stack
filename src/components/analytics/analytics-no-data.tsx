@@ -4,8 +4,10 @@ import { BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
 export function AnalyticsNoDataState() {
+	const { productId } = useParams();
 	return (
 		<main className="min-h-screen bg-background">
 			<div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -24,10 +26,12 @@ export function AnalyticsNoDataState() {
 								}
 							</p>
 							<div className="mt-4 flex justify-center gap-4">
-								<Link href="/dashboard/integrations">
+								<Link
+									href={`/products/${productId}/integrations`}
+								>
 									<Button>Connect Integration</Button>
 								</Link>
-								<Link href="/dashboard">
+								<Link href="/products">
 									<Button variant="outline">
 										Back to Dashboard
 									</Button>

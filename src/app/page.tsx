@@ -57,7 +57,7 @@ const Page = () => {
 									Sign Out
 								</Button>
 								<Button asChild className="font-medium">
-									<Link href="/dashboard">Dashboard</Link>
+									<Link href="/products">Dashboard</Link>
 								</Button>
 							</>
 						) : (

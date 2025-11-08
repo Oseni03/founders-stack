@@ -22,7 +22,7 @@ export const CTA = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
 						asChild
 						className="text-base h-12 px-8"
 					>
-						<Link href={isAuthenticated ? "/dashboard" : "/signup"}>
+						<Link href={isAuthenticated ? "/products/" : "/signup"}>
 							{isAuthenticated
 								? "Go to Dashboard"
 								: "Start Free Trial"}

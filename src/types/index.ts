@@ -28,12 +28,17 @@ export interface Member {
 export interface Organization {
 	id: string;
 	name: string;
-	description?: string;
-	slug: string;
-	subscription?: Subscription;
+	description: string | null;
+	slug: string | null;
+	subscription: Subscription | null;
 	createdAt: Date;
 	logo?: string | null;
 	// metadata?: any;
+	revenue30Days: number;
+	totalRevenue: number;
+	activeSubscriptions: number;
+	mrr: number;
+	totalCustomers: number;
 }
 
 export interface InvitationData {

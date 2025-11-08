@@ -17,9 +17,9 @@ export async function GET(
 		});
 
 		console.log(data);
-		return NextResponse.redirect(new URL("/dashboard", request.url));
+		return NextResponse.redirect(new URL("/products", request.url));
 	} catch (error) {
 		console.error(error);
-		return NextResponse.redirect(new URL("/dashboard", request.url));
+		return NextResponse.redirect(new URL("/products", request.url));
 	}
 }

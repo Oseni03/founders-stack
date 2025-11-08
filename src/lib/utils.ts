@@ -1,3 +1,4 @@
+import slugify from "@sindresorhus/slugify";
 import { clsx, type ClassValue } from "clsx";
 import { Building2, Zap } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -64,4 +65,21 @@ export const generateWebhookUrl = (
 ) => {
 	const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/${toolName}/${organizationId}`;
 	return webhookUrl;
+};
+
+export const generateSlug = (text: string) => {
+	return slugify(text);
+};
+
+// Simple currency formatter — assumes amounts are in whole currency units.
+export const formatCurrency = (value: number) => {
+	try {
+		return new Intl.NumberFormat(undefined, {
+			style: "currency",
+			currency: "USD",
+			maximumFractionDigits: 0,
+		}).format(value ?? 0);
+	} catch {
+		return `$${(value ?? 0).toLocaleString()}`;
+	}
 };

@@ -22,6 +22,7 @@ import {
 	FormMessage,
 } from "../ui/form";
 import { Skeleton } from "../ui/skeleton";
+import Logo from "../ui/logo";
 
 const formSchema = z.object({
 	email: z.email("Please enter a valid email address"),
@@ -47,11 +48,11 @@ const AuthContent = ({ className, ...props }: React.ComponentProps<"div">) => {
 			setGoogleLoading(true);
 			await authClient.signIn.social({
 				provider: "google",
-				// callbackURL: "/dashboard",
+				// callbackURL: "/products",
 			});
 			toast.success("Redirecting to Google sign-in...");
 
-			const returnUrl = searchParams.get("callbackUrl") || "/dashboard";
+			const returnUrl = searchParams.get("callbackUrl") || "/products";
 			// After successful login, redirect to the return URL
 			router.push(returnUrl);
 		} catch (error) {
@@ -68,11 +69,11 @@ const AuthContent = ({ className, ...props }: React.ComponentProps<"div">) => {
 
 			await authClient.signIn.magicLink({
 				email: values.email,
-				// callbackURL: "/dashboard",
-				newUserCallbackURL: "/dashboard",
+				// callbackURL: "/products",
+				newUserCallbackURL: "/products",
 			});
 			toast.success("Magic link sent! Check your email.");
-			const returnUrl = searchParams.get("callbackUrl") || "/dashboard";
+			const returnUrl = searchParams.get("callbackUrl") || "/products";
 			// After successful login, redirect to the return URL
 			router.push(returnUrl);
 		} catch (error) {
@@ -96,7 +97,7 @@ const AuthContent = ({ className, ...props }: React.ComponentProps<"div">) => {
 								className="flex flex-col items-center gap-2 font-medium"
 							>
 								<div className="flex size-8 items-center justify-center rounded-md">
-									<GalleryVerticalEnd className="size-6" />
+									<Logo className="size-6" />
 								</div>
 								<span className="sr-only">
 									Builders&rsquo; Stack

@@ -21,10 +21,11 @@ import Link from "next/link";
 import type { Metrics } from "@/lib/schemas";
 
 interface CodeCICardProps {
+	productId: string;
 	data: Metrics["code"];
 }
 
-export function CodeCICard({ data }: CodeCICardProps) {
+export function CodeCICard({ productId, data }: CodeCICardProps) {
 	const activityData = [
 		{ name: "Commits", value: data.commits },
 		{ name: "PRs", value: data.prs * 4 },
@@ -44,7 +45,7 @@ export function CodeCICard({ data }: CodeCICardProps) {
 		);
 
 	return (
-		<Link href="/dashboard/version-control">
+		<Link href={`/products/${productId}/version-control`}>
 			<Card className="cursor-pointer transition-all hover:shadow-lg hover:border-primary">
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">

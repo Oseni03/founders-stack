@@ -15,12 +15,14 @@ import { Channel } from "@/types/communication";
 import { DeleteChannelDialog } from "./delete-channel-dialog";
 
 interface ChannelManagerProps {
+	productId: string;
 	channels: Channel[];
 	selectedChannelId: string;
 	onSelectChannel: (channelId: string) => void;
 }
 
 export function ChannelManager({
+	productId,
 	channels,
 	selectedChannelId,
 	onSelectChannel,
@@ -49,7 +51,7 @@ export function ChannelManager({
 								key={integration.id}
 								onClick={() =>
 									router.push(
-										`/dashboard/integrations/${integration.toolName}/onboarding`
+										`/products/${productId}/integrations/${integration.toolName}/onboarding`
 									)
 								}
 							>
@@ -76,7 +78,10 @@ export function ChannelManager({
 						>
 							#{channel.name}
 						</Button>
-						<DeleteChannelDialog channel={channel} />
+						<DeleteChannelDialog
+							productId={productId}
+							channel={channel}
+						/>
 					</div>
 				))}
 			</div>

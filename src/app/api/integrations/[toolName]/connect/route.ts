@@ -16,7 +16,8 @@ const API_KEY_INTEGRATIONS = {
 		handler: connectPostHogIntegration as (
 			params: any
 		) => Promise<ConnectionHandlerResult>,
-		redirectPath: "/dashboard/analytics",
+		redirectPath: (organizationId: string) =>
+			`/products/${organizationId}/analytics`,
 		requiredFields: ["apiKey", "projectId"] as const,
 		mapParams: (body: any, user: any) => ({
 			projectId: body.projectId,
@@ -31,7 +32,8 @@ const API_KEY_INTEGRATIONS = {
 		handler: connectStripeIntegration as (
 			params: any
 		) => Promise<ConnectionHandlerResult>,
-		redirectPath: "/dashboard/financials",
+		redirectPath: (organizationId: string) =>
+			`/products/${organizationId}/financials`,
 		requiredFields: ["apiKey"] as const,
 		mapParams: (body: any, user: any) => ({
 			userId: user.id,
@@ -43,8 +45,8 @@ const API_KEY_INTEGRATIONS = {
 		handler: connectAsanaIntegration as (
 			params: any
 		) => Promise<ConnectionHandlerResult>,
-		redirectPath: (toolName: string) =>
-			`/dashboard/integrations/${toolName}/onboarding`,
+		redirectPath: (organizationId: string, toolName: string) =>
+			`/products/${organizationId}/integrations/${toolName}/onboarding`,
 		requiredFields: ["apiKey"] as const,
 		mapParams: (body: any, user: any) => ({
 			organizationId: user.organizationId,
@@ -55,8 +57,8 @@ const API_KEY_INTEGRATIONS = {
 		handler: connectCannyIntegration as (
 			params: any
 		) => Promise<ConnectionHandlerResult>,
-		redirectPath: (toolName: string) =>
-			`/dashboard/integrations/${toolName}/onboarding`,
+		redirectPath: (organizationId: string, toolName: string) =>
+			`/products/${organizationId}/integrations/${toolName}/onboarding`,
 		requiredFields: ["apiKey"] as const,
 		mapParams: (body: any, user: any) => ({
 			organizationId: user.organizationId,
@@ -213,7 +215,10 @@ export async function POST(
 			if (response.status === "CONNECTED") {
 				const redirectPath =
 					typeof integration.redirectPath === "function"
-						? integration.redirectPath(toolName)
+						? integration.redirectPath(
+								user.organizationId,
+								toolName
+							)
 						: integration.redirectPath;
 
 				const redirectUrl = new URL(redirectPath, request.url);

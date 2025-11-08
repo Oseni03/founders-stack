@@ -21,10 +21,12 @@ import { useCodeStore } from "@/zustand/providers/code-store-provider";
 interface DeleteRepositoryDialogProps {
 	repository: Repository;
 	disabled?: boolean;
+	productId: string;
 }
 
 export function DeleteRepositoryDialog({
 	repository,
+	productId,
 }: DeleteRepositoryDialogProps) {
 	const removeRepository = useCodeStore((state) => state.removeRepository);
 
@@ -34,14 +36,17 @@ export function DeleteRepositoryDialog({
 	const handleDelete = async () => {
 		setIsDeleting(true);
 		try {
-			const response = await fetch("/api/code-ci/repositories", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					action: "deleteRepository",
-					data: { repositoryId: repository.id },
-				}),
-			});
+			const response = await fetch(
+				`/api/products/${productId}/code-ci/repositories`,
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						action: "deleteRepository",
+						data: { repositoryId: repository.id },
+					}),
+				}
+			);
 
 			if (!response.ok) throw new Error("Failed to delete repository");
 

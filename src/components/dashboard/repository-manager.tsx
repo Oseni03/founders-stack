@@ -15,12 +15,14 @@ import { useIntegrationsStore } from "@/zustand/providers/integrations-store-pro
 import { useRouter } from "next/navigation";
 
 interface RepositoryManagerProps {
+	productId: string;
 	repositories: Repository[];
 	selectedRepositoryId: string;
 	onSelectRepository: (repoId: string) => void;
 }
 
 export function RepositoryManager({
+	productId,
 	repositories,
 	selectedRepositoryId,
 	onSelectRepository,
@@ -49,7 +51,7 @@ export function RepositoryManager({
 								key={integration.id}
 								onClick={() =>
 									router.push(
-										`/dashboard/integrations/${integration.toolName}/onboarding`
+										`/products/${productId}/integrations/${integration.toolName}/onboarding`
 									)
 								}
 							>
@@ -86,7 +88,10 @@ export function RepositoryManager({
 								</div>
 							</div>
 						</button>
-						<DeleteRepositoryDialog repository={repo} />
+						<DeleteRepositoryDialog
+							productId={productId}
+							repository={repo}
+						/>
 					</div>
 				))}
 			</div>

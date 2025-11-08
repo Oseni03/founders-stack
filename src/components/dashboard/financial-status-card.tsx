@@ -21,17 +21,21 @@ import Link from "next/link";
 import type { Metrics } from "@/lib/schemas";
 
 interface FinancialStatusCardProps {
+	productId: string;
 	data: Metrics["finance"];
 }
 
-export function FinancialStatusCard({ data }: FinancialStatusCardProps) {
+export function FinancialStatusCard({
+	productId,
+	data,
+}: FinancialStatusCardProps) {
 	// Simulate MRR trend data
 	const mrrTrendData = data.mrrTrendData || [];
 
 	const mrrColor = data.mrr > 4500 ? "text-green-600" : "text-orange-600";
 
 	return (
-		<Link href="/dashboard/financials">
+		<Link href={`/products/${productId}/financials`}>
 			<Card className="cursor-pointer transition-all hover:shadow-lg hover:border-primary">
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">

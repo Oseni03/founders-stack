@@ -14,9 +14,11 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 
 export function NavMain({
+	productId,
 	items,
 	isAccountPage = false,
 }: {
+	productId: string;
 	items: {
 		id: string;
 		label: string;
@@ -33,7 +35,7 @@ export function NavMain({
 			<SidebarMenu>
 				{isAccountPage && (
 					<Link
-						href="/dashboard"
+						href={`/products/${productId}`}
 						className={cn(
 							buttonVariants({ variant: "ghost" }),
 							"flex items-center gap-2 justify-start"

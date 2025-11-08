@@ -21,10 +21,11 @@ import Link from "next/link";
 import type { Metrics } from "@/lib/schemas";
 
 interface ProjectHealthCardProps {
+	productId: string;
 	data: Metrics["project"];
 }
 
-export function ProjectHealthCard({ data }: ProjectHealthCardProps) {
+export function ProjectHealthCard({ productId, data }: ProjectHealthCardProps) {
 	const velocityData = data.velocity.map((v, i) => ({
 		name: `W${i + 1}`,
 		value: v,
@@ -38,7 +39,7 @@ export function ProjectHealthCard({ data }: ProjectHealthCardProps) {
 				: "text-green-500";
 
 	return (
-		<Link href="/dashboard/project-management">
+		<Link href={`/products/${productId}/project-management`}>
 			<Card className="cursor-pointer transition-all hover:shadow-lg hover:border-primary">
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">

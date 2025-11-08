@@ -6,9 +6,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from "next/link";
 
 export function CodeCIErrorState({
+	productId,
 	error,
 	onRetry,
 }: {
+	productId: string;
 	error: string;
 	onRetry: () => void;
 }) {
@@ -24,7 +26,7 @@ export function CodeCIErrorState({
 						</Alert>
 						<div className="flex justify-center gap-4">
 							<Button onClick={onRetry}>Retry</Button>
-							<Link href="/dashboard">
+							<Link href={`/products/${productId}`}>
 								<Button variant="outline">
 									Back to Dashboard
 								</Button>
