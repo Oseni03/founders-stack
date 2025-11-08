@@ -10,7 +10,7 @@ const Login = () => {
 	const router = useRouter();
 
 	if (!!user) {
-		router.push("/dashboard");
+		router.push("/products");
 	}
 
 	return (

@@ -82,7 +82,7 @@ function Hero() {
 					</div>
 					<div className="flex flex-row gap-3">
 						{session?.user ? (
-							<Link href="/dashboard">
+							<Link href="/products/">
 								<Button size="lg" className="gap-4">
 									Go to Dashboard{" "}
 									<ArrowRight className="w-4 h-4" />

@@ -212,3 +212,27 @@ export async function setActiveOrganization(organizationId: string) {
 		return { success: false, error };
 	}
 }
+
+export async function findAvailableSlug(baseSlug: string): Promise<string> {
+	let slug = baseSlug;
+	let counter = 1;
+
+	while (true) {
+		const existingOrg = await prisma.organization.findUnique({
+			where: { slug },
+		});
+
+		if (!existingOrg) {
+			return slug;
+		}
+
+		// Slug exists, try with counter
+		slug = `${baseSlug}-${counter}`;
+		counter++;
+
+		// Safety limit to prevent infinite loops
+		if (counter > 100) {
+			throw new Error("Could not generate unique slug");
+		}
+	}
+}

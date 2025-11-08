@@ -15,7 +15,7 @@ export interface DashboardState {
 	setError: (error: string | null) => void;
 	setRange: (range: "7d" | "30d" | "90d") => void;
 	setSearchQuery: (query: string) => void;
-	fetchData: () => Promise<void>;
+	fetchData: (productId: string) => Promise<void>;
 }
 
 export const createDashboardStore = () => {
@@ -53,7 +53,7 @@ export const createDashboardStore = () => {
 						state.searchQuery = query;
 					}),
 
-				fetchData: async () => {
+				fetchData: async (productId) => {
 					const {
 						range,
 						searchQuery,
@@ -66,7 +66,9 @@ export const createDashboardStore = () => {
 					try {
 						const params = new URLSearchParams({ range });
 						if (searchQuery) params.append("q", searchQuery);
-						const res = await fetch(`/api/metrics?${params}`);
+						const res = await fetch(
+							`/api/products/${productId}/metrics?${params}`
+						);
 						if (!res.ok) throw new Error(await res.text());
 						const data: Metrics = await res.json();
 						setData(data);

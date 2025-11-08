@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, LucideIcon } from "lucide-react";
 import { icons } from "lucide-react";
+import { useParams } from "next/navigation";
 
 interface ComingSoonCategoryProps {
 	category: string;
@@ -17,6 +18,7 @@ export default function ComingSoonCategoryPage({
 	description,
 	iconName,
 }: ComingSoonCategoryProps) {
+	const { productId } = useParams();
 	const Icon = icons[iconName] as LucideIcon; // Dynamically select the icon
 
 	if (!Icon) {
@@ -29,7 +31,7 @@ export default function ComingSoonCategoryPage({
 			<div className="max-w-3xl w-full text-center space-y-8">
 				{/* Header with Back Button */}
 				<div className="flex items-center justify-between">
-					<Link href="/dashboard">
+					<Link href={`/products/${productId}`}>
 						<Button
 							variant="ghost"
 							size="icon"
@@ -65,7 +67,7 @@ export default function ComingSoonCategoryPage({
 							your entrepreneurial journey smoother.
 						</p>
 						<div className="flex items-center justify-center">
-							<Link href="/dashboard">
+							<Link href={`/products/${productId}`}>
 								<Button className="flex items-center gap-2">
 									Explore Existing Features
 									<ArrowLeft className="h-4 w-4 transform rotate-180" />

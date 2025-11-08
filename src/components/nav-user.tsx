@@ -28,7 +28,7 @@ import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
-export function NavUser() {
+export function NavUser({ productId }: { productId: string }) {
 	const { user } = authClient.useSession().data || {};
 	const { isMobile } = useSidebar();
 	const router = useRouter();
@@ -107,7 +107,9 @@ export function NavUser() {
 						<DropdownMenuGroup>
 							<DropdownMenuItem
 								onClick={() =>
-									router.push("/dashboard/account")
+									router.push(
+										`/products/${productId}/account`
+									)
 								}
 							>
 								<UserCircle />
@@ -118,7 +120,9 @@ export function NavUser() {
 						<DropdownMenuGroup>
 							<DropdownMenuItem
 								onClick={() =>
-									router.push("/dashboard/settings")
+									router.push(
+										`/products/${productId}/settings`
+									)
 								}
 							>
 								<Sparkles />
@@ -127,7 +131,7 @@ export function NavUser() {
 							<DropdownMenuItem
 								onClick={() =>
 									router.push(
-										"/dashboard/settings?tab=subscription"
+										`/products/${productId}/settings?tab=subscription`
 									)
 								}
 							>

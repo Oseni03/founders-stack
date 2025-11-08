@@ -32,7 +32,7 @@ export const Hero = ({
 
 				<div className="flex flex-col gap-4 sm:flex-row">
 					<Button size="lg" asChild className="text-base h-12 px-8">
-						<Link href={isAuthenticated ? "/dashboard" : "/signup"}>
+						<Link href={isAuthenticated ? "/products/" : "/signup"}>
 							{isAuthenticated
 								? "Go to Dashboard"
 								: "Start Free Trial"}

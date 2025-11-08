@@ -19,11 +19,15 @@ import { useCommunicationStore } from "@/zustand/providers/communication-store-p
 import { Channel } from "@/types/communication";
 
 interface DeleteChannelDialogProps {
+	productId: string;
 	channel: Channel;
 	disabled?: boolean;
 }
 
-export function DeleteChannelDialog({ channel }: DeleteChannelDialogProps) {
+export function DeleteChannelDialog({
+	productId,
+	channel,
+}: DeleteChannelDialogProps) {
 	const removeChannel = useCommunicationStore((state) => state.removeChannel);
 
 	const [open, setOpen] = useState(false);
@@ -32,7 +36,7 @@ export function DeleteChannelDialog({ channel }: DeleteChannelDialogProps) {
 	const handleDelete = async () => {
 		setIsDeleting(true);
 		try {
-			const response = await fetch("/api/communication", {
+			const response = await fetch(`/api/${productId}/communication`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
