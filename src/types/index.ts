@@ -34,6 +34,11 @@ export interface Organization {
 	createdAt: Date;
 	logo?: string | null;
 	// metadata?: any;
+	revenue30Days: number;
+	totalRevenue: number;
+	activeSubscriptions: number;
+	mrr: number;
+	totalCustomers: number;
 }
 
 export interface InvitationData {

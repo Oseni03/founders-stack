@@ -58,7 +58,14 @@ export function CreateOrganizationForm() {
 				return;
 			}
 
-			addOrganization(data as Organization);
+			addOrganization({
+				...data,
+				revenue30Days: 0,
+				mrr: 0,
+				totalRevenue: 0,
+				totalCustomers: 0,
+				activeSubscriptions: 0,
+			} as Organization);
 			toast.dismiss();
 			toast.success("Project created successfully");
 		} catch (error) {

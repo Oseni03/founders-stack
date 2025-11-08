@@ -6,6 +6,7 @@ import { isAdmin } from "./permissions";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { slugifyWithCounter } from "@sindresorhus/slugify";
+import { FinanceSubscription } from "@prisma/client";
 
 export async function getOrganizations() {
 	const { currentUser } = await getCurrentUser();
@@ -81,20 +82,90 @@ export async function getOrganizationBySlug(slug: string) {
 
 export async function getOrganizationById(orgId: string) {
 	try {
-		const organization = await prisma.organization.findUnique({
-			where: { id: orgId },
-			include: {
-				members: {
-					include: {
-						user: true,
-					},
-				},
-				invitations: true,
-				subscription: true,
-			},
-		});
+		const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-		return { data: organization, success: true };
+		// Execute all queries in parallel
+		const [organization, invoices, subscriptions, customerCount] =
+			await Promise.all([
+				prisma.organization.findUnique({
+					where: { id: orgId },
+					include: {
+						members: {
+							include: {
+								user: true,
+							},
+						},
+						invitations: true,
+						subscription: true,
+					},
+				}),
+				prisma.invoice.findMany({
+					where: {
+						organizationId: orgId,
+						status: "paid",
+					},
+					select: {
+						amountPaid: true,
+						issuedDate: true,
+					},
+				}),
+				prisma.financeSubscription.findMany({
+					where: {
+						organizationId: orgId,
+						status: { in: ["active", "trialing"] },
+					},
+					select: {
+						amount: true,
+						billingCycle: true,
+					},
+				}),
+				prisma.customer.count({
+					where: {
+						organizationId: orgId,
+					},
+				}),
+			]);
+
+		if (!organization) {
+			return {
+				data: null,
+				success: false,
+				error: "Organization not found",
+			};
+		}
+
+		// Calculate metrics efficiently
+		let totalRevenue = 0;
+		let revenue30Days = 0;
+
+		for (const invoice of invoices) {
+			totalRevenue += invoice.amountPaid;
+			if (invoice.issuedDate && invoice.issuedDate >= thirtyDaysAgo) {
+				revenue30Days += invoice.amountPaid;
+			}
+		}
+
+		// Calculate MRR
+		let mrr = 0;
+		for (const sub of subscriptions) {
+			if (sub.billingCycle === "monthly") {
+				mrr += sub.amount;
+			} else if (sub.billingCycle === "yearly") {
+				mrr += sub.amount / 12;
+			}
+		}
+
+		// Combine organization data with metrics
+		const organizationWithMetrics = {
+			...organization,
+			revenue30Days: Math.round(revenue30Days),
+			totalRevenue: Math.round(totalRevenue),
+			activeSubscriptions: subscriptions.length,
+			mrr: Math.round(mrr),
+			totalCustomers: customerCount,
+		};
+
+		return { data: organizationWithMetrics, success: true };
 	} catch (error) {
 		console.error(error);
 		return { success: false, error };
@@ -235,4 +306,72 @@ export async function findAvailableSlug(baseSlug: string): Promise<string> {
 			throw new Error("Could not generate unique slug");
 		}
 	}
+}
+
+export async function getProductStats() {
+	// Fetch organizations with related counts we care about
+	const organizations = await prisma.organization.findMany({
+		include: {
+			financeSubscriptions: {
+				where: {
+					status: { in: ["active", "trialing"] },
+				},
+				select: {
+					amount: true,
+					billingCycle: true,
+					startDate: true,
+				},
+			},
+			projects: { select: { id: true } },
+			integrations: { select: { id: true } },
+			members: { select: { id: true } },
+			repositories: { select: { id: true } },
+		},
+		orderBy: { createdAt: "desc" },
+	});
+
+	const now = new Date();
+	const thirtyDaysAgo = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 30);
+
+	let totalRevenue = 0;
+	let last30DaysRevenue = 0;
+	let totalMRR = 0;
+
+	for (const org of organizations) {
+		const subscriptions = org.financeSubscriptions;
+
+		for (const sub of subscriptions) {
+			if (sub.amount && typeof sub.amount === "number") {
+				totalRevenue += sub.amount;
+
+				const createdAt = sub.startDate
+					? new Date(sub.startDate)
+					: null;
+				if (createdAt && createdAt >= thirtyDaysAgo) {
+					last30DaysRevenue += sub.amount;
+				}
+
+				const interval = (sub.billingCycle || "").toLowerCase();
+				if (
+					interval.includes("month") ||
+					interval.includes("monthly")
+				) {
+					totalMRR += sub.amount;
+				} else if (
+					interval.includes("year") ||
+					interval.includes("yearly")
+				) {
+					totalMRR += sub.amount / 12;
+				}
+			}
+		}
+	}
+
+	return {
+		organizations,
+		totalRevenue: Math.round(totalRevenue),
+		last30DaysRevenue: Math.round(last30DaysRevenue),
+		totalMRR: Math.round(totalMRR),
+		totalStartups: organizations.length,
+	};
 }

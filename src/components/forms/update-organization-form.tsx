@@ -54,7 +54,10 @@ export function UpdateOrganizationForm({
 			if (data) {
 				toast.dismiss();
 				toast.success("Project updated successfully");
-				updateOrganizationState(data as Organization);
+				updateOrganizationState({
+					...organization,
+					...data,
+				} as Organization);
 			} else {
 				toast.dismiss();
 				toast.error("Failed to update project");
