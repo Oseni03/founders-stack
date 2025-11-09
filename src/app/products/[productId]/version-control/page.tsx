@@ -49,7 +49,9 @@ export default function CodeCIPage() {
 		setLoading(true);
 		setError(null);
 		try {
-			const res = await fetch("/api/code-ci/repositories");
+			const res = await fetch(
+				`/api/products/${productId}/code-ci/repositories`
+			);
 			if (!res.ok) throw new Error("Failed to fetch repositories");
 			const { data } = await res.json();
 			setRepositories(data);
@@ -65,7 +67,7 @@ export default function CodeCIPage() {
 		setError(null);
 		setData(null); // Clear old data immediately
 		try {
-			const url = `/api/code-ci/repositories/${repoId}`;
+			const url = `/api/products/${productId}/code-ci/repositories/${repoId}`;
 			const res = await fetch(url);
 
 			if (!res.ok) {

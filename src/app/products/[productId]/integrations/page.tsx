@@ -153,9 +153,31 @@ export default function IntegrationsPage() {
 											</Button>
 										</>
 									)}
+									{integration.status === "PENDING_SETUP" && (
+										<>
+											<Badge
+												variant="outline"
+												className="gap-1 border-destructive"
+											>
+												<XCircle className="h-3 w-3 text-destructive" />
+												Pending Setup
+											</Badge>
+										</>
+									)}
+									{integration.status === "SYNCING" && (
+										<>
+											<Badge
+												variant="outline"
+												className="gap-1 border-destructive"
+											>
+												<XCircle className="h-3 w-3 text-destructive" />
+												Syncing
+											</Badge>
+										</>
+									)}
 									{integration.status === "DISCONNECTED" && (
 										<ConnectButton
-                                            loading={loading}
+											loading={loading}
 											integration={integration}
 											onConnect={connect}
 										/>
