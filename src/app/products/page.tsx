@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-	DollarSign,
-	TrendingUp,
-	Package,
-	ExternalLink,
-	Share2,
-} from "lucide-react";
+import { Package, Share2, Settings } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import {
@@ -23,19 +23,22 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { CreateOrganizationForm } from "@/components/forms/create-organization-form";
+import Link from "next/link";
+import { Skeleton } from "@/components/ui/skeleton";
+import ThemeToggle from "@/components/theme-toggle";
 
 export default function ProductsPage() {
 	const { data: session } = authClient.useSession();
 	const {
 		organizations,
 		organizationStats,
-		statsLoading,
+		isLoading,
 		loadOrganizationStats,
 	} = useOrganizationStore((state) => state);
 
 	useEffect(() => {
 		loadOrganizationStats();
-	}, []);
+	}, [loadOrganizationStats]);
 
 	const formatCurrency = (amount: number) => {
 		return new Intl.NumberFormat("en-US", {
@@ -45,236 +48,224 @@ export default function ProductsPage() {
 		}).format(amount);
 	};
 
-	if (statsLoading) {
-		return (
-			<div className="flex items-center justify-center min-h-screen">
-				<div className="text-muted-foreground">Loading...</div>
-			</div>
-		);
-	}
-
 	const userName = session?.user?.name || "User";
 	const userImage = session?.user?.image;
 
 	return (
-		<div className="space-y-6 pb-16">
-			{/* Header Section - User Info */}
-			<div className="flex items-center justify-between">
-				<div className="flex items-center gap-4">
-					<Avatar className="h-16 w-16">
-						<AvatarImage src={userImage || ""} alt={userName} />
-						<AvatarFallback>
-							{userName.substring(0, 2).toUpperCase()}
-						</AvatarFallback>
-					</Avatar>
-					<div>
-						<h1 className="text-3xl font-bold tracking-tight">
-							@{userName.toLowerCase().replace(/\s+/g, "_")}
-						</h1>
-						<p className="text-muted-foreground">
-							{organizations.length} product
-							{organizations.length !== 1 ? "s" : ""} with
-							verified revenue
-						</p>
+		<main className="min-h-screen bg-background">
+			<div className="mx-auto max-w-8 px-4 py-8 sm:px-6 lg:px-8">
+				{/* Header Section - User Info */}
+				<div className="flex items-center justify-between mb-8 animate-fade-in">
+					<div className="flex items-center gap-4">
+						<Avatar className="h-16 w-16">
+							<AvatarImage src={userImage || ""} alt={userName} />
+							<AvatarFallback>
+								{userName.substring(0, 2).toUpperCase()}
+							</AvatarFallback>
+						</Avatar>
+						<div>
+							<h1 className="text-2xl sm:text-3xl font-bold">
+								{userName}
+							</h1>
+							<p className="text-muted-foreground">
+								{organizations.length} product
+								{organizations.length !== 1 ? "s" : ""} with
+								verified revenue
+							</p>
+						</div>
+					</div>
+					<div className="flex items-center gap-2">
+						<ThemeToggle />
+						<Button variant="outline" size="sm" className="gap-2">
+							<Share2 className="h-4 w-4" />
+							<span className="hidden sm:inline">Share</span>
+						</Button>
+						<Button variant="outline" size="sm" className="gap-2">
+							<Settings className="h-4 w-4" />
+							<span className="hidden sm:inline">Settings</span>
+						</Button>
 					</div>
 				</div>
-				<div className="flex items-center gap-2">
-					<Button variant="outline" size="sm">
-						<Share2 className="h-4 w-4 mr-2" />
-						Share
-					</Button>
-					<Button variant="outline" size="sm">
-						<ExternalLink className="h-4 w-4 mr-2" />
-						Visit Profile
-					</Button>
-				</div>
-			</div>
 
-			{/* Stats Cards */}
-			<div className="grid gap-4 md:grid-cols-4">
-				<Card>
-					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-						<CardTitle className="text-sm font-medium">
-							Total Revenue
-						</CardTitle>
-						<DollarSign className="h-4 w-4 text-muted-foreground" />
-					</CardHeader>
-					<CardContent>
-						<div className="text-2xl font-bold">
-							{formatCurrency(
-								organizationStats?.totalRevenue || 0
-							)}
+				{isLoading ? (
+					<div className="space-y-6">
+						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+							{[...Array(4)].map((_, i) => (
+								<Skeleton key={i} className="h-32" />
+							))}
 						</div>
-						<p className="text-xs text-muted-foreground mt-1">
-							Across all products
-						</p>
-					</CardContent>
-				</Card>
-
-				<Card>
-					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-						<CardTitle className="text-sm font-medium">
-							Last 30 days
-						</CardTitle>
-						<TrendingUp className="h-4 w-4 text-muted-foreground" />
-					</CardHeader>
-					<CardContent>
-						<div className="text-2xl font-bold">
-							{formatCurrency(
-								organizationStats?.revenue30Days || 0
-							)}
-						</div>
-						<p className="text-xs text-muted-foreground mt-1">
-							Recent revenue
-						</p>
-					</CardContent>
-				</Card>
-
-				<Card>
-					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-						<CardTitle className="text-sm font-medium">
-							Total MRR
-						</CardTitle>
-						<DollarSign className="h-4 w-4 text-muted-foreground" />
-					</CardHeader>
-					<CardContent>
-						<div className="text-2xl font-bold">
-							{formatCurrency(organizationStats?.totalMRR || 0)}
-						</div>
-						<p className="text-xs text-muted-foreground mt-1">
-							Combined MRR
-						</p>
-					</CardContent>
-				</Card>
-
-				<Card>
-					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-						<CardTitle className="text-sm font-medium">
-							Products
-						</CardTitle>
-						<Package className="h-4 w-4 text-muted-foreground" />
-					</CardHeader>
-					<CardContent>
-						<div className="text-2xl font-bold">
-							{organizationStats?.totalOrganizations || 0}
-						</div>
-						<p className="text-xs text-muted-foreground mt-1">
-							{organizationStats?.totalCustomers || 0} total
-							customers
-						</p>
-					</CardContent>
-				</Card>
-			</div>
-
-			{/* Products List */}
-			<div>
-				<h2 className="text-xl font-semibold mb-4">
-					Products by @{userName.toLowerCase().replace(/\s+/g, "_")}
-				</h2>
-				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-					{organizations.map((organization) => (
-						<Card
-							key={organization.id}
-							className="hover:shadow-md transition-shadow"
-						>
-							<CardHeader className="pb-3">
-								<div className="flex items-start gap-3">
-									<Avatar className="h-12 w-12">
-										<AvatarImage
-											src={organization.logo || ""}
-											alt={organization.name}
-										/>
-										<AvatarFallback>
-											{organization.name
-												.substring(0, 2)
-												.toUpperCase()}
-										</AvatarFallback>
-									</Avatar>
-									<div className="flex-1 min-w-0">
-										<CardTitle className="text-lg truncate">
-											{organization.name}
-										</CardTitle>
-										<p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-											{organization.description ||
-												"Product description"}
-										</p>
-									</div>
-								</div>
-							</CardHeader>
-							<CardContent className="space-y-2">
-								<div className="flex items-center justify-between text-sm">
-									<span className="text-muted-foreground">
-										Revenue (30 days)
-									</span>
-									<span className="font-semibold">
-										{formatCurrency(
-											organization.revenue30Days
-										)}
-									</span>
-								</div>
-								<div className="flex items-center justify-between text-sm">
-									<span className="text-muted-foreground">
-										Total Revenue
-									</span>
-									<span className="font-semibold">
-										{formatCurrency(
-											organization.totalRevenue
-										)}
-									</span>
-								</div>
-								<div className="flex items-center justify-between text-sm">
-									<span className="text-muted-foreground">
-										Customers
-									</span>
-									<Badge variant="secondary">
-										{organization.totalCustomers}
-									</Badge>
-								</div>
-								<div className="flex items-center justify-between text-sm pt-2 border-t">
-									<span className="text-muted-foreground">
-										MRR
-									</span>
-									<span className="font-bold text-primary">
-										{formatCurrency(organization.mrr)}
-									</span>
-								</div>
-							</CardContent>
-						</Card>
-					))}
-				</div>
-			</div>
-
-			{organizations.length === 0 && (
-				<Card className="p-12">
-					<div className="text-center space-y-3">
-						<Package className="h-12 w-12 mx-auto text-muted-foreground" />
-						<h3 className="text-lg font-semibold">
-							No Products Yet
-						</h3>
-						<p className="text-muted-foreground max-w-md mx-auto">
-							Start building your indie hacker portfolio! Create
-							your first SaaS or startup project and track
-							verified revenue as you grow.
-						</p>
-						<Dialog>
-							<DialogTrigger asChild>
-								<Button className="mt-4">
-									Create Your First Product
-								</Button>
-							</DialogTrigger>
-							<DialogContent showCloseButton={true}>
-								<DialogHeader>
-									<DialogTitle>Add product</DialogTitle>
-									<DialogDescription>
-										Add a new product to get started.
-									</DialogDescription>
-								</DialogHeader>
-								<CreateOrganizationForm />
-							</DialogContent>
-						</Dialog>
+						<Skeleton className="h-96" />
 					</div>
-				</Card>
-			)}
-		</div>
+				) : (
+					<>
+						{/* Stats Overview */}
+						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 animate-scale-in">
+							<Card className="hover-scale">
+								<CardHeader className="pb-2">
+									<CardDescription className="text-xs">
+										Total revenue
+									</CardDescription>
+									<CardTitle className="text-2xl sm:text-3xl font-bold">
+										{formatCurrency(
+											organizationStats?.totalRevenue || 0
+										)}
+									</CardTitle>
+									<p className="text-xs text-muted-foreground">
+										Across all products
+									</p>
+								</CardHeader>
+							</Card>
+
+							<Card className="hover-scale">
+								<CardHeader className="pb-2">
+									<CardDescription className="text-xs">
+										Last 30 days
+									</CardDescription>
+									<CardTitle className="text-2xl sm:text-3xl font-bold">
+										{formatCurrency(
+											organizationStats?.revenue30Days ||
+												0
+										)}
+									</CardTitle>
+									<p className="text-xs text-muted-foreground">
+										Recent revenue
+									</p>
+								</CardHeader>
+							</Card>
+
+							<Card className="hover-scale">
+								<CardHeader className="pb-2">
+									<CardDescription className="text-xs">
+										Total MRR
+									</CardDescription>
+									<CardTitle className="text-2xl sm:text-3xl font-bold">
+										{formatCurrency(
+											organizationStats?.totalMRR || 0
+										)}
+									</CardTitle>
+									<p className="text-xs text-muted-foreground">
+										Combined MRR
+									</p>
+								</CardHeader>
+							</Card>
+
+							<Card className="hover-scale">
+								<CardHeader className="pb-2">
+									<CardDescription className="text-xs">
+										Products
+									</CardDescription>
+									<CardTitle className="text-2xl sm:text-3xl font-bold">
+										{organizationStats?.totalOrganizations ||
+											0}
+									</CardTitle>
+									<p className="text-xs text-muted-foreground">
+										{organizationStats?.totalCustomers || 0}{" "}
+										total customers
+									</p>
+								</CardHeader>
+							</Card>
+						</div>
+
+						{/* Products Section Header */}
+						<div className="mb-6 animate-fade-in">
+							<h2 className="text-xl sm:text-2xl font-bold">
+								Products by @products_dashboard
+							</h2>
+						</div>
+
+						{/* Products Grid */}
+						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 animate-scale-in">
+							{organizations.map((org) => (
+								<Link href={`/products/${org.id}`} key={org.id}>
+									<Card className="hover-scale group cursor-pointer">
+										<CardHeader className="pb-3">
+											<div className="flex items-start gap-3">
+												<div className="flex-shrink-0">
+													<Avatar className="h-12 w-12 rounded-lg">
+														<AvatarImage
+															src={
+																org.logo ||
+																`https://api.dicebear.com/7.x/shapes/svg?seed=${org.name}`
+															}
+														/>
+														<AvatarFallback className="rounded-lg bg-primary/10 text-primary font-bold">
+															{org.name
+																.substring(0, 2)
+																.toUpperCase()}
+														</AvatarFallback>
+													</Avatar>
+												</div>
+												<div className="flex-1 min-w-0">
+													<CardTitle className="text-base sm:text-lg mb-1 truncate">
+														{org.name}
+													</CardTitle>
+													<CardDescription className="text-xs line-clamp-2">
+														{org.description ||
+															"No description available"}
+													</CardDescription>
+												</div>
+											</div>
+										</CardHeader>
+										<CardContent className="space-y-3">
+											<div>
+												<p className="text-xs text-muted-foreground mb-1">
+													Revenue (30 days)
+												</p>
+												<p className="text-xl sm:text-2xl font-bold">
+													{formatCurrency(
+														org.revenue30Days
+													)}
+												</p>
+											</div>
+
+											<div className="flex items-center justify-between text-sm">
+												<span className="text-muted-foreground">
+													Customers
+												</span>
+												<Badge variant="secondary">
+													{org.totalCustomers}
+												</Badge>
+											</div>
+										</CardContent>
+									</Card>
+								</Link>
+							))}
+						</div>
+					</>
+				)}
+
+				{organizations.length === 0 && (
+					<Card className="p-12">
+						<div className="text-center space-y-3">
+							<Package className="h-12 w-12 mx-auto text-muted-foreground" />
+							<h3 className="text-lg font-semibold">
+								No Products Yet
+							</h3>
+							<p className="text-muted-foreground max-w-md mx-auto">
+								Start building your indie hacker portfolio!
+								Create your first SaaS or startup project and
+								track verified revenue as you grow.
+							</p>
+							<Dialog>
+								<DialogTrigger asChild>
+									<Button className="mt-4">
+										Create Your First Product
+									</Button>
+								</DialogTrigger>
+								<DialogContent showCloseButton={true}>
+									<DialogHeader>
+										<DialogTitle>Add product</DialogTitle>
+										<DialogDescription>
+											Add a new product to get started.
+										</DialogDescription>
+									</DialogHeader>
+									<CreateOrganizationForm />
+								</DialogContent>
+							</Dialog>
+						</div>
+					</Card>
+				)}
+			</div>
+		</main>
 	);
 }
