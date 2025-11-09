@@ -5,9 +5,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, TrendingUp, Package } from "lucide-react";
+import {
+	DollarSign,
+	TrendingUp,
+	Package,
+	ExternalLink,
+	Share2,
+} from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
+import { CreateOrganizationForm } from "@/components/forms/create-organization-form";
 
 export default function ProductsPage() {
 	const { data: session } = authClient.useSession();
@@ -33,35 +48,7 @@ export default function ProductsPage() {
 	if (statsLoading) {
 		return (
 			<div className="flex items-center justify-center min-h-screen">
-				<Card className="shadow-lg w-full max-w-xl">
-					<CardHeader>
-						<CardTitle>Loading Products</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className="flex flex-col items-center gap-4">
-							{/* Shadow placeholder for avatar and stats */}
-							<div className="w-16 h-16 rounded-full bg-muted animate-pulse mb-2" />
-							<div className="h-6 w-40 bg-muted rounded animate-pulse mb-2" />
-							<div className="grid grid-cols-4 gap-2 w-full mb-4">
-								{Array.from({ length: 4 }).map((_, i) => (
-									<div
-										key={i}
-										className="h-16 bg-muted rounded animate-pulse"
-									/>
-								))}
-							</div>
-							<div className="h-6 w-32 bg-muted rounded animate-pulse mb-2" />
-							<div className="grid grid-cols-2 md:grid-cols-3 gap-2 w-full">
-								{Array.from({ length: 3 }).map((_, i) => (
-									<div
-										key={i}
-										className="h-24 bg-muted rounded animate-pulse"
-									/>
-								))}
-							</div>
-						</div>
-					</CardContent>
-				</Card>
+				<div className="text-muted-foreground">Loading...</div>
 			</div>
 		);
 	}
@@ -70,7 +57,7 @@ export default function ProductsPage() {
 	const userImage = session?.user?.image;
 
 	return (
-		<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-6 pb-16">
+		<div className="space-y-6 pb-16">
 			{/* Header Section - User Info */}
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-4">
@@ -82,18 +69,16 @@ export default function ProductsPage() {
 					</Avatar>
 					<div>
 						<h1 className="text-3xl font-bold tracking-tight">
-							{userName}
+							@{userName.toLowerCase().replace(/\s+/g, "_")}
 						</h1>
-						{/* <p className="text-muted-foreground">
-							{organizationStats?.totalOrganizations} product
-							{organizationStats?.totalOrganizations !== 1
-								? "s"
-								: ""}{" "}
-							with verified revenue
-						</p> */}
+						<p className="text-muted-foreground">
+							{organizations.length} product
+							{organizations.length !== 1 ? "s" : ""} with
+							verified revenue
+						</p>
 					</div>
 				</div>
-				{/* <div className="flex items-center gap-2">
+				<div className="flex items-center gap-2">
 					<Button variant="outline" size="sm">
 						<Share2 className="h-4 w-4 mr-2" />
 						Share
@@ -102,7 +87,7 @@ export default function ProductsPage() {
 						<ExternalLink className="h-4 w-4 mr-2" />
 						Visit Profile
 					</Button>
-				</div> */}
+				</div>
 			</div>
 
 			{/* Stats Cards */}
@@ -183,7 +168,9 @@ export default function ProductsPage() {
 
 			{/* Products List */}
 			<div>
-				<h2 className="text-xl font-semibold mb-4">Products</h2>
+				<h2 className="text-xl font-semibold mb-4">
+					Products by @{userName.toLowerCase().replace(/\s+/g, "_")}
+				</h2>
 				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 					{organizations.map((organization) => (
 						<Card
@@ -269,9 +256,22 @@ export default function ProductsPage() {
 							your first SaaS or startup project and track
 							verified revenue as you grow.
 						</p>
-						<Button className="mt-4">
-							Create Your First Product
-						</Button>
+						<Dialog>
+							<DialogTrigger asChild>
+								<Button className="mt-4">
+									Create Your First Product
+								</Button>
+							</DialogTrigger>
+							<DialogContent showCloseButton={true}>
+								<DialogHeader>
+									<DialogTitle>Add product</DialogTitle>
+									<DialogDescription>
+										Add a new product to get started.
+									</DialogDescription>
+								</DialogHeader>
+								<CreateOrganizationForm />
+							</DialogContent>
+						</Dialog>
 					</div>
 				</Card>
 			)}

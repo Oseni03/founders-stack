@@ -67,11 +67,11 @@ export function CreateOrganizationForm() {
 				activeSubscriptions: 0,
 			} as Organization);
 			toast.dismiss();
-			toast.success("Project created successfully");
+			toast.success("Product added successfully");
 		} catch (error) {
 			console.error(error);
 			toast.dismiss();
-			toast.error("Failed to create project");
+			toast.error("Failed to add product");
 		} finally {
 			setIsLoading(false);
 		}
@@ -87,7 +87,7 @@ export function CreateOrganizationForm() {
 						<FormItem>
 							<FormLabel>Project Name</FormLabel>
 							<FormControl>
-								<Input placeholder="My project" {...field} />
+								<Input placeholder="My product" {...field} />
 							</FormControl>
 							<FormMessage />
 						</FormItem>
