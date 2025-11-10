@@ -151,7 +151,11 @@ export const createOrganizationStore = (
 				updateOrganization: async (organization) => {
 					set((state) => ({
 						...state,
-						activeOrganization: organization,
+						organizations: state.organizations.map((org) =>
+							org.id === organization.id
+								? { ...org, ...organization }
+								: org
+						),
 					}));
 				},
 				removeOrganization: async (organizationId) => {

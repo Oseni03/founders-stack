@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Package, Share2 } from "lucide-react";
+import { Package } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import {
@@ -21,7 +21,6 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { CreateOrganizationForm } from "@/components/forms/create-organization-form";
-import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import ThemeToggle from "@/components/theme-toggle";
 import { SettingsDialog } from "@/components/settings-dialog";
