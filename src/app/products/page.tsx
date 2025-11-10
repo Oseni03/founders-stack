@@ -177,9 +177,7 @@ export default function ProductsPage() {
 						{/* Products Grid */}
 						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 animate-scale-in">
 							{organizations.map((org) => (
-								<Link href={`/products/${org.id}`} key={org.id}>
-									<ProductCard org={org} />
-								</Link>
+								<ProductCard key={org.id} org={org} />
 							))}
 						</div>
 					</>
