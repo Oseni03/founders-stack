@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import {
+	ArrowLeft,
 	BarChart3,
 	CreditCard,
 	FileText,
@@ -40,6 +41,12 @@ const getNavs = (productId: string) => {
 				title: "OVERVIEW",
 				url: "#",
 				items: [
+					{
+						id: "products",
+						label: "Products",
+						icon: ArrowLeft,
+						url: `/products`,
+					},
 					{
 						id: "dashboard",
 						label: "Dashboard",
