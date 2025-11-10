@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-	ArrowLeft,
 	BarChart3,
 	CreditCard,
 	FileText,
@@ -14,8 +13,6 @@ import {
 	MessageSquare,
 	MessagesSquare,
 	Settings,
-	Settings2,
-	User,
 } from "lucide-react";
 import { NavUser } from "@/components/nav-user";
 import { TeamSwitcher } from "@/components/team-switcher";
@@ -35,31 +32,9 @@ import {
 import { useParams, usePathname } from "next/navigation";
 import { NavSecondary } from "./nav-secondary";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
-import { buttonVariants } from "./ui/button";
 
 const getNavs = (productId: string) => {
 	return {
-		account: [
-			{
-				title: "ACCOUNT",
-				url: "#",
-				items: [
-					{
-						id: "profile",
-						label: "Profile",
-						url: `/products/${productId}/account`,
-						icon: User,
-					},
-					{
-						id: "preferences",
-						label: "Preferences",
-						url: `/products/${productId}/account/preferences`,
-						icon: Settings2,
-					},
-				],
-			},
-		],
 		navMain: [
 			{
 				title: "OVERVIEW",
@@ -238,30 +213,14 @@ export function ProductSidebar({
 		return getNavs(productId as string);
 	}, [productId]);
 
-	const isAccountPage =
-		pathname.includes("/account") && !pathname.includes("/accounting");
-	const items = isAccountPage ? data.account : data.navMain;
 	return (
 		<Sidebar collapsible="icon" {...props}>
 			<SidebarHeader>
 				<TeamSwitcher />
 			</SidebarHeader>
 			<SidebarContent>
-				{isAccountPage && (
-					<Link
-						href="/products"
-						className={cn(
-							buttonVariants({ variant: "ghost" }),
-							"flex items-center gap-2 justify-start"
-						)}
-					>
-						<ArrowLeft className="h-4 w-4" />
-						Back to Dashboard
-					</Link>
-				)}
-
 				{/* We create a SidebarGroup for each parent. */}
-				{items.map((item) => (
+				{data.navMain.map((item) => (
 					<SidebarGroup key={item.title}>
 						<SidebarGroupLabel>{item.title}</SidebarGroupLabel>
 						<SidebarGroupContent>

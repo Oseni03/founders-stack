@@ -26,6 +26,7 @@ import { CreateOrganizationForm } from "@/components/forms/create-organization-f
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import ThemeToggle from "@/components/theme-toggle";
+import { SettingsDialog } from "@/components/settings-dialog";
 
 export default function ProductsPage() {
 	const { data: session } = authClient.useSession();
@@ -80,10 +81,7 @@ export default function ProductsPage() {
 							<Share2 className="h-4 w-4" />
 							<span className="hidden sm:inline">Share</span>
 						</Button>
-						<Button variant="outline" size="sm" className="gap-2">
-							<Settings className="h-4 w-4" />
-							<span className="hidden sm:inline">Settings</span>
-						</Button>
+						<SettingsDialog />
 					</div>
 				</div>
 
