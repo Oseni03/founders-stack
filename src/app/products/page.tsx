@@ -3,15 +3,13 @@
 import { useEffect } from "react";
 import {
 	Card,
-	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Package, Share2, Settings } from "lucide-react";
+import { Package, Share2 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import {
@@ -27,6 +25,8 @@ import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import ThemeToggle from "@/components/theme-toggle";
 import { SettingsDialog } from "@/components/settings-dialog";
+import { ProductCard } from "@/components/dashboard/product-card";
+import { formatCurrency } from "@/lib/utils";
 
 export default function ProductsPage() {
 	const { data: session } = authClient.useSession();
@@ -40,14 +40,6 @@ export default function ProductsPage() {
 	useEffect(() => {
 		loadOrganizationStats();
 	}, [loadOrganizationStats]);
-
-	const formatCurrency = (amount: number) => {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: "USD",
-			minimumFractionDigits: 0,
-		}).format(amount);
-	};
 
 	const userName = session?.user?.name || "User";
 	const userImage = session?.user?.image;
@@ -113,7 +105,6 @@ export default function ProductsPage() {
 									</p>
 								</CardHeader>
 							</Card>
-
 							<Card className="hover-scale">
 								<CardHeader className="pb-2">
 									<CardDescription className="text-xs">
@@ -130,7 +121,6 @@ export default function ProductsPage() {
 									</p>
 								</CardHeader>
 							</Card>
-
 							<Card className="hover-scale">
 								<CardHeader className="pb-2">
 									<CardDescription className="text-xs">
@@ -146,7 +136,6 @@ export default function ProductsPage() {
 									</p>
 								</CardHeader>
 							</Card>
-
 							<Card className="hover-scale">
 								<CardHeader className="pb-2">
 									<CardDescription className="text-xs">
@@ -165,67 +154,31 @@ export default function ProductsPage() {
 						</div>
 
 						{/* Products Section Header */}
-						<div className="mb-6 animate-fade-in">
+						<div className="mb-6 flex items-center justify-between animate-fade-in">
 							<h2 className="text-xl sm:text-2xl font-bold">
-								Products by @products_dashboard
+								Products
 							</h2>
+							<Dialog>
+								<DialogTrigger asChild>
+									<Button>Create Product</Button>
+								</DialogTrigger>
+								<DialogContent showCloseButton={true}>
+									<DialogHeader>
+										<DialogTitle>Add product</DialogTitle>
+										<DialogDescription>
+											Add a new product to get started.
+										</DialogDescription>
+									</DialogHeader>
+									<CreateOrganizationForm />
+								</DialogContent>
+							</Dialog>
 						</div>
 
 						{/* Products Grid */}
 						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 animate-scale-in">
 							{organizations.map((org) => (
 								<Link href={`/products/${org.id}`} key={org.id}>
-									<Card className="hover-scale group cursor-pointer">
-										<CardHeader className="pb-3">
-											<div className="flex items-start gap-3">
-												<div className="flex-shrink-0">
-													<Avatar className="h-12 w-12 rounded-lg">
-														<AvatarImage
-															src={
-																org.logo ||
-																`https://api.dicebear.com/7.x/shapes/svg?seed=${org.name}`
-															}
-														/>
-														<AvatarFallback className="rounded-lg bg-primary/10 text-primary font-bold">
-															{org.name
-																.substring(0, 2)
-																.toUpperCase()}
-														</AvatarFallback>
-													</Avatar>
-												</div>
-												<div className="flex-1 min-w-0">
-													<CardTitle className="text-base sm:text-lg mb-1 truncate">
-														{org.name}
-													</CardTitle>
-													<CardDescription className="text-xs line-clamp-2">
-														{org.description ||
-															"No description available"}
-													</CardDescription>
-												</div>
-											</div>
-										</CardHeader>
-										<CardContent className="space-y-3">
-											<div>
-												<p className="text-xs text-muted-foreground mb-1">
-													Revenue (30 days)
-												</p>
-												<p className="text-xl sm:text-2xl font-bold">
-													{formatCurrency(
-														org.revenue30Days
-													)}
-												</p>
-											</div>
-
-											<div className="flex items-center justify-between text-sm">
-												<span className="text-muted-foreground">
-													Customers
-												</span>
-												<Badge variant="secondary">
-													{org.totalCustomers}
-												</Badge>
-											</div>
-										</CardContent>
-									</Card>
+									<ProductCard org={org} />
 								</Link>
 							))}
 						</div>
