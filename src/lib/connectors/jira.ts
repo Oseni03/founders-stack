@@ -35,6 +35,127 @@ export class JiraConnector {
 	// PROJECT METHODS
 	// ========================================================================
 
+	/**
+	 * Create a new project
+	 */
+	async createProject(project: {
+		name: string;
+		key: string;
+		description?: string;
+		leadAccountId?: string;
+		projectTypeKey?: "software" | "service_desk" | "business";
+	}): Promise<ProjectData> {
+		try {
+			const response = await fetch(`${this.baseUrl}/rest/api/3/project`, {
+				method: "POST",
+				headers: {
+					...this.getHeaders(),
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					name: project.name,
+					key: project.key,
+					description: project.description || "",
+					leadAccountId: project.leadAccountId,
+					projectTypeKey: project.projectTypeKey || "software",
+					assigneeType: "UNASSIGNED",
+				}),
+			});
+
+			await this.handleResponse(response);
+			const createdProject = await response.json();
+
+			return {
+				externalId: createdProject.id,
+				name: createdProject.name,
+				description: createdProject.description || "",
+				attributes: {
+					key: createdProject.key,
+					projectTypeKey: createdProject.projectTypeKey,
+					lead: createdProject.lead?.displayName,
+					avatarUrls: createdProject.avatarUrls,
+				},
+			};
+		} catch (error) {
+			console.error("[JIRA_CREATE_PROJECT_ERROR]", error);
+			throw new Error(
+				`Failed to create Jira project: ${error instanceof Error ? error.message : "Unknown error"}`
+			);
+		}
+	}
+
+	/**
+	 * Update an existing project
+	 */
+	async updateProject(
+		projectIdOrKey: string,
+		updates: {
+			name?: string;
+			description?: string;
+			leadAccountId?: string;
+		}
+	): Promise<ProjectData> {
+		try {
+			const response = await fetch(
+				`${this.baseUrl}/rest/api/3/project/${projectIdOrKey}`,
+				{
+					method: "PUT",
+					headers: {
+						...this.getHeaders(),
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						name: updates.name,
+						description: updates.description,
+						leadAccountId: updates.leadAccountId,
+					}),
+				}
+			);
+
+			await this.handleResponse(response);
+			const updatedProject = await response.json();
+
+			return {
+				externalId: updatedProject.id,
+				name: updatedProject.name,
+				description: updatedProject.description || "",
+				attributes: {
+					key: updatedProject.key,
+					projectTypeKey: updatedProject.projectTypeKey,
+					lead: updatedProject.lead?.displayName,
+					avatarUrls: updatedProject.avatarUrls,
+				},
+			};
+		} catch (error) {
+			console.error("[JIRA_UPDATE_PROJECT_ERROR]", error);
+			throw new Error(
+				`Failed to update Jira project: ${error instanceof Error ? error.message : "Unknown error"}`
+			);
+		}
+	}
+
+	/**
+	 * Delete a project
+	 */
+	async deleteProject(projectIdOrKey: string): Promise<void> {
+		try {
+			const response = await fetch(
+				`${this.baseUrl}/rest/api/3/project/${projectIdOrKey}`,
+				{
+					method: "DELETE",
+					headers: this.getHeaders(),
+				}
+			);
+
+			await this.handleResponse(response);
+		} catch (error) {
+			console.error("[JIRA_DELETE_PROJECT_ERROR]", error);
+			throw new Error(
+				`Failed to delete Jira project: ${error instanceof Error ? error.message : "Unknown error"}`
+			);
+		}
+	}
+
 	async getProjects(
 		options: PaginationOptions = {}
 	): Promise<PaginatedResponse<ProjectData>> {
@@ -72,14 +193,216 @@ export class JiraConnector {
 				hasMore: page + limit < data.total,
 			};
 		} catch (error) {
-			console.error("Jira projects fetching failed:", error);
-			throw new Error("Failed to fetch Jira projects");
+			console.error("[JIRA_FETCH_PROJECTS_ERROR]", error);
+			throw new Error(
+				`Failed to fetch Jira projects: ${error instanceof Error ? error.message : "Unknown error"}`
+			);
 		}
 	}
 
 	// ========================================================================
 	// ISSUE METHODS
 	// ========================================================================
+
+	/**
+	 * Create a new issue
+	 */
+	async createIssue(
+		projectIdOrKey: string,
+		issue: {
+			title: string;
+			description?: string;
+			assigneeId?: string;
+			dueDate?: Date;
+			priority?: TaskPriority;
+			labels?: string[];
+		}
+	): Promise<IssueData> {
+		try {
+			const response = await fetch(`${this.baseUrl}/rest/api/3/issue`, {
+				method: "POST",
+				headers: {
+					...this.getHeaders(),
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					fields: {
+						project: { id: projectIdOrKey },
+						summary: issue.title,
+						description: issue.description
+							? {
+									type: "doc",
+									version: 1,
+									content: [
+										{
+											type: "paragraph",
+											content: [
+												{
+													type: "text",
+													text: issue.description,
+												},
+											],
+										},
+									],
+								}
+							: undefined,
+						issuetype: { name: "Task" },
+						assignee: issue.assigneeId
+							? { accountId: issue.assigneeId }
+							: null,
+						duedate: issue.dueDate
+							? issue.dueDate.toISOString().split("T")[0]
+							: undefined,
+						priority: issue.priority
+							? { name: this.denormalizePriority(issue.priority) }
+							: undefined,
+						labels: issue.labels || [],
+					},
+				}),
+			});
+
+			await this.handleResponse(response);
+			const createdIssue = await response.json();
+
+			// Fetch the full issue to get all fields
+			return await this.getIssue(createdIssue.key);
+		} catch (error) {
+			console.error("[JIRA_CREATE_ISSUE_ERROR]", error);
+			throw new Error(
+				`Failed to create Jira issue: ${error instanceof Error ? error.message : "Unknown error"}`
+			);
+		}
+	}
+
+	/**
+	 * Update an existing issue
+	 */
+	async updateIssue(
+		issueIdOrKey: string,
+		updates: {
+			title?: string;
+			description?: string;
+			assigneeId?: string | null;
+			dueDate?: Date | null;
+			priority?: TaskPriority | null;
+			labels?: string[];
+			status?: TaskStatus;
+		}
+	): Promise<IssueData> {
+		try {
+			const updatePayload: any = {
+				fields: {
+					summary: updates.title,
+					description:
+						updates.description !== undefined
+							? {
+									type: "doc",
+									version: 1,
+									content: [
+										{
+											type: "paragraph",
+											content: [
+												{
+													type: "text",
+													text:
+														updates.description ||
+														"",
+												},
+											],
+										},
+									],
+								}
+							: undefined,
+					assignee: updates.assigneeId
+						? { accountId: updates.assigneeId }
+						: updates.assigneeId === null
+							? null
+							: undefined,
+					duedate: updates.dueDate
+						? updates.dueDate.toISOString().split("T")[0]
+						: updates.dueDate === null
+							? null
+							: undefined,
+					priority: updates.priority
+						? { name: this.denormalizePriority(updates.priority) }
+						: undefined,
+					labels: updates.labels,
+				},
+			};
+
+			// Handle status transition if provided
+			let transitionResponse: any = null;
+			if (updates.status) {
+				const transitions =
+					await this.getIssueTransitions(issueIdOrKey);
+				const targetTransition = transitions.find(
+					(t: any) =>
+						this.normalizeStatus(t.to.name) === updates.status
+				);
+				if (targetTransition) {
+					const transitionResp = await fetch(
+						`${this.baseUrl}/rest/api/3/issue/${issueIdOrKey}/transitions`,
+						{
+							method: "POST",
+							headers: {
+								...this.getHeaders(),
+								"Content-Type": "application/json",
+							},
+							body: JSON.stringify({
+								transition: { id: targetTransition.id },
+							}),
+						}
+					);
+					await this.handleResponse(transitionResp);
+					transitionResponse = await transitionResp.json();
+				}
+			}
+
+			const response = await fetch(
+				`${this.baseUrl}/rest/api/3/issue/${issueIdOrKey}`,
+				{
+					method: "PUT",
+					headers: {
+						...this.getHeaders(),
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(updatePayload),
+				}
+			);
+
+			await this.handleResponse(response);
+
+			// Fetch the updated issue to ensure all fields are returned
+			return await this.getIssue(issueIdOrKey);
+		} catch (error) {
+			console.error("[JIRA_UPDATE_ISSUE_ERROR]", error);
+			throw new Error(
+				`Failed to update Jira issue: ${error instanceof Error ? error.message : "Unknown error"}`
+			);
+		}
+	}
+
+	/**
+	 * Delete an issue
+	 */
+	async deleteIssue(issueIdOrKey: string): Promise<void> {
+		try {
+			const response = await fetch(
+				`${this.baseUrl}/rest/api/3/issue/${issueIdOrKey}`,
+				{
+					method: "DELETE",
+					headers: this.getHeaders(),
+				}
+			);
+
+			await this.handleResponse(response);
+		} catch (error) {
+			console.error("[JIRA_DELETE_ISSUE_ERROR]", error);
+			throw new Error(
+				`Failed to delete Jira issue: ${error instanceof Error ? error.message : "Unknown error"}`
+			);
+		}
+	}
 
 	async getIssues(
 		projectIdOrKey: string,
@@ -112,7 +435,7 @@ export class JiraConnector {
 				hasMore: page + limit < data.total,
 			};
 		} catch (error) {
-			console.error("Jira issues fetching failed:", error);
+			console.error("[JIRA_FETCH_ISSUES_ERROR]", error);
 			throw new Error(
 				`Failed to fetch Jira issues for project: ${projectIdOrKey}`
 			);
@@ -133,7 +456,7 @@ export class JiraConnector {
 
 			return this.mapIssueToTaskData(issue);
 		} catch (error) {
-			console.error("Jira issue fetching failed:", error);
+			console.error("[JIRA_GET_ISSUE_ERROR]", error);
 			throw new Error(`Failed to fetch Jira issue: ${issueIdOrKey}`);
 		}
 	}
@@ -151,7 +474,6 @@ export class JiraConnector {
 		projectKeys: string[]
 	): Promise<any> {
 		try {
-			// Build JQL filter for multiple projects
 			const jqlFilter =
 				projectKeys.length > 0
 					? `project IN (${projectKeys.join(", ")})`
@@ -164,7 +486,6 @@ export class JiraConnector {
 				excludeBody: false,
 			};
 
-			// Only add jqlFilter if project keys are provided
 			if (jqlFilter) {
 				requestBody.jqlFilter = jqlFilter;
 			}
@@ -186,8 +507,10 @@ export class JiraConnector {
 				details: data,
 			};
 		} catch (error) {
-			console.error("Failed to create Jira webhook:", error);
-			throw new Error("Failed to create webhook");
+			console.error("[JIRA_CREATE_WEBHOOK_ERROR]", error);
+			throw new Error(
+				`Failed to create Jira webhook: ${error instanceof Error ? error.message : "Unknown error"}`
+			);
 		}
 	}
 
@@ -205,8 +528,10 @@ export class JiraConnector {
 
 			return data.values || [];
 		} catch (error) {
-			console.error("Failed to list Jira webhooks:", error);
-			throw new Error("Failed to list webhooks");
+			console.error("[JIRA_LIST_WEBHOOKS_ERROR]", error);
+			throw new Error(
+				`Failed to list Jira webhooks: ${error instanceof Error ? error.message : "Unknown error"}`
+			);
 		}
 	}
 
@@ -228,8 +553,10 @@ export class JiraConnector {
 
 			await this.handleResponse(response);
 		} catch (error) {
-			console.error("Failed to delete Jira webhook:", error);
-			throw new Error("Failed to delete webhook");
+			console.error("[JIRA_DELETE_WEBHOOK_ERROR]", error);
+			throw new Error(
+				`Failed to delete Jira webhook: ${error instanceof Error ? error.message : "Unknown error"}`
+			);
 		}
 	}
 
@@ -254,8 +581,10 @@ export class JiraConnector {
 
 			await this.handleResponse(response);
 		} catch (error) {
-			console.error("Failed to refresh Jira webhook:", error);
-			throw new Error("Failed to refresh webhook");
+			console.error("[JIRA_REFRESH_WEBHOOK_ERROR]", error);
+			throw new Error(
+				`Failed to refresh Jira webhook: ${error instanceof Error ? error.message : "Unknown error"}`
+			);
 		}
 	}
 
@@ -302,7 +631,6 @@ export class JiraConnector {
 	private extractDescription(description: any): string | undefined {
 		if (!description) return undefined;
 
-		// Jira uses Atlassian Document Format (ADF)
 		if (typeof description === "object" && description.content) {
 			return this.adfToText(description);
 		}
@@ -358,6 +686,37 @@ export class JiraConnector {
 		return priorityMap[priority];
 	}
 
+	private denormalizePriority(priority: TaskPriority): string {
+		const priorityMap: Record<TaskPriority, string> = {
+			high: "High",
+			medium: "Medium",
+			low: "Low",
+			urgent: "Urgent",
+		};
+
+		return priorityMap[priority] || "Medium";
+	}
+
+	private async getIssueTransitions(issueIdOrKey: string): Promise<any[]> {
+		try {
+			const response = await fetch(
+				`${this.baseUrl}/rest/api/3/issue/${issueIdOrKey}/transitions`,
+				{
+					headers: this.getHeaders(),
+				}
+			);
+
+			await this.handleResponse(response);
+			const data = await response.json();
+			return data.transitions || [];
+		} catch (error) {
+			console.error("[JIRA_GET_TRANSITIONS_ERROR]", error);
+			throw new Error(
+				`Failed to fetch transitions for Jira issue: ${issueIdOrKey}`
+			);
+		}
+	}
+
 	private async handleResponse(response: Response): Promise<void> {
 		if (response.status === 401) {
 			throw new Error(
@@ -393,7 +752,7 @@ export class JiraConnector {
 
 			return response.ok;
 		} catch (error) {
-			console.error("Jira connection test failed:", error);
+			console.error("[JIRA_TEST_CONNECTION_ERROR]", error);
 			return false;
 		}
 	}

@@ -98,44 +98,33 @@ export async function GET(
 				const velocity = await Promise.all(velocityPromises);
 
 				// Top Priorities: High/Urgent, not done, soonest due
-				const tasks = await prisma.task
-					.findMany({
+				const [tasks, projects] = await Promise.all([
+					prisma.task.findMany({
 						where: {
 							organizationId: orgId,
 						},
 						orderBy: [{ priority: "desc" }, { dueDate: "asc" }],
-						select: {
-							id: true,
-							title: true,
-							priority: true,
-							dueDate: true,
-							status: true,
+					}),
+					prisma.project.findMany({
+						where: {
+							organizationId: user.organizationId,
 						},
-					})
-					.then((tasks) =>
-						tasks.map((t) => ({
-							id: t.id,
-							title: t.title,
-							priority: (t.priority || "low") as
-								| "low"
-								| "medium"
-								| "high"
-								| "urgent",
-							status: t.status,
-							dueDate: t.dueDate?.toISOString() || "",
-						}))
-					);
+					}),
+				]);
 				const insight =
 					openTasks > 50
 						? "High task volume. Prioritize overdue items to improve velocity."
 						: "Healthy task flow. Maintain current pace.";
 
 				return NextResponse.json({
-					openTasks,
-					velocity,
-					overdueTasks,
-					tasks,
-					insight,
+					data: {
+						openTasks,
+						velocity,
+						overdueTasks,
+						tasks,
+						insight,
+					},
+					projects,
 				});
 			} catch (error) {
 				console.error("Project Health API error:", error);

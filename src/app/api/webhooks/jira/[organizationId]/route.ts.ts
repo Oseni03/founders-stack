@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { TaskPriority, TaskStatus } from "@prisma/client";
-import { getIntegration } from "@/server/integrations";
 
 // Jira webhook event types
 type JiraEventType =
