@@ -31,6 +31,7 @@ import { AsanaTaskDialog } from "./platform-forms/asana-task-dialog";
 import { JiraTaskDialog } from "./platform-forms/jira-task-dialog";
 import { DeleteTaskDialog } from "./delete-task-dialog";
 import { useParams } from "next/navigation";
+import { logger } from "@/lib/logger";
 
 export function TasksCard() {
 	const { productId } = useParams();
@@ -64,27 +65,34 @@ export function TasksCard() {
 
 	const handleAddTaskClick = () => {
 		if (projectManagementIntegrations.length === 0) {
+			logger.warn("Add task clicked but no integrations available");
 			return;
 		}
 		if (projectManagementIntegrations.length === 1) {
 			// Auto-select if only one integration
-			setSelectedPlatform(
-				projectManagementIntegrations[0].toolName.toLowerCase()
-			);
+			const platform = projectManagementIntegrations[0].toolName.toLowerCase();
+			logger.info("Auto-selecting single PM integration", { platform });
+			setSelectedPlatform(platform);
 			setIsTaskDialogOpen(true);
 		} else {
+			logger.info("Multiple PM integrations available, showing platform selector", {
+				count: projectManagementIntegrations.length,
+				platforms: projectManagementIntegrations.map(i => i.toolName),
+			});
 			// Show platform selector
 			setIsPlatformSelectOpen(true);
 		}
 	};
 
 	const handlePlatformSelect = (platform: string) => {
+		logger.info("Platform selected for task creation", { platform });
 		setSelectedPlatform(platform);
 		setIsPlatformSelectOpen(false);
 		setIsTaskDialogOpen(true);
 	};
 
 	const handleEditTask = (task: Task) => {
+		logger.info("Task selected for editing", { taskId: task.id, title: task.title });
 		setEditingTask(task);
 		setSelectedPlatform(task.sourceTool?.toLowerCase() || null);
 		setIsTaskDialogOpen(true);
@@ -97,6 +105,7 @@ export function TasksCard() {
 	};
 
 	const handleDeleteClick = (taskId: string) => {
+		logger.info("Delete task requested", { taskId });
 		setTaskToDelete(taskId);
 		setIsDeleteDialogOpen(true);
 	};
@@ -104,11 +113,13 @@ export function TasksCard() {
 	const handleDeleteConfirm = async () => {
 		if (!taskToDelete) return;
 		try {
+			logger.info("Confirming task deletion", { taskId: taskToDelete });
 			await deleteTask(productId as string, taskToDelete);
+			logger.info("Task deleted successfully", { taskId: taskToDelete });
 			setIsDeleteDialogOpen(false);
 			setTaskToDelete(null);
 		} catch (error) {
-			console.error("Error deleting task:", error);
+			logger.error("Error deleting task", { taskId: taskToDelete, error });
 		}
 	};
 

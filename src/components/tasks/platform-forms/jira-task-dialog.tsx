@@ -33,6 +33,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { TaskFormData } from "@/zustand/stores/project-store";
 import { Project, Task } from "@prisma/client";
+import { logger } from "@/lib/logger";
 
 const jiraTaskSchema = z.object({
 	issueType: z.string().min(1, "Issue type is required"),
@@ -82,6 +83,7 @@ export function JiraTaskDialog({
 
 	useEffect(() => {
 		if (editingTask) {
+			logger.debug("Jira dialog: loading issue for editing", { taskId: editingTask.id, title: editingTask.title });
 			form.reset({
 				issueType:
 					(editingTask.attributes as Record<string, any>)
@@ -97,6 +99,7 @@ export function JiraTaskDialog({
 				projectId: editingTask.projectId,
 			});
 		} else {
+			logger.debug("Jira dialog: opening for new issue creation");
 			form.reset({
 				issueType: "Task",
 				title: "",
@@ -112,6 +115,12 @@ export function JiraTaskDialog({
 
 	const handleSubmit = async (formData: JiraTaskFormValues) => {
 		try {
+			logger.info("Jira issue form submitted", { 
+				mode: editingTask ? "edit" : "create",
+				title: formData.title,
+				issueType: formData.issueType,
+				projectId: formData.projectId,
+			});
 			const taskData: TaskFormData = {
 				title: formData.title,
 				description: formData.description,
@@ -125,13 +134,17 @@ export function JiraTaskDialog({
 			};
 
 			if (editingTask?.id) {
+				logger.debug("Updating Jira issue", { taskId: editingTask.id });
 				await onUpdate(editingTask?.id, taskData);
+				logger.info("Jira issue updated successfully", { taskId: editingTask.id });
 			} else {
+				logger.debug("Creating new Jira issue", { issueType: formData.issueType });
 				await onCreate(taskData);
+				logger.info("Jira issue created successfully", { title: formData.title, issueType: formData.issueType });
 			}
 			onClose();
 		} catch (error) {
-			console.error("Error submitting Jira issue:", error);
+			logger.error("Error submitting Jira issue", { error, editingTaskId: editingTask?.id });
 		}
 	};
 

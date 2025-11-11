@@ -1,6 +1,7 @@
 import { Calendar, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Task } from "@prisma/client";
+import { logger } from "@/lib/logger";
 
 interface TaskListItemProps {
 	task: Task;
@@ -15,6 +16,16 @@ export function TaskListItem({
 	onDelete,
 	disabled = false,
 }: TaskListItemProps) {
+	const handleEdit = () => {
+		logger.debug("Edit button clicked for task", { taskId: task.id });
+		onEdit(task);
+	};
+
+	const handleDelete = () => {
+		logger.debug("Delete button clicked for task", { taskId: task.id });
+		onDelete(task.id);
+	};
+
 	return (
 		<div className="flex items-center justify-between rounded-lg border border-border p-4 hover:bg-muted transition-colors group">
 			<div className="flex-1">
@@ -70,13 +81,13 @@ export function TaskListItem({
 									: "bg-blue-100 text-blue-700"
 					}`}
 				>
-					{task.priority?.toUpperCase()}
+					{task.priority?.toUpperCase() || "low"}
 				</span>
 				<div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
 					<Button
 						variant="ghost"
 						size="icon"
-						onClick={() => onEdit(task)}
+						onClick={handleEdit}
 						disabled={disabled}
 					>
 						<Pencil className="h-4 w-4" />
@@ -84,7 +95,7 @@ export function TaskListItem({
 					<Button
 						variant="ghost"
 						size="icon"
-						onClick={() => onDelete(task.id)}
+						onClick={handleDelete}
 						disabled={disabled}
 					>
 						<Trash2 className="h-4 w-4 text-destructive" />

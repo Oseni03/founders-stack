@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface DeleteTaskDialogProps {
 	open: boolean;
@@ -22,6 +23,16 @@ export function DeleteTaskDialog({
 	onConfirm,
 	loading,
 }: DeleteTaskDialogProps) {
+	const handleConfirm = async () => {
+		logger.info("Delete task confirmed");
+		await onConfirm();
+	};
+
+	const handleCancel = () => {
+		logger.info("Delete task cancelled");
+		onClose();
+	};
+
 	return (
 		<Dialog open={open} onOpenChange={onClose}>
 			<DialogContent>
@@ -37,7 +48,7 @@ export function DeleteTaskDialog({
 					<Button
 						type="button"
 						variant="outline"
-						onClick={onClose}
+						onClick={handleCancel}
 						disabled={loading}
 					>
 						Cancel
@@ -45,7 +56,7 @@ export function DeleteTaskDialog({
 					<Button
 						type="button"
 						variant="destructive"
-						onClick={onConfirm}
+						onClick={handleConfirm}
 						disabled={loading}
 					>
 						{loading && (

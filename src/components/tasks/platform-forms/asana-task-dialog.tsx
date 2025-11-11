@@ -33,6 +33,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { TaskFormData } from "@/zustand/stores/project-store";
 import { Project, Task } from "@prisma/client";
+import { logger } from "@/lib/logger";
 
 const asanaTaskSchema = z.object({
 	title: z.string().min(1, "Title is required").max(200, "Title is too long"),
@@ -84,6 +85,10 @@ export function AsanaTaskDialog({
 
 	useEffect(() => {
 		if (editingTask) {
+			logger.debug("Asana dialog: loading task for editing", {
+				taskId: editingTask.id,
+				title: editingTask.title,
+			});
 			form.reset({
 				title: editingTask.title,
 				description: editingTask.description || "",
@@ -97,6 +102,7 @@ export function AsanaTaskDialog({
 				projectId: editingTask.projectId,
 			});
 		} else {
+			logger.debug("Asana dialog: opening for new task creation");
 			form.reset({
 				title: "",
 				description: "",
@@ -112,6 +118,11 @@ export function AsanaTaskDialog({
 
 	const handleSubmit = async (formData: AsanaTaskFormValues) => {
 		try {
+			logger.info("Asana task form submitted", {
+				mode: editingTask ? "edit" : "create",
+				title: formData.title,
+				projectId: formData.projectId,
+			});
 			const taskData: TaskFormData = {
 				title: formData.title,
 				description: formData.description,
@@ -124,13 +135,24 @@ export function AsanaTaskDialog({
 			};
 
 			if (editingTask?.id) {
+				logger.debug("Updating Asana task", { taskId: editingTask.id });
 				await onUpdate(editingTask.id, taskData);
+				logger.info("Asana task updated successfully", {
+					taskId: editingTask.id,
+				});
 			} else {
+				logger.debug("Creating new Asana task");
 				await onCreate(taskData);
+				logger.info("Asana task created successfully", {
+					title: formData.title,
+				});
 			}
 			onClose();
 		} catch (error) {
-			console.error("Error submitting Asana task:", error);
+			logger.error("Error submitting Asana task", {
+				error,
+				editingTaskId: editingTask?.id,
+			});
 		}
 	};
 

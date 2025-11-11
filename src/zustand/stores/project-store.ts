@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { persist } from "zustand/middleware";
 import { Project, Task } from "@prisma/client";
+import { logger } from "@/lib/logger";
 // NOTE: use client-side API route for deletions instead of importing server functions
 
 export interface ProjectMetrics {
@@ -101,20 +102,35 @@ export const createProjectStore = () => {
 					setError(null);
 					setRange(range);
 					try {
+						logger.info("Fetching project data", {
+							productId,
+							range,
+						});
 						const res = await fetch(
 							`/api/products/${productId}/project-health?range=${range}`
 						);
-						if (!res.ok) throw new Error(await res.text());
+						if (!res.ok) {
+							const errorText = await res.text();
+							throw new Error(errorText);
+						}
 						const { data, projects } = await res.json();
+						logger.info("Project data fetched successfully", {
+							taskCount: data?.tasks?.length || 0,
+							projectCount: projects?.length || 0,
+						});
 						setData(data);
 						setProjects(projects);
 					} catch (err: any) {
+						logger.error("Error fetching project data", {
+							error: err,
+							productId,
+							range,
+						});
 						setError(err.message);
 					} finally {
 						setLoading(false);
 					}
 				},
-
 				createTask: async (taskData) => {
 					const {
 						organizationId,
@@ -124,6 +140,9 @@ export const createProjectStore = () => {
 						setData,
 					} = get();
 					if (!organizationId) {
+						logger.error(
+							"Cannot create task: Organization ID is missing"
+						);
 						setError("Organization ID is required");
 						return;
 					}
@@ -140,7 +159,12 @@ export const createProjectStore = () => {
 							throw new Error("Project not found");
 						}
 
-						console.log("PM: Creating task", { taskData });
+						logger.info("Creating task", {
+							projectId: taskData.projectId,
+							projectName: project.name,
+							sourceTool: project.sourceTool,
+							title: taskData.title,
+						});
 
 						// Create task in the integrated platform and local DB
 						const res = await fetch(
@@ -157,10 +181,11 @@ export const createProjectStore = () => {
 
 						if (!res.ok) {
 							const errorText = await res.text();
-							console.log(
-								`PM: 
-								${errorText || "Failed to create task"}`
-							);
+							logger.error("Task creation API failed", {
+								status: res.status,
+								error: errorText,
+								projectId: taskData.projectId,
+							});
 							throw new Error(
 								errorText || "Failed to create task"
 							);
@@ -168,7 +193,11 @@ export const createProjectStore = () => {
 
 						const newTask: Task = await res.json();
 
-						console.log("PM: new task response: ", { newTask });
+						logger.info("Task created successfully", {
+							taskId: newTask.id,
+							title: newTask.title,
+							sourceTool: project.sourceTool,
+						});
 
 						// Update local state
 						if (data) {
@@ -182,6 +211,10 @@ export const createProjectStore = () => {
 							});
 						}
 					} catch (err: any) {
+						logger.error("Error creating task", {
+							error: err,
+							taskData,
+						});
 						setError(err.message);
 						throw err;
 					} finally {
@@ -198,6 +231,9 @@ export const createProjectStore = () => {
 						setData,
 					} = get();
 					if (!organizationId) {
+						logger.error(
+							"Cannot update task: Organization ID is missing"
+						);
 						setError("Organization ID is required");
 						return;
 					}
@@ -219,7 +255,12 @@ export const createProjectStore = () => {
 							throw new Error("Project not found");
 						}
 
-						console.log("PM: Updating task", { taskId, updates });
+						logger.info("Updating task", {
+							taskId,
+							title: task.title,
+							sourceTool: project.sourceTool,
+							updates,
+						});
 
 						// Update task in the integrated platform and local DB
 						const res = await fetch(
@@ -236,11 +277,11 @@ export const createProjectStore = () => {
 
 						if (!res.ok) {
 							const errorText = await res.text();
-							console.log(
-								`PM: Failed to update task - ${
-									errorText || "Failed to update task"
-								}`
-							);
+							logger.error("Task update API failed", {
+								taskId,
+								status: res.status,
+								error: errorText,
+							});
 							throw new Error(
 								errorText || "Failed to update task"
 							);
@@ -248,8 +289,10 @@ export const createProjectStore = () => {
 
 						const updatedTask: Task = await res.json();
 
-						console.log("PM: Updated task response: ", {
-							updatedTask,
+						logger.info("Task updated successfully", {
+							taskId,
+							title: updatedTask.title,
+							sourceTool: project.sourceTool,
 						});
 
 						// Update local state
@@ -270,6 +313,10 @@ export const createProjectStore = () => {
 							});
 						}
 					} catch (err: any) {
+						logger.error("Error updating task", {
+							taskId,
+							error: err,
+						});
 						setError(err.message);
 						throw err;
 					} finally {
@@ -286,16 +333,23 @@ export const createProjectStore = () => {
 						setData,
 					} = get();
 					if (!organizationId) {
+						logger.error(
+							"Cannot delete task: Organization ID is missing"
+						);
 						setError("Organization ID is required");
 						return;
 					}
 
 					if (!productId) {
+						logger.error(
+							"Cannot delete task: Product ID is missing"
+						);
 						setError("Product ID is required");
 						return;
 					}
 
 					if (!taskId) {
+						logger.error("Cannot delete task: Task ID is missing");
 						setError("Task ID is required");
 						return;
 					}
@@ -304,10 +358,7 @@ export const createProjectStore = () => {
 					setError(null);
 
 					try {
-						console.log("PM: Deleting task", {
-							productId,
-							taskId,
-						});
+						logger.info("Deleting task", { taskId, productId });
 
 						// Call API route to delete task
 						const res = await fetch(
@@ -320,17 +371,15 @@ export const createProjectStore = () => {
 
 						if (!res.ok) {
 							const errText = await res.text();
-							console.log(
-								`PM: Failed to delete task - ${
-									errText || "Failed to delete task"
-								}`
-							);
+							logger.error("Task deletion API failed", {
+								taskId,
+								status: res.status,
+								error: errText,
+							});
 							throw new Error(errText || "Failed to delete task");
 						}
 
-						console.log("PM: Task deleted successfully", {
-							taskId,
-						});
+						logger.info("Task deleted successfully", { taskId });
 
 						// Update local state
 						if (data) {
@@ -351,6 +400,10 @@ export const createProjectStore = () => {
 							});
 						}
 					} catch (err: any) {
+						logger.error("Error deleting task", {
+							taskId,
+							error: err,
+						});
 						setError(err.message);
 						throw err;
 					} finally {
