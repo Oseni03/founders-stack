@@ -6,11 +6,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(
 	req: NextRequest,
-	{ params }: { params: { toolName: string; taskId: string } }
+	{ params }: { params: Promise<{ toolName: string; taskId: string }> }
 ) {
+	const { toolName, taskId } = await params;
 	return withAuth(req, async (request, user) => {
 		try {
-			const { toolName, taskId } = params;
 			const body = await req.json();
 			const { organizationId, ...updates } = body;
 

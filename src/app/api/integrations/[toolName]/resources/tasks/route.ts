@@ -7,11 +7,11 @@ import { createTaskInPlatform } from "@/server/categories/tasks";
 // Create a new task (sync to integrated platform and save locally)
 export async function POST(
 	req: NextRequest,
-	{ params }: { params: { toolName: string } }
+	{ params }: { params: Promise<{ toolName: string }> }
 ) {
+	const { toolName } = await params;
 	return withAuth(req, async (request, user) => {
 		try {
-			const { toolName } = params;
 			const body = await req.json();
 			const {
 				organizationId,
