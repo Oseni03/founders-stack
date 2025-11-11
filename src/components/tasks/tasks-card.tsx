@@ -30,8 +30,10 @@ import { TaskListItem } from "./task-list";
 import { AsanaTaskDialog } from "./platform-forms/asana-task-dialog";
 import { JiraTaskDialog } from "./platform-forms/jira-task-dialog";
 import { DeleteTaskDialog } from "./delete-task-dialog";
+import { useParams } from "next/navigation";
 
 export function TasksCard() {
+	const { productId } = useParams();
 	const [isPlatformSelectOpen, setIsPlatformSelectOpen] = useState(false);
 	const [selectedPlatform, setSelectedPlatform] = useState<string | null>(
 		null
@@ -102,7 +104,7 @@ export function TasksCard() {
 	const handleDeleteConfirm = async () => {
 		if (!taskToDelete) return;
 		try {
-			await deleteTask(taskToDelete);
+			await deleteTask(productId as string, taskToDelete);
 			setIsDeleteDialogOpen(false);
 			setTaskToDelete(null);
 		} catch (error) {

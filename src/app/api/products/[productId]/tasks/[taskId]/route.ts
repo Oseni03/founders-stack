@@ -5,17 +5,25 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function DELETE(
 	req: NextRequest,
-	{ params }: { params: { organizationId: string; taskId: string } }
+	{ params }: { params: Promise<{ productId: string; taskId: string }> }
 ) {
+	const { productId, taskId } = await params;
+
 	return withAuth(req, async (request, user) => {
 		try {
-			const { organizationId, taskId } = params;
-
 			// Verify organization access
-			if (organizationId !== user.organizationId) {
+			if (productId !== user.organizationId) {
 				return NextResponse.json(
 					{ error: "Forbidden" },
 					{ status: 403 }
+				);
+			}
+
+			// Ensure taskId is provided (either query param or path param)
+			if (!taskId) {
+				return NextResponse.json(
+					{ error: "taskId is required" },
+					{ status: 400 }
 				);
 			}
 
@@ -23,7 +31,7 @@ export async function DELETE(
 			const task = await prisma.task.delete({
 				where: {
 					id: taskId,
-					organizationId,
+					organizationId: productId,
 				},
 			});
 

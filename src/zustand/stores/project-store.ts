@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { persist } from "zustand/middleware";
 import { Project, Task } from "@prisma/client";
-import { deleteTask } from "@/server/categories/tasks";
+// NOTE: use client-side API route for deletions instead of importing server functions
 
 export interface ProjectMetrics {
 	openTasks: number;
@@ -45,7 +45,7 @@ export interface ProjectState {
 	) => Promise<void>;
 	createTask: (data: TaskFormData) => Promise<void>;
 	updateTask: (taskId: string, data: Partial<TaskFormData>) => Promise<void>;
-	deleteTask: (taskId: string) => Promise<void>;
+	deleteTask: (productId: string, taskId: string) => Promise<void>;
 }
 
 export const createProjectStore = () => {
@@ -258,7 +258,7 @@ export const createProjectStore = () => {
 					}
 				},
 
-				deleteTask: async (taskId) => {
+				deleteTask: async (productId: string, taskId: string) => {
 					const {
 						organizationId,
 						setLoading,
@@ -271,12 +271,33 @@ export const createProjectStore = () => {
 						return;
 					}
 
+					if (!productId) {
+						setError("Product ID is required");
+						return;
+					}
+
+					if (!taskId) {
+						setError("Task ID is required");
+						return;
+					}
+
 					setLoading(true);
 					setError(null);
 
 					try {
-						// Delete task locally only (as per requirement)
-						await deleteTask(taskId);
+						// Call API route to delete task
+						const res = await fetch(
+							`/api/products/${productId}/tasks/${taskId}`,
+							{
+								method: "DELETE",
+								headers: { "Content-Type": "application/json" },
+							}
+						);
+
+						if (!res.ok) {
+							const errText = await res.text();
+							throw new Error(errText || "Failed to delete task");
+						}
 
 						// Update local state
 						if (data) {
