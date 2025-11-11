@@ -263,7 +263,7 @@ export default function TasksPage() {
 				</div>
 
 				{/* Top Priorities */}
-				<TasksCard tasks={data.tasks} />
+				<TasksCard />
 
 				{/* Insights */}
 				<Card>

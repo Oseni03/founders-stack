@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import logger from "@/lib/logger";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -16,10 +17,10 @@ export async function GET(
 			headers: await headers(),
 		});
 
-		console.log(data);
+		logger.debug("Invitation acceptance data: ", { data });
 		return NextResponse.redirect(new URL("/products", request.url));
 	} catch (error) {
-		console.error(error);
+		logger.error("Invitation acceptance error: ", { error });
 		return NextResponse.redirect(new URL("/products", request.url));
 	}
 }

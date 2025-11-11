@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/middleware";
 import { OAUTH_CONFIG, OAuthConfig } from "@/lib/oauth-utils";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import logger from "@/lib/logger";
 
 export async function GET(
 	request: NextRequest,
@@ -150,7 +151,7 @@ export async function GET(
 				},
 			});
 
-			console.log(`${provider} integration saved`);
+			logger.debug(`${provider} integration saved`);
 
 			// Redirect to integration onboarding page
 			return NextResponse.redirect(
@@ -160,7 +161,7 @@ export async function GET(
 				)
 			);
 		} catch (error) {
-			console.error(`${provider} OAuth error:`, error);
+			logger.error(`${provider} OAuth error:`, { error });
 			return NextResponse.redirect(
 				new URL(
 					`/products/${user.organizationId}/integrations?error=${encodeURIComponent(

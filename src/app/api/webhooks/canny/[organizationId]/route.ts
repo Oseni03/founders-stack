@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 // Canny webhook event types
 type CannyEventType =
@@ -51,7 +52,7 @@ async function handleCannyEvent(
 
 	switch (type) {
 		case "post.created":
-			console.log("New post created:", object);
+			logger.info("New Canny post created", { object });
 			// Create new Feed entry
 			await prisma.feed.create({
 				data: {
@@ -83,7 +84,7 @@ async function handleCannyEvent(
 			break;
 
 		case "post.deleted":
-			console.log("Post deleted:", object);
+			logger.info("Canny post deleted", { object });
 			// Delete Feed entry
 			await prisma.feed.deleteMany({
 				where: {
@@ -95,7 +96,7 @@ async function handleCannyEvent(
 			break;
 
 		case "post.status_changed":
-			console.log("Post status changed:", object);
+			logger.info("Canny post status changed", { object });
 			// Update Feed status
 			await prisma.feed.updateMany({
 				where: {
@@ -111,7 +112,7 @@ async function handleCannyEvent(
 			break;
 
 		case "post.jira_issue_linked":
-			console.log("Jira issue linked:", object);
+			logger.info("Canny post linked to Jira issue", { object });
 			// Update Feed attributes with Jira info
 			await prisma.feed.updateMany({
 				where: {
@@ -134,7 +135,7 @@ async function handleCannyEvent(
 			break;
 
 		case "comment.created":
-			console.log("New comment created:", object);
+			logger.info("New Canny comment created", { object });
 			// Update comments count on the post
 			const post = await prisma.feed.findFirst({
 				where: {
@@ -156,7 +157,7 @@ async function handleCannyEvent(
 			break;
 
 		case "comment.deleted":
-			console.log("Comment deleted:", object);
+			logger.info("Canny comment deleted", { object });
 			// Decrease comments count
 			const postForDelete = await prisma.feed.findFirst({
 				where: {
@@ -178,7 +179,7 @@ async function handleCannyEvent(
 			break;
 
 		case "vote.created":
-			console.log("New vote created:", object);
+			logger.info("New Canny vote created", { object });
 			// Update vote score
 			const postForVote = await prisma.feed.findFirst({
 				where: {
@@ -200,7 +201,7 @@ async function handleCannyEvent(
 			break;
 
 		case "vote.deleted":
-			console.log("Vote deleted:", object);
+			logger.info("Canny vote deleted", { object });
 			// Decrease vote score
 			const postForVoteDelete = await prisma.feed.findFirst({
 				where: {
@@ -222,7 +223,7 @@ async function handleCannyEvent(
 			break;
 
 		default:
-			console.log("Unknown event type:", type);
+			logger.warn("Unknown Canny event type", { type });
 	}
 }
 
@@ -241,6 +242,10 @@ export async function POST(
 		});
 
 		if (!integration?.apiKey) {
+			logger.warn(
+				"Canny webhook received but integration missing apiKey",
+				{ organizationId }
+			);
 			return NextResponse.json(
 				{ error: "Canny not integrated!" },
 				{ status: 404 }
@@ -253,7 +258,7 @@ export async function POST(
 		const isValid = verifyCannySignature(request, integration.apiKey);
 
 		if (!isValid) {
-			console.error("Invalid webhook signature");
+			logger.error("Invalid Canny webhook signature");
 			return NextResponse.json(
 				{ error: "Invalid webhook signature" },
 				{ status: 401 }
@@ -267,7 +272,7 @@ export async function POST(
 		const cannyBoardId = payload.object?.board?.id;
 
 		if (!cannyBoardId) {
-			console.error("No board ID found in webhook payload");
+			logger.error("No board ID found in webhook payload");
 			return NextResponse.json(
 				{ error: "Missing board ID in payload" },
 				{ status: 400 }
@@ -288,9 +293,9 @@ export async function POST(
 		});
 
 		if (!project) {
-			console.error(
-				`No project found for Canny board ID: ${cannyBoardId}`
-			);
+			logger.error(`No project found for Canny board ID`, {
+				cannyBoardId,
+			});
 			return NextResponse.json(
 				{ error: "Project not found for this Canny board" },
 				{ status: 404 }
@@ -300,6 +305,11 @@ export async function POST(
 		const { id: projectId } = project;
 
 		// Handle the event
+		logger.info("Handling Canny webhook", {
+			type: payload.type,
+			organizationId,
+			projectId,
+		});
 		await handleCannyEvent(payload, organizationId, projectId);
 
 		// Return success response
@@ -308,7 +318,7 @@ export async function POST(
 			{ status: 200 }
 		);
 	} catch (error) {
-		console.error("Error processing Canny webhook:", error);
+		logger.error("Error processing Canny webhook", { error });
 		return NextResponse.json(
 			{ error: "Webhook processing failed" },
 			{ status: 500 }

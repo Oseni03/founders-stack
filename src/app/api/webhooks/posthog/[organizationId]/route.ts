@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 /**
  * POST handler for PostHog webhooks
@@ -35,7 +36,7 @@ export async function POST(
 		// Step 2: Parse webhook payload
 		const body = await request.json();
 
-		console.log(`Received PostHog webhook:`, {
+		logger.info("Received PostHog webhook", {
 			event: body.event,
 			distinctId: body.distinct_id,
 			timestamp: body.timestamp,
@@ -137,9 +138,9 @@ async function processPostHogWebhook(
 			},
 		});
 
-		console.log(`PostHog event ${payload.event} stored successfully`);
+		logger.info(`PostHog event stored`, { event: payload.event });
 	} catch (error) {
-		console.error(`Failed to process PostHog webhook event:`, error);
+		logger.error(`Failed to process PostHog webhook event`, { error });
 		throw error;
 	}
 }
