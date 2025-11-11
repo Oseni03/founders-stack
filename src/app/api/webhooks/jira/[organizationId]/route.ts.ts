@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { TaskPriority, TaskStatus } from "@prisma/client";
+import { mapIssueToTaskData } from "@/lib/connectors/jira";
 
 // Jira webhook event types
 type JiraEventType =
@@ -88,87 +88,6 @@ interface JiraWebhookPayload {
 }
 
 /**
- * Extract plain text from Jira ADF (Atlassian Document Format)
- */
-function extractTextFromADF(description: any): string | null {
-	if (!description) return null;
-
-	// If it's already a string, return it
-	if (typeof description === "string") return description;
-
-	// Handle ADF format
-	if (description.type === "doc" && description.content) {
-		const textParts: string[] = [];
-
-		const extractText = (node: any) => {
-			if (node.type === "text") {
-				textParts.push(node.text);
-			}
-			if (node.content) {
-				node.content.forEach(extractText);
-			}
-		};
-
-		description.content.forEach(extractText);
-		return textParts.join(" ").trim() || null;
-	}
-
-	return null;
-}
-
-/**
- * Normalize Jira status to TaskStatus enum
- */
-function normalizeJiraStatus(jiraStatus: string): TaskStatus {
-	const statusLower = jiraStatus.toLowerCase();
-
-	// Map common Jira statuses to TaskStatus
-	if (
-		statusLower.includes("done") ||
-		statusLower.includes("closed") ||
-		statusLower.includes("resolved")
-	) {
-		return "done";
-	}
-	if (
-		statusLower.includes("progress") ||
-		statusLower.includes("review") ||
-		statusLower.includes("testing")
-	) {
-		return "in_progress";
-	}
-	// Default to open for: To Do, Open, Backlog, etc.
-	return "open";
-}
-
-/**
- * Normalize Jira priority to TaskPriority enum
- */
-function normalizeJiraPriority(jiraPriority?: string): TaskPriority {
-	if (!jiraPriority) return "low";
-
-	const priorityLower = jiraPriority.toLowerCase();
-
-	if (
-		priorityLower.includes("highest") ||
-		priorityLower.includes("critical")
-	) {
-		return "urgent";
-	}
-	if (priorityLower.includes("high")) {
-		return "high";
-	}
-	if (priorityLower.includes("medium")) {
-		return "medium";
-	}
-	if (priorityLower.includes("low") || priorityLower.includes("lowest")) {
-		return "low";
-	}
-
-	return "medium"; // Default
-}
-
-/**
  * Handle different Jira event types and update Task
  */
 async function handleJiraEvent(
@@ -176,50 +95,31 @@ async function handleJiraEvent(
 	organizationId: string,
 	projectId: string
 ) {
-	const { webhookEvent, issue, changelog } = payload;
+	const { webhookEvent, issue: unmapped } = payload;
+	const issue = mapIssueToTaskData(unmapped);
 
 	switch (webhookEvent) {
 		case "jira:issue_created":
-			console.log("New Jira issue created:", issue.key);
+			console.log("New Jira issue created:", issue.title);
 
 			// Create new Task entry
 			await prisma.task.create({
 				data: {
 					organizationId,
-					externalId: issue.id,
+					externalId: issue.externalId,
 					sourceTool: "jira",
-					title: issue.fields.summary,
-					description: extractTextFromADF(issue.fields.description),
-					status: normalizeJiraStatus(issue.fields.status?.name),
-					assignee: issue.fields.assignee?.displayName || null,
-					assigneeId: issue.fields.assignee?.accountId || null,
-					priority: normalizeJiraPriority(
-						issue.fields.priority?.name
-					),
-					url: `${issue.self.split("/rest/api")[0]}/browse/${issue.key}`,
-					dueDate: null, // Jira doesn't always have due dates
-					labels: issue.fields.labels || [],
-					attributes: {
-						issueKey: issue.key,
-						issueType: issue.fields.issuetype?.name,
-						issueTypeId: issue.fields.issuetype?.id,
-						jiraPriority: issue.fields.priority?.name,
-						jiraPriorityId: issue.fields.priority?.id,
-						jiraStatus: issue.fields.status?.name,
-						jiraStatusId: issue.fields.status?.id,
-						projectKey: issue.fields.project?.key,
-						projectName: issue.fields.project?.name,
-						assignee: issue.fields.assignee
-							? {
-									accountId: issue.fields.assignee.accountId,
-									displayName:
-										issue.fields.assignee.displayName,
-									email: issue.fields.assignee.emailAddress,
-								}
-							: null,
-						created: issue.fields.created,
-						commentCount: issue.fields.comment?.total || 0,
-					},
+					title: issue.title,
+					description: issue.description,
+					status: issue.status,
+					assignee: issue.assignee,
+					assigneeId: issue.assigneeId,
+					priority: issue.priority,
+					url: issue.url,
+					dueDate: issue.dueDate,
+					labels: issue.labels || [],
+					createdAt: issue.createdAt,
+					updatedAt: issue.updatedAt,
+					attributes: issue.attributes,
 					projectId,
 					lastSyncedAt: new Date(),
 				},
@@ -227,91 +127,32 @@ async function handleJiraEvent(
 			break;
 
 		case "jira:issue_updated":
-			console.log("Jira issue updated:", issue.key);
-
-			// Prepare update data
-			const updateData: any = {
-				title: issue.fields.summary,
-				description: extractTextFromADF(issue.fields.description),
-				status: normalizeJiraStatus(issue.fields.status?.name),
-				assignee: issue.fields.assignee?.displayName || null,
-				assigneeId: issue.fields.assignee?.accountId || null,
-				priority: normalizeJiraPriority(issue.fields.priority?.name),
-				labels: issue.fields.labels || [],
-				lastSyncedAt: new Date(),
-				updatedAt: new Date(),
-			};
+			console.log("Jira issue updated:", issue.title);
 
 			// Get existing task to merge attributes
 			const existingTask = await prisma.task.findFirst({
 				where: {
-					externalId: issue.id,
+					externalId: issue.externalId,
 					sourceTool: "jira",
 					organizationId,
 				},
 			});
 
 			if (existingTask) {
-				updateData.attributes = {
-					...((existingTask.attributes as Record<string, any>) || {}),
-					issueKey: issue.key,
-					issueType: issue.fields.issuetype?.name,
-					issueTypeId: issue.fields.issuetype?.id,
-					jiraPriority: issue.fields.priority?.name,
-					jiraPriorityId: issue.fields.priority?.id,
-					jiraStatus: issue.fields.status?.name,
-					jiraStatusId: issue.fields.status?.id,
-					assignee: issue.fields.assignee
-						? {
-								accountId: issue.fields.assignee.accountId,
-								displayName: issue.fields.assignee.displayName,
-								email: issue.fields.assignee.emailAddress,
-							}
-						: null,
-					commentCount: issue.fields.comment?.total || 0,
-					lastUpdated: new Date().toISOString(),
-				};
-
-				// Log status changes from changelog
-				if (changelog?.items) {
-					const statusChange = changelog.items.find(
-						(item) => item.field === "status"
-					);
-					if (statusChange) {
-						console.log(
-							`Status changed from ${statusChange.fromString} to ${statusChange.toString}`
-						);
-						updateData.attributes.lastStatusChange = {
-							from: statusChange.fromString,
-							to: statusChange.toString,
-							timestamp: new Date().toISOString(),
-						};
-					}
-
-					const assigneeChange = changelog.items.find(
-						(item) => item.field === "assignee"
-					);
-					if (assigneeChange) {
-						console.log(
-							`Assignee changed from ${assigneeChange.fromString} to ${assigneeChange.toString}`
-						);
-					}
-				}
-
 				await prisma.task.update({
 					where: { id: existingTask.id },
-					data: updateData,
+					data: issue,
 				});
 			}
 			break;
 
 		case "jira:issue_deleted":
-			console.log("Jira issue deleted:", issue.key);
+			console.log("Jira issue deleted:", issue.title);
 
 			// Delete Task entry
 			await prisma.task.deleteMany({
 				where: {
-					externalId: issue.id,
+					externalId: issue.externalId,
 					sourceTool: "jira",
 					organizationId,
 				},
@@ -319,12 +160,12 @@ async function handleJiraEvent(
 			break;
 
 		case "comment_created":
-			console.log("Comment created on issue:", issue.key);
+			console.log("Comment created on issue:", issue.title);
 
 			// Update comment count in attributes
 			const taskForComment = await prisma.task.findFirst({
 				where: {
-					externalId: issue.id,
+					externalId: issue.externalId,
 					sourceTool: "jira",
 					organizationId,
 				},
@@ -340,7 +181,7 @@ async function handleJiraEvent(
 					data: {
 						attributes: {
 							...currentAttributes,
-							commentCount: issue.fields.comment?.total || 0,
+							commentCount: unmapped.fields.comment?.total || 0,
 						},
 						updatedAt: new Date(),
 					},
@@ -349,12 +190,12 @@ async function handleJiraEvent(
 			break;
 
 		case "comment_deleted":
-			console.log("Comment deleted on issue:", issue.key);
+			console.log("Comment deleted on issue:", issue.title);
 
 			// Update comment count in attributes
 			const taskForDeletedComment = await prisma.task.findFirst({
 				where: {
-					externalId: issue.id,
+					externalId: issue.externalId,
 					sourceTool: "jira",
 					organizationId,
 				},
@@ -368,7 +209,7 @@ async function handleJiraEvent(
 					data: {
 						attributes: {
 							...currentAttributes,
-							commentCount: issue.fields.comment?.total || 0,
+							commentCount: unmapped.fields.comment?.total || 0,
 						},
 						updatedAt: new Date(),
 					},
@@ -377,12 +218,12 @@ async function handleJiraEvent(
 			break;
 
 		case "comment_updated":
-			console.log("Comment updated on issue:", issue.key);
+			console.log("Comment updated on issue:", issue.title);
 			// No action needed
 			break;
 
 		case "worklog_updated":
-			console.log("Worklog updated on issue:", issue.key);
+			console.log("Worklog updated on issue:", issue.title);
 			// No action needed
 			break;
 

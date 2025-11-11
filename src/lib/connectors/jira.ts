@@ -22,6 +22,120 @@ interface IssueData {
 	attributes: Record<string, any>;
 }
 
+export function mapIssueToTaskData(issue: any): IssueData {
+	const statusName = issue.fields.status?.name?.toLowerCase() || "open";
+	const priorityName = issue.fields.priority?.name?.toLowerCase();
+
+	return {
+		externalId: issue.id,
+		title: issue.fields.summary,
+		description: extractDescription(issue.fields.description),
+		status: normalizeStatus(statusName),
+		priority: normalizePriority(priorityName),
+		assignee: issue.fields.assignee?.displayName,
+		assigneeId: issue.fields.assignee?.accountId,
+		url: `${issue.self.split("/rest/api")[0]}/browse/${issue.key}`,
+		dueDate: issue.fields.duedate
+			? new Date(issue.fields.duedate)
+			: undefined,
+		createdAt: new Date(issue.fields.created),
+		updatedAt: new Date(issue.fields.updated),
+		labels: issue.fields.labels || [],
+		attributes: {
+			issueKey: issue.key,
+			issueType: issue.fields.issuetype?.name,
+			issueTypeId: issue.fields.issuetype?.id,
+			jiraPriority: issue.fields.priority?.name,
+			jiraPriorityId: issue.fields.priority?.id,
+			jiraStatus: issue.fields.status?.name,
+			jiraStatusId: issue.fields.status?.id,
+			projectKey: issue.fields.project?.key,
+			projectName: issue.fields.project?.name,
+			assignee: issue.fields.assignee
+				? {
+						accountId: issue.fields.assignee.accountId,
+						displayName: issue.fields.assignee.displayName,
+						email: issue.fields.assignee.emailAddress,
+					}
+				: null,
+			created: issue.fields.created,
+			commentCount: issue.fields.comment?.total || 0,
+			reporter: issue.fields.reporter?.displayName,
+			reporterId: issue.fields.reporter?.accountId,
+			statusCategory: issue.fields.status?.statusCategory?.key,
+		},
+	};
+}
+
+export function extractDescription(description: any): string | undefined {
+	if (!description) return undefined;
+
+	if (typeof description === "object" && description.content) {
+		return adfToText(description);
+	}
+
+	return String(description);
+}
+
+export function adfToText(adf: any): string {
+	if (!adf.content) return "";
+
+	return adf.content
+		.map((node: any) => {
+			if (node.type === "paragraph" && node.content) {
+				return node.content
+					.map((item: any) => item.text || "")
+					.join("");
+			}
+			return "";
+		})
+		.join("\n");
+}
+
+export function normalizeStatus(status: string): TaskStatus {
+	const statusMap: Record<string, TaskStatus> = {
+		"to do": "open",
+		todo: "open",
+		open: "open",
+		backlog: "open",
+		"in progress": "in_progress",
+		in_progress: "in_progress",
+		"in review": "in_progress",
+		review: "in_progress",
+		done: "done",
+		closed: "done",
+		resolved: "done",
+		completed: "done",
+	};
+
+	return statusMap[status] || "open";
+}
+
+export function normalizePriority(priority?: string): TaskPriority | undefined {
+	if (!priority) return undefined;
+
+	const priorityMap: Record<string, TaskPriority> = {
+		highest: "high",
+		high: "high",
+		medium: "medium",
+		low: "low",
+		lowest: "low",
+	};
+
+	return priorityMap[priority];
+}
+
+export function denormalizePriority(priority: TaskPriority): string {
+	const priorityMap: Record<TaskPriority, string> = {
+		high: "High",
+		medium: "Medium",
+		low: "Low",
+		urgent: "Urgent",
+	};
+
+	return priorityMap[priority] || "Medium";
+}
+
 export class JiraConnector {
 	private baseUrl: string;
 	private accessToken: string;
@@ -254,7 +368,7 @@ export class JiraConnector {
 							? issue.dueDate.toISOString().split("T")[0]
 							: undefined,
 						priority: issue.priority
-							? { name: this.denormalizePriority(issue.priority) }
+							? { name: denormalizePriority(issue.priority) }
 							: undefined,
 						labels: issue.labels || [],
 					},
@@ -324,7 +438,7 @@ export class JiraConnector {
 							? null
 							: undefined,
 					priority: updates.priority
-						? { name: this.denormalizePriority(updates.priority) }
+						? { name: denormalizePriority(updates.priority) }
 						: undefined,
 					labels: updates.labels,
 				},
@@ -336,8 +450,7 @@ export class JiraConnector {
 				const transitions =
 					await this.getIssueTransitions(issueIdOrKey);
 				const targetTransition = transitions.find(
-					(t: any) =>
-						this.normalizeStatus(t.to.name) === updates.status
+					(t: any) => normalizeStatus(t.to.name) === updates.status
 				);
 				if (targetTransition) {
 					const transitionResp = await fetch(
@@ -423,7 +536,7 @@ export class JiraConnector {
 			const data = await response.json();
 
 			const issues: IssueData[] = data.issues.map((issue: any) =>
-				this.mapIssueToTaskData(issue)
+				mapIssueToTaskData(issue)
 			);
 
 			return {
@@ -454,7 +567,7 @@ export class JiraConnector {
 			await this.handleResponse(response);
 			const issue = await response.json();
 
-			return this.mapIssueToTaskData(issue);
+			return mapIssueToTaskData(issue);
 		} catch (error) {
 			console.error("[JIRA_GET_ISSUE_ERROR]", error);
 			throw new Error(`Failed to fetch Jira issue: ${issueIdOrKey}`);
@@ -597,104 +710,6 @@ export class JiraConnector {
 			Authorization: `Bearer ${this.accessToken}`,
 			Accept: "application/json",
 		};
-	}
-
-	private mapIssueToTaskData(issue: any): IssueData {
-		const statusName = issue.fields.status?.name?.toLowerCase() || "open";
-		const priorityName = issue.fields.priority?.name?.toLowerCase();
-
-		return {
-			externalId: issue.id,
-			title: issue.fields.summary,
-			description: this.extractDescription(issue.fields.description),
-			status: this.normalizeStatus(statusName),
-			priority: this.normalizePriority(priorityName),
-			assignee: issue.fields.assignee?.displayName,
-			assigneeId: issue.fields.assignee?.accountId,
-			url: `${this.baseUrl}/browse/${issue.key}`,
-			dueDate: issue.fields.duedate
-				? new Date(issue.fields.duedate)
-				: undefined,
-			createdAt: new Date(issue.fields.created),
-			updatedAt: new Date(issue.fields.updated),
-			labels: issue.fields.labels || [],
-			attributes: {
-				key: issue.key,
-				issueType: issue.fields.issuetype?.name,
-				reporter: issue.fields.reporter?.displayName,
-				reporterId: issue.fields.reporter?.accountId,
-				statusCategory: issue.fields.status?.statusCategory?.key,
-			},
-		};
-	}
-
-	private extractDescription(description: any): string | undefined {
-		if (!description) return undefined;
-
-		if (typeof description === "object" && description.content) {
-			return this.adfToText(description);
-		}
-
-		return String(description);
-	}
-
-	private adfToText(adf: any): string {
-		if (!adf.content) return "";
-
-		return adf.content
-			.map((node: any) => {
-				if (node.type === "paragraph" && node.content) {
-					return node.content
-						.map((item: any) => item.text || "")
-						.join("");
-				}
-				return "";
-			})
-			.join("\n");
-	}
-
-	private normalizeStatus(status: string): TaskStatus {
-		const statusMap: Record<string, TaskStatus> = {
-			"to do": "open",
-			todo: "open",
-			open: "open",
-			backlog: "open",
-			"in progress": "in_progress",
-			in_progress: "in_progress",
-			"in review": "in_progress",
-			review: "in_progress",
-			done: "done",
-			closed: "done",
-			resolved: "done",
-			completed: "done",
-		};
-
-		return statusMap[status] || "open";
-	}
-
-	private normalizePriority(priority?: string): TaskPriority | undefined {
-		if (!priority) return undefined;
-
-		const priorityMap: Record<string, TaskPriority> = {
-			highest: "high",
-			high: "high",
-			medium: "medium",
-			low: "low",
-			lowest: "low",
-		};
-
-		return priorityMap[priority];
-	}
-
-	private denormalizePriority(priority: TaskPriority): string {
-		const priorityMap: Record<TaskPriority, string> = {
-			high: "High",
-			medium: "Medium",
-			low: "Low",
-			urgent: "Urgent",
-		};
-
-		return priorityMap[priority] || "Medium";
 	}
 
 	private async getIssueTransitions(issueIdOrKey: string): Promise<any[]> {
