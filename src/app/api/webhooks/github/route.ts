@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { processGitHubEvent } from "@/server/platforms/github";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
 	const body = await request.text();
@@ -8,11 +9,11 @@ export async function POST(request: NextRequest) {
 	const event = request.headers.get("x-github-event");
 	const deliveryId = request.headers.get("x-github-delivery");
 
-	console.log("GitHub webhook received:", { event, deliveryId });
+	logger.info("GitHub webhook received", { event, deliveryId });
 
 	// Verify the webhook signature
 	if (!verifyGitHubSignature(signature!, body)) {
-		console.error("Invalid GitHub signature");
+		logger.error("Invalid GitHub signature");
 		return NextResponse.json(
 			{ error: "Invalid signature" },
 			{ status: 401 }
@@ -22,13 +23,13 @@ export async function POST(request: NextRequest) {
 	const payload = JSON.parse(body);
 
 	try {
-		console.log("GitHub webhook payload: ", payload);
+		logger.info("GitHub webhook payload", { event, deliveryId, payload });
 		// Process the webhook event
 		await processGitHubEvent(event!, payload);
 
 		return NextResponse.json({ success: true });
 	} catch (error) {
-		console.error("Error processing GitHub webhook:", error);
+		logger.error("Error processing GitHub webhook", { error });
 		return NextResponse.json(
 			{ error: "Internal server error" },
 			{ status: 500 }

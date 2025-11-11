@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 import { AsanaConnector } from "@/lib/connectors/asana";
+import { logger } from "@/lib/logger";
 
 export async function POST(
 	request: NextRequest,
@@ -16,7 +17,7 @@ export async function POST(
 
 		if (hookSecret) {
 			// This is the initial handshake from Asana
-			console.log("Asana webhook handshake received");
+			logger.info("Asana webhook handshake received", { organizationId });
 
 			// Respond with the same secret to complete handshake
 			return new NextResponse(null, {
@@ -37,7 +38,7 @@ export async function POST(
 		});
 
 		if (!integration) {
-			console.warn("Asana webhook received for unknown integration", {
+			logger.warn("Asana webhook received for unknown integration", {
 				organizationId,
 			});
 			return NextResponse.json(
@@ -58,7 +59,9 @@ export async function POST(
 				.digest("hex");
 
 			if (signature !== expectedSignature) {
-				console.warn("Asana webhook signature verification failed");
+				logger.warn("Asana webhook signature verification failed", {
+					organizationId,
+				});
 				return NextResponse.json(
 					{ error: "Invalid signature" },
 					{ status: 401 }
@@ -129,12 +132,12 @@ async function processAsanaWebhook(
 	integration: any,
 	organizationId: string
 ): Promise<void> {
-	console.log(
-		`Processing ${payload.events?.length || 0} Asana webhook events`
-	);
+	logger.info(`Processing Asana webhook events`, {
+		count: payload.events?.length || 0,
+	});
 
 	if (!payload.events || payload.events.length === 0) {
-		console.warn("No events in Asana webhook payload");
+		logger.warn("No events in Asana webhook payload");
 		return;
 	}
 
@@ -142,7 +145,7 @@ async function processAsanaWebhook(
 		try {
 			await processAsanaEvent(event, integration, organizationId);
 		} catch (error) {
-			console.error(`Failed to process Asana event:`, error, event);
+			logger.error(`Failed to process Asana event`, { error, event });
 			// Continue processing other events
 		}
 	}
@@ -158,9 +161,11 @@ async function processAsanaEvent(
 ): Promise<void> {
 	const { action, resource, parent } = event;
 
-	console.log(
-		`Processing Asana event: ${action} ${resource.resource_type} ${resource.gid}`
-	);
+	logger.info(`Processing Asana event`, {
+		action,
+		resourceType: resource.resource_type,
+		resourceId: resource.gid,
+	});
 
 	// Handle different resource types
 	switch (resource.resource_type) {
@@ -174,13 +179,15 @@ async function processAsanaEvent(
 
 		case "story":
 			// Stories are comments/activity - can be logged but not critical
-			console.log(
-				`Story event (comment/activity) on task ${parent?.gid}`
-			);
+			logger.debug(`Story event (comment/activity) on task`, {
+				parentId: parent?.gid,
+			});
 			break;
 
 		default:
-			console.log(`Unhandled resource type: ${resource.resource_type}`);
+			logger.warn(`Unhandled resource type`, {
+				resourceType: resource.resource_type,
+			});
 	}
 }
 
@@ -204,26 +211,26 @@ async function handleTaskEvent(
 		switch (action) {
 			case "added":
 				// New task created
-				console.log(`New task added: ${taskGid}`);
+				logger.info(`New task added`, { taskGid });
 				await syncTaskFromAsana(connector, taskGid, organizationId);
 				break;
 
 			case "changed":
 				// Task updated
-				console.log(`Task changed: ${taskGid}`, change);
+				logger.info(`Task changed`, { taskGid, change });
 				await syncTaskFromAsana(connector, taskGid, organizationId);
 				break;
 
 			case "removed":
 			case "deleted":
 				// Task deleted or removed from project
-				console.log(`Task removed/deleted: ${taskGid}`);
+				logger.info(`Task removed/deleted`, { taskGid });
 				await markTaskDeleted(taskGid, organizationId);
 				break;
 
 			case "undeleted":
 				// Task restored
-				console.log(`Task undeleted: ${taskGid}`);
+				logger.info(`Task undeleted`, { taskGid });
 				await syncTaskFromAsana(connector, taskGid, organizationId);
 				break;
 		}
@@ -244,7 +251,7 @@ async function handleProjectEvent(
 	const { action, resource } = event;
 	const projectGid = resource.gid;
 
-	console.log(`Project event: ${action} ${projectGid}`);
+	logger.info(`Project event`, { action, projectGid });
 
 	const apiKey = integration.apiKey;
 	const connector = new AsanaConnector(apiKey);
@@ -374,7 +381,7 @@ async function syncTaskFromAsana(
 			},
 		});
 
-		console.log(`Task ${taskGid} synced successfully`);
+		logger.info(`Task synced successfully`, { taskGid });
 	} catch (error) {
 		console.error(`Failed to sync task ${taskGid}:`, error);
 		throw error;

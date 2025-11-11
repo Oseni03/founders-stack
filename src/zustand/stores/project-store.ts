@@ -140,6 +140,8 @@ export const createProjectStore = () => {
 							throw new Error("Project not found");
 						}
 
+						console.log("PM: Creating task", { taskData });
+
 						// Create task in the integrated platform and local DB
 						const res = await fetch(
 							`/api/integrations/${project.sourceTool}/resources/tasks`,
@@ -155,12 +157,18 @@ export const createProjectStore = () => {
 
 						if (!res.ok) {
 							const errorText = await res.text();
+							console.log(
+								`PM: 
+								${errorText || "Failed to create task"}`
+							);
 							throw new Error(
 								errorText || "Failed to create task"
 							);
 						}
 
 						const newTask: Task = await res.json();
+
+						console.log("PM: new task response: ", { newTask });
 
 						// Update local state
 						if (data) {
@@ -211,6 +219,8 @@ export const createProjectStore = () => {
 							throw new Error("Project not found");
 						}
 
+						console.log("PM: Updating task", { taskId, updates });
+
 						// Update task in the integrated platform and local DB
 						const res = await fetch(
 							`/api/integrations/${project.sourceTool}/resources/tasks/${taskId}`,
@@ -226,12 +236,21 @@ export const createProjectStore = () => {
 
 						if (!res.ok) {
 							const errorText = await res.text();
+							console.log(
+								`PM: Failed to update task - ${
+									errorText || "Failed to update task"
+								}`
+							);
 							throw new Error(
 								errorText || "Failed to update task"
 							);
 						}
 
 						const updatedTask: Task = await res.json();
+
+						console.log("PM: Updated task response: ", {
+							updatedTask,
+						});
 
 						// Update local state
 						if (data) {
@@ -285,6 +304,11 @@ export const createProjectStore = () => {
 					setError(null);
 
 					try {
+						console.log("PM: Deleting task", {
+							productId,
+							taskId,
+						});
+
 						// Call API route to delete task
 						const res = await fetch(
 							`/api/products/${productId}/tasks/${taskId}`,
@@ -296,8 +320,17 @@ export const createProjectStore = () => {
 
 						if (!res.ok) {
 							const errText = await res.text();
+							console.log(
+								`PM: Failed to delete task - ${
+									errText || "Failed to delete task"
+								}`
+							);
 							throw new Error(errText || "Failed to delete task");
 						}
+
+						console.log("PM: Task deleted successfully", {
+							taskId,
+						});
 
 						// Update local state
 						if (data) {

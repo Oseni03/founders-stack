@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { processSlackEvent } from "@/server/platforms/slack";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
 	const body = await request.text();
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
 
 	// Handle URL verification challenge (one-time setup)
 	if (payload.type === "url_verification") {
-		console.log("URL verification challenge received");
+		logger.info("Slack URL verification challenge received");
 		return NextResponse.json({ challenge: payload.challenge });
 	}
 
@@ -27,14 +28,14 @@ export async function POST(request: NextRequest) {
 	if (payload.type === "event_callback") {
 		// Process the event asynchronously to respond quickly
 		await processSlackEvent(payload).catch((error) => {
-			console.error("Error processing Slack event:", error);
+			logger.error("Error processing Slack event", { error });
 		});
 
 		// Respond immediately to Slack (must respond within 3 seconds)
 		return NextResponse.json({ ok: true });
 	}
 
-	console.log("Unhandled Slack webhook payload: ", payload.type);
+	logger.warn("Unhandled Slack webhook payload", { type: payload.type });
 
 	return NextResponse.json({ ok: true });
 }
@@ -50,7 +51,9 @@ function verifySlackRequest(
 	// Reject old requests (replay attack prevention)
 	const currentTime = Math.floor(Date.now() / 1000);
 	if (Math.abs(currentTime - parseInt(timestamp)) > 60 * 5) {
-		console.log("Request too old");
+		logger.warn("Slack request timestamp outside allowed window", {
+			timestamp,
+		});
 		return false;
 	}
 

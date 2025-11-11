@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import { mapIssueToTaskData } from "@/lib/connectors/jira";
 
 // Jira webhook event types
@@ -100,7 +101,7 @@ async function handleJiraEvent(
 
 	switch (webhookEvent) {
 		case "jira:issue_created":
-			console.log("New Jira issue created:", issue.title);
+			logger.info("New Jira issue created", { title: issue.title });
 
 			// Create new Task entry
 			await prisma.task.create({
@@ -127,7 +128,7 @@ async function handleJiraEvent(
 			break;
 
 		case "jira:issue_updated":
-			console.log("Jira issue updated:", issue.title);
+			logger.info("Jira issue updated", { title: issue.title });
 
 			// Get existing task to merge attributes
 			const existingTask = await prisma.task.findFirst({
@@ -147,7 +148,7 @@ async function handleJiraEvent(
 			break;
 
 		case "jira:issue_deleted":
-			console.log("Jira issue deleted:", issue.title);
+			logger.info("Jira issue deleted", { title: issue.title });
 
 			// Delete Task entry
 			await prisma.task.deleteMany({
@@ -160,7 +161,7 @@ async function handleJiraEvent(
 			break;
 
 		case "comment_created":
-			console.log("Comment created on issue:", issue.title);
+			logger.info("Comment created on issue", { title: issue.title });
 
 			// Update comment count in attributes
 			const taskForComment = await prisma.task.findFirst({
@@ -190,7 +191,7 @@ async function handleJiraEvent(
 			break;
 
 		case "comment_deleted":
-			console.log("Comment deleted on issue:", issue.title);
+			logger.info("Comment deleted on issue", { title: issue.title });
 
 			// Update comment count in attributes
 			const taskForDeletedComment = await prisma.task.findFirst({
@@ -218,17 +219,17 @@ async function handleJiraEvent(
 			break;
 
 		case "comment_updated":
-			console.log("Comment updated on issue:", issue.title);
+			logger.info("Comment updated on issue", { title: issue.title });
 			// No action needed
 			break;
 
 		case "worklog_updated":
-			console.log("Worklog updated on issue:", issue.title);
+			logger.info("Worklog updated on issue", { title: issue.title });
 			// No action needed
 			break;
 
 		default:
-			console.log("Unknown Jira event type:", webhookEvent);
+			logger.warn("Unknown Jira event type", { webhookEvent });
 	}
 }
 
@@ -251,7 +252,7 @@ export async function POST(
 		// const authHeader = request.headers.get("authorization");
 		const webhookId = request.headers.get("x-atlassian-webhook-identifier");
 
-		console.log(`📥 Jira webhook received: ${data.webhookEvent}`);
+		logger.info("Jira webhook received", { event: data.webhookEvent });
 
 		const integration = await prisma.integration.findFirst({
 			where: {
@@ -262,7 +263,7 @@ export async function POST(
 		});
 
 		if (!integration) {
-			console.warn("⚠️  No integration found for webhook");
+			logger.warn("No integration found for Jira webhook");
 			return NextResponse.json(
 				{ error: "Integration not found" },
 				{ status: 404 }
@@ -273,7 +274,7 @@ export async function POST(
 
 		// Verify webhook signature if secret exists
 		if (webhookId !== attributes.webhookId) {
-			console.error("❌ Invalid webhook ID");
+			logger.error("Invalid Jira webhook ID", { webhookId });
 			return NextResponse.json(
 				{ error: "Invalid webhook" },
 				{ status: 401 }
@@ -284,7 +285,7 @@ export async function POST(
 		const jiraProjectId = data.issue?.fields?.project?.id;
 
 		if (!jiraProjectId) {
-			console.error("No project ID found in webhook payload");
+			logger.error("No project ID found in Jira webhook payload");
 			return NextResponse.json(
 				{ error: "Missing project ID in payload" },
 				{ status: 400 }
@@ -306,9 +307,9 @@ export async function POST(
 		});
 
 		if (!project) {
-			console.error(
-				`No project found for Jira project ID: ${jiraProjectId}`
-			);
+			logger.error("No project found for Jira project ID", {
+				jiraProjectId,
+			});
 			return NextResponse.json(
 				{ error: "Project not found for this Jira project" },
 				{ status: 404 }
@@ -316,6 +317,11 @@ export async function POST(
 		}
 
 		// Handle the event
+		logger.info("Handling Jira webhook", {
+			event: data.webhookEvent,
+			organizationId,
+			projectId: project.id,
+		});
 		await handleJiraEvent(data, organizationId, project.id);
 
 		// Return success response
@@ -324,7 +330,7 @@ export async function POST(
 			{ status: 200 }
 		);
 	} catch (error) {
-		console.error("Error processing Jira webhook:", error);
+		logger.error("Error processing Jira webhook", { error });
 		return NextResponse.json(
 			{ error: "Webhook processing failed" },
 			{ status: 500 }

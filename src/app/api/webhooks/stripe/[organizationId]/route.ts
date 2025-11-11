@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { StripeConnector } from "@/lib/connectors/stripe";
 import { determineEventCategory } from "@/lib/stripe-utils";
+import { logger } from "@/lib/logger";
 
 /**
  * POST handler for Stripe webhooks
@@ -27,7 +28,7 @@ export async function POST(
 		});
 
 		if (!integration) {
-			console.warn("Stripe webhook received for unknown integration", {
+			logger.warn("Stripe webhook received for unknown integration", {
 				organizationId,
 			});
 			return NextResponse.json(
@@ -42,7 +43,7 @@ export async function POST(
 		const signature = headersList.get("stripe-signature");
 
 		if (!signature) {
-			console.error("Missing Stripe signature");
+			logger.error("Missing Stripe signature");
 			return NextResponse.json(
 				{ error: "Missing signature" },
 				{ status: 400 }
@@ -60,14 +61,18 @@ export async function POST(
 				integration.webhookSecret!
 			);
 		} catch (err) {
-			console.error("Webhook signature verification failed:", err);
+			logger.error("Webhook signature verification failed", {
+				error: err,
+			});
 			return NextResponse.json(
 				{ error: "Invalid signature" },
 				{ status: 400 }
 			);
 		}
 
-		console.log(`Received Stripe event: ${event.type} (${event.id})`);
+		logger.info(`Received Stripe event: ${event.type}`, {
+			eventId: event.id,
+		});
 
 		// Step 3: Store raw event in database
 		const storedEvent = await prisma.event.create({
@@ -86,7 +91,7 @@ export async function POST(
 		// Step 4: Process event asynchronously (don't wait)
 		await StripeConnector.processStripeEvent(event, organizationId).catch(
 			(error) => {
-				console.error(`Failed to process event ${event.id}:`, error);
+				logger.error(`Failed to process event ${event.id}`, { error });
 				// Update event status to failed
 				prisma.event.update({
 					where: { id: storedEvent.id },
@@ -105,9 +110,13 @@ export async function POST(
 		});
 
 		// Step 6: Return success immediately (within 5 seconds)
+		logger.info("Stripe webhook handled successfully", {
+			event: event.type,
+			organizationId,
+		});
 		return NextResponse.json({ received: true }, { status: 200 });
 	} catch (error) {
-		console.error("Webhook processing error:", error);
+		logger.error("Webhook processing error", { error });
 		return NextResponse.json(
 			{ error: "Internal server error" },
 			{ status: 500 }
