@@ -41,9 +41,11 @@ export default function TasksPage() {
 	const error = useProjectStore((s) => s.error);
 	const range = useProjectStore((s) => s.range);
 	const fetchData = useProjectStore((s) => s.fetchData);
+	const setOrganizationId = useProjectStore((s) => s.setOrganizationId);
 
 	useEffect(() => {
 		fetchData(productId as string, range);
+		setOrganizationId(productId as string);
 	}, [range]);
 
 	if (loading) {

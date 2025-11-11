@@ -83,7 +83,10 @@ export function JiraTaskDialog({
 
 	useEffect(() => {
 		if (editingTask) {
-			logger.debug("Jira dialog: loading issue for editing", { taskId: editingTask.id, title: editingTask.title });
+			logger.debug("Jira dialog: loading issue for editing", {
+				taskId: editingTask.id,
+				title: editingTask.title,
+			});
 			form.reset({
 				issueType:
 					(editingTask.attributes as Record<string, any>)
@@ -115,7 +118,7 @@ export function JiraTaskDialog({
 
 	const handleSubmit = async (formData: JiraTaskFormValues) => {
 		try {
-			logger.info("Jira issue form submitted", { 
+			logger.info("Jira issue form submitted", {
 				mode: editingTask ? "edit" : "create",
 				title: formData.title,
 				issueType: formData.issueType,
@@ -136,15 +139,25 @@ export function JiraTaskDialog({
 			if (editingTask?.id) {
 				logger.debug("Updating Jira issue", { taskId: editingTask.id });
 				await onUpdate(editingTask?.id, taskData);
-				logger.info("Jira issue updated successfully", { taskId: editingTask.id });
+				logger.info("Jira issue updated successfully", {
+					taskId: editingTask.id,
+				});
 			} else {
-				logger.debug("Creating new Jira issue", { issueType: formData.issueType });
+				logger.debug("Creating new Jira issue", {
+					issueType: formData.issueType,
+				});
 				await onCreate(taskData);
-				logger.info("Jira issue created successfully", { title: formData.title, issueType: formData.issueType });
+				logger.info("Jira issue created successfully", {
+					title: formData.title,
+					issueType: formData.issueType,
+				});
 			}
 			onClose();
 		} catch (error) {
-			logger.error("Error submitting Jira issue", { error, editingTaskId: editingTask?.id });
+			logger.error("Error submitting Jira issue", {
+				error,
+				editingTaskId: editingTask?.id,
+			});
 		}
 	};
 
