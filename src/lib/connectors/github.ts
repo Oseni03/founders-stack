@@ -16,6 +16,29 @@ import {
 // Extend Octokit with plugins for resilience against rate limits and transient errors
 const OctokitWithPlugins = Octokit.plugin(retry, throttling);
 
+export interface WebhookConfig {
+	url: string; // The endpoint URL for the webhook
+	contentType?: "json" | "form"; // Payload format
+	secret?: string; // Secret for signature verification
+	events: string[]; // Events to subscribe to (e.g., ["push", "pull_request"])
+	active?: boolean; // Whether the webhook is active
+}
+
+// Add this interface for webhook response data
+export interface WebhookData {
+	id: number;
+	url: string;
+	events: string[];
+	active: boolean;
+	config: {
+		url?: string;
+		content_type?: string;
+		secret?: string;
+	};
+	created_at: string;
+	updated_at: string;
+}
+
 export class GitHubConnector {
 	private octokit: InstanceType<typeof OctokitWithPlugins>;
 	private owner?: string;
@@ -771,6 +794,171 @@ export class GitHubConnector {
 		}
 
 		return allContributors;
+	}
+
+	/**
+	 * Create a webhook for a repository
+	 * @param config Webhook configuration (URL, events, secret, etc.)
+	 * @returns The created webhook data
+	 */
+	async createWebhook(config: WebhookConfig): Promise<WebhookData> {
+		try {
+			const { data } = await this.octokit.rest.repos.createWebhook({
+				owner: this.owner!,
+				repo: this.repo!,
+				name: "web", // Standard webhook name
+				config: {
+					url: config.url,
+					content_type: config.contentType || "json",
+					secret: config.secret,
+					insecure_ssl: "0", // Enforce SSL verification
+				},
+				events: config.events,
+				active: config.active !== undefined ? config.active : true,
+			});
+
+			return {
+				id: data.id,
+				url: data.url,
+				events: data.events,
+				active: data.active,
+				config: {
+					url: data.config.url,
+					content_type: data.config.content_type,
+					secret: data.config.secret,
+				},
+				created_at: data.created_at,
+				updated_at: data.updated_at,
+			};
+		} catch (error) {
+			console.error("GitHub createWebhook error:", error);
+			throw new Error("Failed to create webhook");
+		}
+	}
+
+	/**
+	 * List all webhooks for a repository
+	 * @param page Page number for pagination
+	 * @param perPage Number of webhooks per page
+	 * @returns Paginated list of webhooks
+	 */
+	async listWebhooks(
+		page: number = 1,
+		perPage: number = 100
+	): Promise<PaginatedResponse<WebhookData>> {
+		try {
+			const { data, headers } =
+				await this.octokit.rest.repos.listWebhooks({
+					owner: this.owner!,
+					repo: this.repo!,
+					per_page: perPage,
+					page,
+				});
+
+			const webhooks = data.map((hook) => ({
+				id: hook.id,
+				url: hook.url,
+				events: hook.events,
+				active: hook.active,
+				config: {
+					url: hook.config.url,
+					content_type: hook.config.content_type,
+					secret: hook.config.secret,
+				},
+				created_at: hook.created_at,
+				updated_at: hook.updated_at,
+			}));
+
+			// Extract total count from Link header
+			let totalCount = data.length;
+			let totalPages = 1;
+			const linkHeader = headers.link;
+			if (linkHeader) {
+				const lastPageMatch = linkHeader.match(
+					/page=(\d+)>; rel="last"/
+				);
+				if (lastPageMatch) {
+					const lastPage = parseInt(lastPageMatch[1]);
+					totalPages = lastPage;
+					totalCount = lastPage * perPage;
+				}
+			}
+
+			return {
+				resources: webhooks,
+				page,
+				limit: perPage,
+				total: totalCount,
+				totalPages,
+				hasMore: page < totalPages,
+			};
+		} catch (error) {
+			console.error("GitHub listWebhooks error:", error);
+			throw new Error("Failed to fetch webhooks");
+		}
+	}
+
+	/**
+	 * Update an existing webhook
+	 * @param hookId The ID of the webhook to update
+	 * @param config Updated webhook configuration
+	 * @returns The updated webhook data
+	 */
+	async updateWebhook(
+		hookId: number,
+		config: WebhookConfig
+	): Promise<WebhookData> {
+		try {
+			const { data } = await this.octokit.rest.repos.updateWebhook({
+				owner: this.owner!,
+				repo: this.repo!,
+				hook_id: hookId,
+				config: {
+					url: config.url,
+					content_type: config.contentType || "json",
+					secret: config.secret,
+					insecure_ssl: "0",
+				},
+				events: config.events,
+				active: config.active !== undefined ? config.active : true,
+			});
+
+			return {
+				id: data.id,
+				url: data.url,
+				events: data.events,
+				active: data.active,
+				config: {
+					url: data.config.url,
+					content_type: data.config.content_type,
+					secret: data.config.secret,
+				},
+				created_at: data.created_at,
+				updated_at: data.updated_at,
+			};
+		} catch (error) {
+			console.error("GitHub updateWebhook error:", error);
+			throw new Error("Failed to update webhook");
+		}
+	}
+
+	/**
+	 * Delete a webhook by ID
+	 * @param hookId The ID of the webhook to delete
+	 * @returns True if deletion was successful
+	 */
+	async deleteWebhook(hookId: number): Promise<boolean> {
+		try {
+			await this.octokit.rest.repos.deleteWebhook({
+				owner: this.owner!,
+				repo: this.repo!,
+				hook_id: hookId,
+			});
+			return true;
+		} catch (error) {
+			console.error("GitHub deleteWebhook error:", error);
+			throw new Error("Failed to delete webhook");
+		}
 	}
 
 	// ========================================================================

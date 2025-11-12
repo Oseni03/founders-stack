@@ -39,6 +39,7 @@ export async function getIntegration(organizationId: string, toolName: string) {
 		where: {
 			organizationId,
 			toolName,
+			status: "CONNECTED",
 		},
 	});
 	return integration;

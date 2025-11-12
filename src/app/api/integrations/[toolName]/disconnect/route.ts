@@ -5,6 +5,7 @@ import { disconnectAsanaIntegration } from "@/server/platforms/asana";
 import { disconnectPostHogIntegration } from "@/server/platforms/posthog";
 import { disconnectStripeIntegration } from "@/server/platforms/stripe";
 import { NextRequest, NextResponse } from "next/server";
+import { disconnectGitHubIntegration } from "@/server/platforms/github";
 
 export async function POST(
 	request: NextRequest,
@@ -25,6 +26,9 @@ export async function POST(
 
 				case "jira":
 					await disconnectJiraIntegration(user.organizationId);
+
+				case "github":
+					await disconnectGitHubIntegration(user.organizationId);
 
 				default:
 					await prisma.integration.update({

@@ -272,6 +272,23 @@ model Integration {
   @@index([organizationId, category])
 }
 
+model Webhook {
+  id           String   @id @default(uuid())
+  repositoryId String
+  externalId   String
+  sourceTool   String
+  url          String?
+  events       String[] // Store as JSON array
+  active       Boolean
+  attributes   Json? // Store additional metadata (e.g., content_type, created_at)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  repository Repository @relation(fields: [repositoryId], references: [id])
+
+  @@unique([externalId, sourceTool])
+}
+
 model OAuthTemp {
   id               String   @id @default(cuid())
   userId           String
@@ -623,6 +640,7 @@ model Repository {
   updatedAt    DateTime          @updatedAt
   health       RepositoryHealth?
   contributors Contributor[]
+  Webhook      Webhook[]
 
   @@unique([externalId, sourceTool])
   @@index([organizationId, name])

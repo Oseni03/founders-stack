@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
-import { GitHubConnector } from "@/lib/connectors/github";
+import { GitHubConnector, WebhookConfig } from "@/lib/connectors/github";
 import { prisma } from "@/lib/prisma";
 import {
 	BranchData,
@@ -12,6 +12,9 @@ import {
 	RepoData,
 } from "@/types/code";
 import { syncGitHub } from "../platforms/github";
+import { generateWebhookUrl } from "@/lib/utils";
+import { getIntegration } from "../integrations";
+import logger from "@/lib/logger";
 
 export async function getRepositories(organizationId: string) {
 	const repositories = await prisma.repository.findMany({
@@ -81,6 +84,14 @@ export async function saveRepositories(
 	repos: RepoData[]
 ) {
 	try {
+		const integration = await getIntegration(organizationId, "github");
+
+		if (!integration || !integration.accessToken) {
+			logger.error("GitHub integration not conected: ", {
+				organizationId,
+			});
+			throw new Error("Github integratio not connected");
+		}
 		// Batch upsert using Prisma's $transaction
 		const results = await prisma.$transaction(
 			repos.map((repo) =>
@@ -92,7 +103,6 @@ export async function saveRepositories(
 						},
 					},
 					update: {
-						// ✅ Update main fields
 						name: repo.name,
 						fullName: repo.fullName,
 						owner: repo.owner,
@@ -101,17 +111,15 @@ export async function saveRepositories(
 						language: repo.language,
 						isPrivate: repo.isPrivate,
 						isArchived: repo.isArchived,
-						// ✅ Update attributes with additional metadata
 						attributes: {
 							url: repo.url,
 							openIssuesCount: repo.openIssuesCount,
 							forksCount: repo.forksCount,
 							stargazersCount: repo.stargazersCount,
-							...(repo.attributes || {}), // Include any extra attributes
+							...(repo.attributes || {}),
 						},
 					},
 					create: {
-						// ✅ Create with all main fields
 						organizationId,
 						name: repo.name,
 						fullName: repo.fullName,
@@ -123,18 +131,104 @@ export async function saveRepositories(
 						language: repo.language,
 						isPrivate: repo.isPrivate,
 						isArchived: repo.isArchived,
-						// ✅ Create with attributes metadata
 						attributes: {
 							url: repo.url,
 							openIssuesCount: repo.openIssuesCount,
 							forksCount: repo.forksCount,
 							stargazersCount: repo.stargazersCount,
-							...(repo.attributes || {}), // Include any extra attributes
+							...(repo.attributes || {}),
 						},
 					},
 				})
 			)
 		);
+
+		// Initialize GitHubConnector
+		const githubConnector = new GitHubConnector(integration.accessToken);
+
+		for (const repo of results) {
+			// Create webhooks for each repository
+			const webhookConfig: WebhookConfig = {
+				url: generateWebhookUrl(repo.id, "github"), // Replace with your webhook endpoint
+				contentType: "json",
+				secret:
+					process.env.GITHUB_WEBHOOK_SECRET || "your-webhook-secret", // Replace with your secret
+				events: [
+					"push",
+					"pull_request",
+					"issues",
+					"status",
+					"deployment",
+					"repository",
+					"create",
+					"delete",
+					"deployment_status",
+					"members",
+				],
+				active: true,
+			};
+			try {
+				// Set owner and repo in GitHubConnector
+				githubConnector.setRepository(repo.owner, repo.name);
+
+				// Check if a webhook already exists for this URL
+				const existingWebhooks = await githubConnector.listWebhooks();
+				const webhookExists = existingWebhooks.resources.some(
+					(hook) => hook.config.url === webhookConfig.url
+				);
+
+				if (!webhookExists) {
+					// Create a new webhook
+					const webhook =
+						await githubConnector.createWebhook(webhookConfig);
+					console.log(
+						`Created webhook for ${repo.fullName} with ID ${webhook.id}`
+					);
+
+					// Optionally, store webhook details in the database
+					await prisma.webhook.upsert({
+						where: {
+							externalId_sourceTool: {
+								externalId: webhook.id.toString(),
+								sourceTool: "github",
+							},
+						},
+						update: {
+							repositoryId: repo.id,
+							url: webhook.config.url,
+							events: webhook.events,
+							active: webhook.active,
+							attributes: {
+								content_type: webhook.config.content_type,
+								created_at: webhook.created_at,
+								updated_at: webhook.updated_at,
+							},
+						},
+						create: {
+							repositoryId: repo.id,
+							externalId: webhook.id.toString(),
+							sourceTool: "github",
+							url: webhook.config.url,
+							events: webhook.events,
+							active: webhook.active,
+							attributes: {
+								content_type: webhook.config.content_type,
+								created_at: webhook.created_at,
+								updated_at: webhook.updated_at,
+							},
+						},
+					});
+				} else {
+					console.log(`Webhook already exists for ${repo.fullName}`);
+				}
+			} catch (error) {
+				console.error(
+					`Failed to create webhook for ${repo.fullName}:`,
+					error
+				);
+				// Continue with other repositories instead of failing the entire operation
+			}
+		}
 
 		// Sync related data (commits, PRs, issues, etc.)
 		syncGitHub(organizationId, results);

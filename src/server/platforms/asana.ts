@@ -247,6 +247,7 @@ export async function disconnectAsanaIntegration(
 				status: "DISCONNECTED",
 				webhookId: null,
 				webhookUrl: null,
+				apiKey: null,
 			},
 		});
 		const dbDuration = Date.now() - dbStart;
