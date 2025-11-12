@@ -43,7 +43,7 @@ export const metadata: Metadata = {
 		siteName: "Builders' Stack",
 		images: [
 			{
-				url: "/og-image.jpg", // Placeholder; replace with actual OG image path
+				url: "/builderstack.png", // Placeholder; replace with actual OG image path
 				width: 1200,
 				height: 630,
 				alt: "Builders' Stack SaaS Dashboard",
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
 		title: "Builders' Stack: SaaS Dashboard for Indie Founders",
 		description:
 			"Unify your SaaS stack with Builders' Stack—dashboard for indie founders with 20+ integrations like GitHub, Jira, and Stripe. Start now!",
-		images: ["/og-image.jpg"], // Placeholder; replace with actual image path
+		images: ["/builderstack.png"], // Placeholder; replace with actual image path
 		creator: "@Oseni03",
 	},
 	robots: {
