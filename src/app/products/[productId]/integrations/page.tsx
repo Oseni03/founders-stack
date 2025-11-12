@@ -2,14 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Plug, XCircle, Search, Filter, Clock } from "lucide-react";
+import {
+	CheckCircle2,
+	Plug,
+	XCircle,
+	Search,
+	Filter,
+	Clock,
+} from "lucide-react";
 import { toast } from "sonner";
 import { INTEGRATIONS, mergeIntegrations } from "@/lib/oauth-utils";
 import { useIntegrationsStore } from "@/zustand/providers/integrations-store-provider";
 import { Badge } from "@/components/ui/badge";
 import { ConnectButton } from "@/components/integrations/connect-button";
 import { DisconnectButton } from "@/components/integrations/disconnect-button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import {
 	Select,
@@ -202,78 +209,76 @@ export default function IntegrationsPage() {
 											: "Never"}
 									</div>
 								</div>
-								<div className="flex flex-col gap-2">
-									{integration.status === "CONNECTED" && (
-										<>
-											<Badge
-												variant="outline"
-												className="gap-1 w-fit"
-											>
-												<CheckCircle2 className="h-3 w-3 text-success" />
-												Connected
-											</Badge>
-											<DisconnectButton
-												integrationId={integration.id}
-												integrationName={
-													integration.name
-												}
-												onDisconnect={fetchIntegrations}
-											/>
-										</>
-									)}
-									{integration.status === "ERROR" && (
-										<>
-											<Badge
-												variant="outline"
-												className="gap-1 border-destructive w-fit"
-											>
-												<XCircle className="h-3 w-3 text-destructive" />
-												Error
-											</Badge>
-											<ConnectButton
-												buttonText="Retry"
-												loading={loading}
-												integration={integration}
-												onConnect={connect}
-											/>
-										</>
-									)}
-									{integration.status === "PENDING_SETUP" && (
+								{integration.status === "CONNECTED" && (
+									<div className="flex items-center justify-between gap-2">
 										<Badge
 											variant="outline"
-											className="gap-1 border-destructive w-fit"
+											className="gap-1"
+										>
+											<CheckCircle2 className="h-3 w-3 text-success" />
+											Connected
+										</Badge>
+										<DisconnectButton
+											integrationId={integration.id}
+											integrationName={integration.name}
+											onDisconnect={fetchIntegrations}
+										/>
+									</div>
+								)}
+								{integration.status === "ERROR" && (
+									<div className="flex items-center justify-between gap-2">
+										<Badge
+											variant="outline"
+											className="gap-1 border-destructive"
+										>
+											<XCircle className="h-3 w-3 text-destructive" />
+											Error
+										</Badge>
+										<ConnectButton
+											buttonText="Retry"
+											loading={loading}
+											integration={integration}
+											onConnect={connect}
+										/>
+									</div>
+								)}
+								{integration.status === "PENDING_SETUP" && (
+									<div className="flex justify-end">
+										<Badge
+											variant="outline"
+											className="gap-1 border-destructive"
 										>
 											<XCircle className="h-3 w-3 text-destructive" />
 											Pending Setup
 										</Badge>
-									)}
-									{integration.status === "SYNCING" && (
-										<>
-											<Badge
-												variant="outline"
-												className="gap-1 border-yellow-500 w-fit"
-											>
-												<Clock className="h-3 w-3 text-yellow-500" />
-												Syncing
-											</Badge>
-											<DisconnectButton
-												integrationId={integration.id}
-												integrationName={
-													integration.name
-												}
-												onDisconnect={fetchIntegrations}
-											/>
-										</>
-									)}
-									{integration.status === "DISCONNECTED" && (
+									</div>
+								)}
+								{integration.status === "SYNCING" && (
+									<div className="flex items-center justify-between gap-2">
+										<Badge
+											variant="outline"
+											className="gap-1 border-yellow-500"
+										>
+											<Clock className="h-3 w-3 text-yellow-500" />
+											Syncing
+										</Badge>
+										<DisconnectButton
+											integrationId={integration.id}
+											integrationName={integration.name}
+											onDisconnect={fetchIntegrations}
+										/>
+									</div>
+								)}
+								{integration.status === "DISCONNECTED" && (
+									<div className="flex justify-end">
 										<ConnectButton
 											buttonText="Connect"
 											loading={loading}
 											integration={integration}
 											onConnect={connect}
 										/>
-									)}
-								</div>
+									</div>
+								)}
 							</CardContent>
 						</Card>
 					))}
