@@ -41,7 +41,6 @@ function log(level: keyof typeof LEVELS, message: string, meta?: Meta) {
 
 	// Print compact JSON for structured logs
 	// Keep synchronous to preserve ordering in serverless environments
-	// eslint-disable-next-line no-console
 	console.log(JSON.stringify(payload));
 }
 

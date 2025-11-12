@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect } from "react";
 import {
 	Dialog,
@@ -37,7 +36,6 @@ import { logger } from "@/lib/logger";
 import { toast } from "sonner";
 
 const jiraTaskSchema = z.object({
-	issueType: z.string().min(1, "Issue type is required"),
 	title: z.string().min(1, "Title is required").max(200, "Title is too long"),
 	description: z.string().optional().default(""),
 	assigneeId: z.string().optional().default(""),
@@ -71,7 +69,6 @@ export function JiraTaskDialog({
 	const form = useForm<JiraTaskFormValues>({
 		resolver: zodResolver(jiraTaskSchema) as Resolver<JiraTaskFormValues>,
 		defaultValues: {
-			issueType: "Task",
 			title: "",
 			description: "",
 			assigneeId: "",
@@ -89,9 +86,6 @@ export function JiraTaskDialog({
 				title: editingTask.title,
 			});
 			form.reset({
-				issueType:
-					(editingTask.attributes as Record<string, any>)
-						?.issueType || "Task",
 				title: editingTask.title,
 				description: editingTask.description || "",
 				assigneeId: editingTask.assigneeId || "",
@@ -105,7 +99,6 @@ export function JiraTaskDialog({
 		} else {
 			logger.debug("Jira dialog: opening for new issue creation");
 			form.reset({
-				issueType: "Task",
 				title: "",
 				description: "",
 				assigneeId: "",
@@ -122,7 +115,6 @@ export function JiraTaskDialog({
 			logger.info("Jira issue form submitted", {
 				mode: editingTask ? "edit" : "create",
 				title: formData.title,
-				issueType: formData.issueType,
 				projectId: formData.projectId,
 			});
 			const taskData: TaskFormData = {
@@ -134,7 +126,6 @@ export function JiraTaskDialog({
 				dueDate: formData.dueDate || undefined,
 				projectId: formData.projectId,
 				labels: formData.labels,
-				// Store issueType in attributes for Jira-specific data
 			};
 
 			if (editingTask?.id) {
@@ -146,12 +137,11 @@ export function JiraTaskDialog({
 				toast.success("Issue updated successfully");
 			} else {
 				logger.debug("Creating new Jira issue", {
-					issueType: formData.issueType,
+					title: formData.title,
 				});
 				await onCreate(taskData);
 				logger.info("Jira issue created successfully", {
 					title: formData.title,
-					issueType: formData.issueType,
 				});
 				toast.success("Issue created successfully");
 			}
@@ -183,42 +173,6 @@ export function JiraTaskDialog({
 
 				<Form {...form}>
 					<div className="space-y-4 py-4">
-						<FormField
-							control={form.control}
-							name="issueType"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Issue Type *</FormLabel>
-									<Select
-										onValueChange={field.onChange}
-										defaultValue={field.value}
-										value={field.value}
-									>
-										<FormControl>
-											<SelectTrigger>
-												<SelectValue />
-											</SelectTrigger>
-										</FormControl>
-										<SelectContent>
-											<SelectItem value="Task">
-												Task
-											</SelectItem>
-											<SelectItem value="Story">
-												Story
-											</SelectItem>
-											<SelectItem value="Bug">
-												Bug
-											</SelectItem>
-											<SelectItem value="Epic">
-												Epic
-											</SelectItem>
-										</SelectContent>
-									</Select>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
 						<FormField
 							control={form.control}
 							name="title"
