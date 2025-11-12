@@ -12,6 +12,11 @@ const LEVELS: Record<string, number> = {
 const envLevel = process.env.LOG_LEVEL || "info";
 const currentLevel = LEVELS[envLevel] ?? LEVELS.info;
 
+// Debug: Log the current log level on initialization
+console.log(
+	`[LOGGER_INIT] LOG_LEVEL=${envLevel}, currentLevel=${currentLevel}`
+);
+
 function formatMeta(meta?: Meta) {
 	if (!meta) return undefined;
 	try {
@@ -24,20 +29,27 @@ function formatMeta(meta?: Meta) {
 				return value;
 			})
 		);
-	} catch {
-		return { meta: String(meta) };
+	} catch (err) {
+		return { meta: String(meta), serializationError: true };
 	}
 }
 
 function log(level: keyof typeof LEVELS, message: string, meta?: Meta) {
-	if (LEVELS[level] < currentLevel) return;
+	const levelValue = LEVELS[level];
+
+	// Debug check
+	if (levelValue < currentLevel) {
+		// Uncomment to debug filtered logs:
+		// console.log(`[LOGGER_FILTERED] level=${level}(${levelValue}) < currentLevel(${currentLevel})`);
+		return;
+	}
 
 	const payload = {
 		ts: new Date().toISOString(),
 		level,
 		message,
-		meta: formatMeta(meta) ?? undefined,
-	} as Record<string, any>;
+		...(meta && { meta: formatMeta(meta) }),
+	};
 
 	// Print compact JSON for structured logs
 	// Keep synchronous to preserve ordering in serverless environments
