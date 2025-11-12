@@ -5,10 +5,12 @@ import { Plug } from "lucide-react";
 import { APIKeyConnectForm } from "../forms/api-key-connect-form";
 
 export const ConnectButton = ({
+	buttonText,
 	loading,
 	integration,
 	onConnect,
 }: {
+	buttonText: string;
 	loading: boolean;
 	integration: Integration;
 	onConnect: (toolName: string) => void;
@@ -26,7 +28,7 @@ export const ConnectButton = ({
 		<>
 			<Button className="flex-1" size="sm" onClick={handleClick}>
 				<Plug className="h-4 w-4 mr-2" />
-				Connect
+				{buttonText}
 			</Button>
 			{integration.authType === "api_key" && (
 				<APIKeyConnectForm
