@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/middleware";
 import { createTaskInPlatform } from "@/server/categories/tasks";
+import logger from "@/lib/logger"; // Import the logger
 
 // Create a new task (sync to integrated platform and save locally)
 export async function POST(
@@ -12,6 +13,11 @@ export async function POST(
 	const { toolName } = await params;
 	return withAuth(req, async (request, user) => {
 		try {
+			logger.info("Initiating task creation", {
+				toolName,
+				userId: user.id,
+			});
+
 			const body = await req.json();
 			const {
 				organizationId,
@@ -27,6 +33,11 @@ export async function POST(
 
 			// Validate required fields
 			if (!organizationId || !projectId || !title) {
+				logger.warn("Missing required fields", {
+					organizationId,
+					projectId,
+					title,
+				});
 				return NextResponse.json(
 					{ error: "Missing required fields" },
 					{ status: 400 }
@@ -34,6 +45,10 @@ export async function POST(
 			}
 
 			if (organizationId !== user.organizationId) {
+				logger.warn("Forbidden: Organization ID mismatch", {
+					organizationId,
+					userOrganizationId: user.organizationId,
+				});
 				return NextResponse.json(
 					{ error: "Forbidden" },
 					{ status: 403 }
@@ -41,6 +56,7 @@ export async function POST(
 			}
 
 			// Get project details
+			logger.debug("Fetching project details", { projectId, toolName });
 			const project = await prisma.project.findUnique({
 				where: { id: projectId },
 				include: {
@@ -62,6 +78,11 @@ export async function POST(
 				project.organizationId !== organizationId ||
 				!project.externalId
 			) {
+				logger.error("Project not found or invalid", {
+					projectId,
+					organizationId,
+					externalId: project?.externalId,
+				});
 				return NextResponse.json(
 					{ error: "Project not found" },
 					{ status: 404 }
@@ -70,6 +91,10 @@ export async function POST(
 
 			const integration = project.organization.integrations[0];
 			if (!integration) {
+				logger.error("Integration not found", {
+					toolName,
+					organizationId,
+				});
 				return NextResponse.json(
 					{ error: `${toolName} integration not found` },
 					{ status: 404 }
@@ -79,6 +104,10 @@ export async function POST(
 			// Create task in external platform
 			let task;
 			try {
+				logger.info("Creating task in external platform", {
+					toolName,
+					projectId,
+				});
 				const externalTask = await createTaskInPlatform(
 					toolName,
 					integration,
@@ -94,6 +123,10 @@ export async function POST(
 					}
 				);
 
+				logger.debug("Saving task to local database", {
+					toolName,
+					externalId: externalTask?.externalId,
+				});
 				// Save task to local database using connector response shape
 				task = await prisma.task.create({
 					data: {
@@ -119,7 +152,21 @@ export async function POST(
 						lastSyncedAt: new Date(),
 					},
 				});
+
+				logger.info("Task created successfully", {
+					taskId: task.id,
+					externalId: externalTask?.externalId,
+					toolName,
+				});
 			} catch (error: any) {
+				logger.error(
+					"Failed to create task in external platform or database",
+					{
+						toolName,
+						error: error.message,
+						stack: error.stack,
+					}
+				);
 				return NextResponse.json(
 					{
 						error: `Failed to create task in ${toolName}: ${error.message}`,
@@ -130,7 +177,11 @@ export async function POST(
 
 			return NextResponse.json(task, { status: 201 });
 		} catch (error: any) {
-			console.error("Error creating task:", error);
+			logger.error("Unexpected error creating task", {
+				toolName,
+				error: error.message,
+				stack: error.stack,
+			});
 			return NextResponse.json(
 				{ error: error.message || "Internal server error" },
 				{ status: 500 }
