@@ -274,10 +274,13 @@ export class JiraConnector {
 		options: PaginationOptions = {}
 	): Promise<PaginatedResponse<ProjectData>> {
 		try {
-			const { page = 0, limit = 50 } = options;
+			const { page = 1, limit = 50 } = options;
+
+			// Convert page number to startAt offset (page 1 = startAt 0)
+			const startAt = (page - 1) * limit;
 
 			const response = await fetch(
-				`${this.baseUrl}/rest/api/3/project/search?startAt=${page}&maxResults=${limit}&expand=description,lead`,
+				`${this.baseUrl}/rest/api/3/project/search?startAt=${startAt}&maxResults=${limit}&expand=description,lead`,
 				{
 					headers: this.getHeaders(),
 				}
@@ -302,9 +305,9 @@ export class JiraConnector {
 				resources: projects,
 				total: data.total,
 				totalPages: Math.ceil(data.total / limit),
-				page: Math.floor(page / limit),
+				page: page, // Return the page number that was requested
 				limit,
-				hasMore: page + limit < data.total,
+				hasMore: !data.isLast, // Use Jira's isLast field
 			};
 		} catch (error) {
 			console.error("[JIRA_FETCH_PROJECTS_ERROR]", error);
