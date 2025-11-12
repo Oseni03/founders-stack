@@ -1,4 +1,3 @@
-// stores/feedback-store.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
@@ -39,13 +38,15 @@ export interface FeedbackState {
 	timeRange: string;
 	selectedStatus: string | null;
 	selectedCategory: string | null;
+	error: string | null;
 
-	// Actions
 	setData: (data: FeedbackData) => void;
 	setLoading: (loading: boolean) => void;
 	setTimeRange: (range: string) => void;
 	setSelectedStatus: (status: string | null) => void;
 	setSelectedCategory: (category: string | null) => void;
+	setError: (error: string | null) => void;
+	clearError: () => void;
 
 	addFeedback: (feedback: FeedbackItem) => void;
 	updateFeedbackStatus: (feedbackId: string, status: string) => void;
@@ -53,24 +54,26 @@ export interface FeedbackState {
 	reset: () => void;
 }
 
-const initialState = {
+const initialFeedbackState = {
 	data: null,
 	loading: true,
 	timeRange: "30d",
 	selectedStatus: null,
 	selectedCategory: null,
+	error: null,
 };
 
 export const createFeedbackStore = () => {
 	return create<FeedbackState>()(
 		persist(
 			immer((set) => ({
-				...initialState,
+				...initialFeedbackState,
 
 				setData: (data) => {
 					set((state) => {
 						state.data = data;
 						state.loading = false;
+						state.error = null;
 					});
 				},
 
@@ -95,6 +98,18 @@ export const createFeedbackStore = () => {
 				setSelectedCategory: (category) => {
 					set((state) => {
 						state.selectedCategory = category;
+					});
+				},
+
+				setError: (error) => {
+					set((state) => {
+						state.error = error;
+					});
+				},
+
+				clearError: () => {
+					set((state) => {
+						state.error = null;
 					});
 				},
 
@@ -163,7 +178,7 @@ export const createFeedbackStore = () => {
 				},
 
 				reset: () => {
-					set(initialState);
+					set(initialFeedbackState);
 				},
 			})),
 			{

@@ -6,28 +6,28 @@ import { Repository } from "@/types/code";
 export interface CodeState {
 	repositories: Repository[];
 	selectedRepositoryId: string | null;
+	error: string | null;
 
-	// Actions
 	setRepositories: (repos: Repository[]) => void;
 	setSelectedRepository: (id: string) => void;
 	addRepository: (repo: Repository) => void;
 	removeRepository: (id: string) => void;
+	setError: (error: string | null) => void;
+	clearError: () => void;
 }
 
-/**
- * Factory function to create the Code store
- * Used with <CodeStoreProvider> for SSR-safe hydration
- */
 export const createCodeStore = () => {
 	return create<CodeState>()(
 		persist(
 			immer((set) => ({
 				repositories: [],
 				selectedRepositoryId: null,
+				error: null,
 
 				setRepositories: (repos) =>
 					set((state) => {
 						state.repositories = repos;
+						state.error = null;
 						// If persisted repo doesn't exist anymore, clear it
 						if (state.selectedRepositoryId) {
 							const exists = repos.some(
@@ -47,6 +47,7 @@ export const createCodeStore = () => {
 				addRepository: (repo) =>
 					set((state) => {
 						state.repositories.push(repo);
+						state.error = null;
 					}),
 
 				removeRepository: (id) =>
@@ -61,7 +62,20 @@ export const createCodeStore = () => {
 									? state.repositories[0].id
 									: null;
 						}
+						state.error = null;
 					}),
+
+				setError: (error) => {
+					set((state) => {
+						state.error = error;
+					});
+				},
+
+				clearError: () => {
+					set((state) => {
+						state.error = null;
+					});
+				},
 			})),
 			{
 				name: "code-store",

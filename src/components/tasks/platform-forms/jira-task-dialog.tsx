@@ -34,6 +34,7 @@ import * as z from "zod";
 import { TaskFormData } from "@/zustand/stores/project-store";
 import { Project, Task } from "@prisma/client";
 import { logger } from "@/lib/logger";
+import { toast } from "sonner";
 
 const jiraTaskSchema = z.object({
 	issueType: z.string().min(1, "Issue type is required"),
@@ -142,6 +143,7 @@ export function JiraTaskDialog({
 				logger.info("Jira issue updated successfully", {
 					taskId: editingTask.id,
 				});
+				toast.success("Issue updated successfully");
 			} else {
 				logger.debug("Creating new Jira issue", {
 					issueType: formData.issueType,
@@ -151,6 +153,7 @@ export function JiraTaskDialog({
 					title: formData.title,
 					issueType: formData.issueType,
 				});
+				toast.success("Issue created successfully");
 			}
 			onClose();
 		} catch (error) {
@@ -158,6 +161,9 @@ export function JiraTaskDialog({
 				error,
 				editingTaskId: editingTask?.id,
 			});
+			const errorMessage =
+				error instanceof Error ? error.message : "Failed to save issue";
+			toast.error(errorMessage);
 		}
 	};
 

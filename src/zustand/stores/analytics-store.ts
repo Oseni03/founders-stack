@@ -1,4 +1,3 @@
-// stores/analytics-store.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
@@ -68,11 +67,13 @@ export interface AnalyticsState {
 	data: AnalyticsData | null;
 	loading: boolean;
 	timeRange: string;
+	error: string | null;
 
-	// Actions
 	setData: (data: AnalyticsData) => void;
 	setLoading: (loading: boolean) => void;
 	setTimeRange: (range: string) => void;
+	setError: (error: string | null) => void;
+	clearError: () => void;
 
 	updateSummary: (summary: Partial<AnalyticsData["summary"]>) => void;
 	addEventType: (eventType: EventType) => void;
@@ -85,6 +86,7 @@ const initialState = {
 	data: null,
 	loading: true,
 	timeRange: "30d",
+	error: null,
 };
 
 export const createAnalyticsStore = () => {
@@ -97,6 +99,7 @@ export const createAnalyticsStore = () => {
 					set((state) => {
 						state.data = data;
 						state.loading = false;
+						state.error = null;
 					});
 				},
 
@@ -109,6 +112,18 @@ export const createAnalyticsStore = () => {
 				setTimeRange: (range) => {
 					set((state) => {
 						state.timeRange = range;
+					});
+				},
+
+				setError: (error) => {
+					set((state) => {
+						state.error = error;
+					});
+				},
+
+				clearError: () => {
+					set((state) => {
+						state.error = null;
 					});
 				},
 

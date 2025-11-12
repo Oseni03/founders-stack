@@ -1,4 +1,3 @@
-// stores/finance-store.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
@@ -65,11 +64,13 @@ export interface FinanceState {
 	data: FinanceData | null;
 	loading: boolean;
 	timeRange: string;
+	error: string | null;
 
-	// Actions
 	setData: (data: FinanceData) => void;
 	setLoading: (loading: boolean) => void;
 	setTimeRange: (range: string) => void;
+	setError: (error: string | null) => void;
+	clearError: () => void;
 
 	updateMRR: (mrr: number) => void;
 	updateChurn: (churn: number) => void;
@@ -79,22 +80,24 @@ export interface FinanceState {
 	reset: () => void;
 }
 
-const initialState = {
+const initialFinanceState = {
 	data: null,
 	loading: true,
 	timeRange: "30d",
+	error: null,
 };
 
 export const createFinanceStore = () => {
 	return create<FinanceState>()(
 		persist(
 			immer((set) => ({
-				...initialState,
+				...initialFinanceState,
 
 				setData: (data) => {
 					set((state) => {
 						state.data = data;
 						state.loading = false;
+						state.error = null;
 					});
 				},
 
@@ -107,6 +110,18 @@ export const createFinanceStore = () => {
 				setTimeRange: (range) => {
 					set((state) => {
 						state.timeRange = range;
+					});
+				},
+
+				setError: (error) => {
+					set((state) => {
+						state.error = error;
+					});
+				},
+
+				clearError: () => {
+					set((state) => {
+						state.error = null;
 					});
 				},
 
@@ -145,7 +160,7 @@ export const createFinanceStore = () => {
 				},
 
 				reset: () => {
-					set(initialState);
+					set(initialFinanceState);
 				},
 			})),
 			{

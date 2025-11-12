@@ -1,4 +1,3 @@
-// stores/communication-store.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
@@ -18,9 +17,9 @@ interface Message {
 }
 
 interface MessageVolumeTrend {
-	name: string; // Day name (e.g., "Mon", "Tue")
-	messages: number; // Total messages for that day
-	mentions: number; // Messages with mentions for that day
+	name: string;
+	messages: number;
+	mentions: number;
 }
 
 interface CommunicationData {
@@ -44,12 +43,14 @@ export interface CommunicationState {
 	loading: boolean;
 	selectedChannelId: string | null;
 	showAllMessages: boolean;
+	error: string | null;
 
-	// Actions
 	setData: (data: CommunicationData) => void;
 	setLoading: (loading: boolean) => void;
 	setSelectedChannelId: (channelId: string | null) => void;
 	setShowAllMessages: (show: boolean) => void;
+	setError: (error: string | null) => void;
+	clearError: () => void;
 
 	addChannel: (channel: Channel) => void;
 	removeChannel: (channelId: string) => void;
@@ -61,23 +62,25 @@ export interface CommunicationState {
 	reset: () => void;
 }
 
-const initialState = {
+const initialCommunicationState = {
 	data: null,
 	loading: true,
 	selectedChannelId: null,
 	showAllMessages: true,
+	error: null,
 };
 
 export const createCommunicationStore = () => {
 	return create<CommunicationState>()(
 		persist(
 			immer((set) => ({
-				...initialState,
+				...initialCommunicationState,
 
 				setData: (data) => {
 					set((state) => {
 						state.data = data;
 						state.loading = false;
+						state.error = null;
 
 						// Auto-select first channel if none selected
 						if (
@@ -104,6 +107,18 @@ export const createCommunicationStore = () => {
 				setShowAllMessages: (show) => {
 					set((state) => {
 						state.showAllMessages = show;
+					});
+				},
+
+				setError: (error) => {
+					set((state) => {
+						state.error = error;
+					});
+				},
+
+				clearError: () => {
+					set((state) => {
+						state.error = null;
 					});
 				},
 
@@ -190,7 +205,7 @@ export const createCommunicationStore = () => {
 				},
 
 				reset: () => {
-					set(initialState);
+					set(initialCommunicationState);
 				},
 			})),
 			{

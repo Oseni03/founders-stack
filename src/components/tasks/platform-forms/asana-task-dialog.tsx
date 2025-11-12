@@ -34,6 +34,7 @@ import * as z from "zod";
 import { TaskFormData } from "@/zustand/stores/project-store";
 import { Project, Task } from "@prisma/client";
 import { logger } from "@/lib/logger";
+import { toast } from "sonner";
 
 const asanaTaskSchema = z.object({
 	title: z.string().min(1, "Title is required").max(200, "Title is too long"),
@@ -140,12 +141,14 @@ export function AsanaTaskDialog({
 				logger.info("Asana task updated successfully", {
 					taskId: editingTask.id,
 				});
+				toast.success("Task updated successfully");
 			} else {
 				logger.debug("Creating new Asana task");
 				await onCreate(taskData);
 				logger.info("Asana task created successfully", {
 					title: formData.title,
 				});
+				toast.success("Task created successfully");
 			}
 			onClose();
 		} catch (error) {
@@ -153,6 +156,9 @@ export function AsanaTaskDialog({
 				error,
 				editingTaskId: editingTask?.id,
 			});
+			const errorMessage =
+				error instanceof Error ? error.message : "Failed to save task";
+			toast.error(errorMessage);
 		}
 	};
 

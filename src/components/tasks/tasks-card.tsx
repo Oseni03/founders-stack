@@ -32,6 +32,7 @@ import { JiraTaskDialog } from "./platform-forms/jira-task-dialog";
 import { DeleteTaskDialog } from "./delete-task-dialog";
 import { useParams } from "next/navigation";
 import { logger } from "@/lib/logger";
+import { toast } from "sonner";
 
 export function TasksCard() {
 	const { productId } = useParams();
@@ -70,15 +71,21 @@ export function TasksCard() {
 		}
 		if (projectManagementIntegrations.length === 1) {
 			// Auto-select if only one integration
-			const platform = projectManagementIntegrations[0].toolName.toLowerCase();
+			const platform =
+				projectManagementIntegrations[0].toolName.toLowerCase();
 			logger.info("Auto-selecting single PM integration", { platform });
 			setSelectedPlatform(platform);
 			setIsTaskDialogOpen(true);
 		} else {
-			logger.info("Multiple PM integrations available, showing platform selector", {
-				count: projectManagementIntegrations.length,
-				platforms: projectManagementIntegrations.map(i => i.toolName),
-			});
+			logger.info(
+				"Multiple PM integrations available, showing platform selector",
+				{
+					count: projectManagementIntegrations.length,
+					platforms: projectManagementIntegrations.map(
+						(i) => i.toolName
+					),
+				}
+			);
 			// Show platform selector
 			setIsPlatformSelectOpen(true);
 		}
@@ -92,7 +99,10 @@ export function TasksCard() {
 	};
 
 	const handleEditTask = (task: Task) => {
-		logger.info("Task selected for editing", { taskId: task.id, title: task.title });
+		logger.info("Task selected for editing", {
+			taskId: task.id,
+			title: task.title,
+		});
 		setEditingTask(task);
 		setSelectedPlatform(task.sourceTool?.toLowerCase() || null);
 		setIsTaskDialogOpen(true);
@@ -116,10 +126,17 @@ export function TasksCard() {
 			logger.info("Confirming task deletion", { taskId: taskToDelete });
 			await deleteTask(productId as string, taskToDelete);
 			logger.info("Task deleted successfully", { taskId: taskToDelete });
+			toast.success("Task deleted successfully");
 			setIsDeleteDialogOpen(false);
 			setTaskToDelete(null);
 		} catch (error) {
-			logger.error("Error deleting task", { taskId: taskToDelete, error });
+			logger.error("Error deleting task", {
+				taskId: taskToDelete,
+				error,
+			});
+			toast.error(
+				error instanceof Error ? error.message : "Failed to delete task"
+			);
 		}
 	};
 

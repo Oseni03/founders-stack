@@ -4,7 +4,6 @@ import { immer } from "zustand/middleware/immer";
 import { persist } from "zustand/middleware";
 import { Project, Task } from "@prisma/client";
 import { logger } from "@/lib/logger";
-// NOTE: use client-side API route for deletions instead of importing server functions
 
 export interface ProjectMetrics {
 	openTasks: number;
@@ -39,6 +38,7 @@ export interface ProjectState {
 	setError: (error: string | null) => void;
 	setRange: (range: "7d" | "30d" | "90d") => void;
 	setOrganizationId: (id: string) => void;
+	clearError: () => void;
 
 	fetchData: (
 		productId: string,
@@ -90,6 +90,11 @@ export const createProjectStore = () => {
 						state.organizationId = id;
 					}),
 
+				clearError: () =>
+					set((state) => {
+						state.error = null;
+					}),
+
 				fetchData: async (productId, range) => {
 					const {
 						setLoading,
@@ -101,6 +106,7 @@ export const createProjectStore = () => {
 					setLoading(true);
 					setError(null);
 					setRange(range);
+
 					try {
 						logger.info("Fetching project data", {
 							productId,
@@ -126,11 +132,12 @@ export const createProjectStore = () => {
 							productId,
 							range,
 						});
-						setError(err.message);
+						setError(err.message || "Failed to fetch project data");
 					} finally {
 						setLoading(false);
 					}
 				},
+
 				createTask: async (taskData) => {
 					const {
 						organizationId,
@@ -139,26 +146,29 @@ export const createProjectStore = () => {
 						data,
 						setData,
 					} = get();
+
 					if (!organizationId) {
+						const errorMsg = "Organization ID is required";
 						logger.error(
 							"Cannot create task: Organization ID is missing"
 						);
-						setError("Organization ID is required");
-						return;
+						setError(errorMsg);
+						return Promise.reject(new Error(errorMsg));
+					}
+
+					const project = get().projects.find(
+						(p) => p.id === taskData.projectId
+					);
+					if (!project) {
+						const errorMsg = "Project not found";
+						setError(errorMsg);
+						return Promise.reject(new Error(errorMsg));
 					}
 
 					setLoading(true);
 					setError(null);
 
 					try {
-						// Find the project to get sourceTool
-						const project = get().projects.find(
-							(p) => p.id === taskData.projectId
-						);
-						if (!project) {
-							throw new Error("Project not found");
-						}
-
 						logger.info("Creating task", {
 							projectId: taskData.projectId,
 							projectName: project.name,
@@ -166,7 +176,6 @@ export const createProjectStore = () => {
 							title: taskData.title,
 						});
 
-						// Create task in the integrated platform and local DB
 						const res = await fetch(
 							`/api/integrations/${project.sourceTool}/resources/tasks`,
 							{
@@ -199,7 +208,7 @@ export const createProjectStore = () => {
 							sourceTool: project.sourceTool,
 						});
 
-						// Update local state
+						// Update local state only on success
 						if (data) {
 							setData({
 								...data,
@@ -215,8 +224,10 @@ export const createProjectStore = () => {
 							error: err,
 							taskData,
 						});
-						setError(err.message);
-						throw err;
+						const errorMessage =
+							err.message || "Failed to create task";
+						setError(errorMessage);
+						return Promise.reject(err);
 					} finally {
 						setLoading(false);
 					}
@@ -230,31 +241,36 @@ export const createProjectStore = () => {
 						data,
 						setData,
 					} = get();
+
 					if (!organizationId) {
+						const errorMsg = "Organization ID is required";
 						logger.error(
 							"Cannot update task: Organization ID is missing"
 						);
-						setError("Organization ID is required");
-						return;
+						setError(errorMsg);
+						return Promise.reject(new Error(errorMsg));
+					}
+
+					const task = data?.tasks.find((t) => t.id === taskId);
+					if (!task) {
+						const errorMsg = "Task not found";
+						setError(errorMsg);
+						return Promise.reject(new Error(errorMsg));
+					}
+
+					const project = get().projects.find(
+						(p) => p.id === task.projectId
+					);
+					if (!project) {
+						const errorMsg = "Project not found";
+						setError(errorMsg);
+						return Promise.reject(new Error(errorMsg));
 					}
 
 					setLoading(true);
 					setError(null);
 
 					try {
-						// Find the task to get sourceTool
-						const task = data?.tasks.find((t) => t.id === taskId);
-						if (!task) {
-							throw new Error("Task not found");
-						}
-
-						const project = get().projects.find(
-							(p) => p.id === task.projectId
-						);
-						if (!project) {
-							throw new Error("Project not found");
-						}
-
 						logger.info("Updating task", {
 							taskId,
 							title: task.title,
@@ -262,7 +278,6 @@ export const createProjectStore = () => {
 							updates,
 						});
 
-						// Update task in the integrated platform and local DB
 						const res = await fetch(
 							`/api/integrations/${project.sourceTool}/resources/tasks/${taskId}`,
 							{
@@ -295,13 +310,12 @@ export const createProjectStore = () => {
 							sourceTool: project.sourceTool,
 						});
 
-						// Update local state
+						// Update local state only on success
 						if (data) {
 							const updatedTasks = data.tasks.map((t) =>
 								t.id === taskId ? updatedTask : t
 							);
 
-							// Recalculate openTasks
 							const openTasks = updatedTasks.filter(
 								(t) => t.status === "open"
 							).length;
@@ -317,8 +331,10 @@ export const createProjectStore = () => {
 							taskId,
 							error: err,
 						});
-						setError(err.message);
-						throw err;
+						const errorMessage =
+							err.message || "Failed to update task";
+						setError(errorMessage);
+						return Promise.reject(err);
 					} finally {
 						setLoading(false);
 					}
@@ -332,26 +348,30 @@ export const createProjectStore = () => {
 						data,
 						setData,
 					} = get();
+
 					if (!organizationId) {
+						const errorMsg = "Organization ID is required";
 						logger.error(
 							"Cannot delete task: Organization ID is missing"
 						);
-						setError("Organization ID is required");
-						return;
+						setError(errorMsg);
+						return Promise.reject(new Error(errorMsg));
 					}
 
 					if (!productId) {
+						const errorMsg = "Product ID is required";
 						logger.error(
 							"Cannot delete task: Product ID is missing"
 						);
-						setError("Product ID is required");
-						return;
+						setError(errorMsg);
+						return Promise.reject(new Error(errorMsg));
 					}
 
 					if (!taskId) {
+						const errorMsg = "Task ID is required";
 						logger.error("Cannot delete task: Task ID is missing");
-						setError("Task ID is required");
-						return;
+						setError(errorMsg);
+						return Promise.reject(new Error(errorMsg));
 					}
 
 					setLoading(true);
@@ -360,7 +380,6 @@ export const createProjectStore = () => {
 					try {
 						logger.info("Deleting task", { taskId, productId });
 
-						// Call API route to delete task
 						const res = await fetch(
 							`/api/products/${productId}/tasks/${taskId}`,
 							{
@@ -381,7 +400,7 @@ export const createProjectStore = () => {
 
 						logger.info("Task deleted successfully", { taskId });
 
-						// Update local state
+						// Update local state only on success
 						if (data) {
 							const taskToDelete = data.tasks.find(
 								(t) => t.id === taskId
@@ -404,8 +423,10 @@ export const createProjectStore = () => {
 							taskId,
 							error: err,
 						});
-						setError(err.message);
-						throw err;
+						const errorMessage =
+							err.message || "Failed to delete task";
+						setError(errorMessage);
+						return Promise.reject(err);
 					} finally {
 						setLoading(false);
 					}
