@@ -163,7 +163,6 @@ export async function saveRepositories(
 					"create",
 					"delete",
 					"deployment_status",
-					"members",
 				],
 				active: true,
 			};
