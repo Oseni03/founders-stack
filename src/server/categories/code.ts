@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
 import { GitHubConnector, WebhookConfig } from "@/lib/connectors/github";
@@ -525,136 +524,344 @@ export async function saveContributors(
 	}
 }
 
-// ============================================================================
-// COMPREHENSIVE SYNC FUNCTION
-// ============================================================================
+interface HealthMetrics {
+	// Overall score
+	healthScore: number;
+	grade: "A" | "B" | "C" | "D" | "F";
 
-export async function syncRepositoryData(
-	organizationId: string,
-	repositoryId: string,
-	data: {
-		commits?: CommitData[];
-		pullRequests?: PullRequestData[];
-		issues?: IssueData[];
-		branches?: BranchData[];
-		contributors?: ContributorData[];
-	}
-) {
-	try {
-		const results: any = {};
+	// Core metrics
+	issueHealth: {
+		score: number;
+		openCount: number;
+		avgResolutionHours: number;
+		staleCount: number; // >60 days
+	};
 
-		if (data.commits && data.commits.length > 0) {
-			results.commits = await saveCommits(
-				organizationId,
-				repositoryId,
-				data.commits
-			);
-		}
+	prHealth: {
+		score: number;
+		openCount: number;
+		avgReviewHours: number;
+		staleCount: number; // >30 days
+		mergeRate: number; // %
+	};
 
-		if (data.pullRequests && data.pullRequests.length > 0) {
-			results.pullRequests = await savePullRequests(
-				organizationId,
-				repositoryId,
-				data.pullRequests
-			);
-		}
+	deploymentHealth: {
+		score: number;
+		weeklyFrequency: number;
+		failureRate: number; // %
+		avgRestoreHours: number;
+	};
 
-		if (data.issues && data.issues.length > 0) {
-			results.issues = await saveIssues(
-				organizationId,
-				repositoryId,
-				data.issues
-			);
-		}
-
-		if (data.branches && data.branches.length > 0) {
-			results.branches = await saveBranches(
-				organizationId,
-				repositoryId,
-				data.branches
-			);
-		}
-
-		if (data.contributors && data.contributors.length > 0) {
-			results.contributors = await saveContributors(
-				organizationId,
-				repositoryId,
-				data.contributors
-			);
-		}
-
-		return results;
-	} catch (error) {
-		console.error("Failed to sync repository data:", error);
-		throw new Error(
-			"Failed to sync repository data due to an internal error"
-		);
-	}
+	activityHealth: {
+		score: number;
+		weeklyCommits: number;
+		activeContributors: number;
+		staleBranches: number; // >90 days
+	};
 }
 
-// ============================================================================
-// BATCH SYNC WITH HEALTH COMPUTATION
-// ============================================================================
-
-export async function syncRepositoryWithHealth(
-	organizationId: string,
+/**
+ * Compute repository health metrics from local database
+ * No API calls - uses synced data only
+ */
+export async function computeRepositoryHealth(
 	repositoryId: string,
-	githubConnector: GitHubConnector // GitHubConnector instance
-) {
-	try {
-		// Fetch all data in parallel
-		const [commits, pullRequests, issues, branches, contributors, health] =
-			await Promise.all([
-				githubConnector.fetchCommits(),
-				githubConnector.fetchPullRequests(),
-				githubConnector.fetchIssues(),
-				githubConnector.fetchBranches(),
-				githubConnector.fetchContributors(),
-				githubConnector.computeRepositoryHealth(),
-			]);
+	organizationId: string,
+	daysWindow: number = 90 // Look back window
+): Promise<HealthMetrics> {
+	const windowDate = new Date();
+	windowDate.setDate(windowDate.getDate() - daysWindow);
 
-		// Sync all data
-		await syncRepositoryData(organizationId, repositoryId, {
-			commits,
-			pullRequests,
-			issues,
-			branches,
-			contributors,
-		});
-
-		// Update repository health
-		await prisma.repositoryHealth.upsert({
-			where: { repositoryId },
-			update: {
-				healthScore: health.healthScore,
-				openIssues: health.openIssues,
-				stalePrs: health.stalePrs,
-				avgReviewTime: health.avgReviewTime,
-				testCoverage: health.testCoverage,
-			},
-			create: {
+	// Run all queries in parallel
+	const [
+		issues,
+		closedIssues,
+		prs,
+		closedPrs,
+		deployments,
+		commits,
+		contributors,
+		branches,
+	] = await Promise.all([
+		// Open issues
+		prisma.issue.findMany({
+			where: {
 				repositoryId,
 				organizationId,
-				healthScore: health.healthScore,
-				openIssues: health.openIssues,
-				stalePrs: health.stalePrs,
-				avgReviewTime: health.avgReviewTime,
-				testCoverage: health.testCoverage,
+				status: "open",
 			},
-		});
+			select: {
+				id: true,
+				createdAt: true,
+			},
+		}),
 
-		return {
-			commits: commits.length,
-			pullRequests: pullRequests.length,
-			issues: issues.length,
-			branches: branches.length,
-			contributors: contributors.length,
-			health,
-		};
-	} catch (error) {
-		console.error("Failed to sync repository with health:", error);
-		throw new Error(
-			"Failed to sync repository with health due to an internal error"
-		);
+		// Recently closed issues (for avg resolution time)
+		prisma.issue.findMany({
+			where: {
+				repositoryId,
+				organizationId,
+				status: "closed",
+				closedAt: { gte: windowDate },
+			},
+			select: {
+				createdAt: true,
+				closedAt: true,
+			},
+		}),
+
+		// Open PRs
+		prisma.pullRequest.findMany({
+			where: {
+				repositoryId,
+				organizationId,
+				status: "open",
+			},
+			select: {
+				id: true,
+				createdAt: true,
+			},
+		}),
+
+		// Recently closed/merged PRs
+		prisma.pullRequest.findMany({
+			where: {
+				repositoryId,
+				organizationId,
+				status: { in: ["closed", "merged"] },
+				closedAt: { gte: windowDate },
+			},
+			select: {
+				status: true,
+				createdAt: true,
+				closedAt: true,
+				avgReviewTime: true,
+			},
+		}),
+
+		// Deployments
+		prisma.deploymentEvent.findMany({
+			where: {
+				organizationId,
+				deployedAt: { gte: windowDate },
+				// Filter by commit's repository if needed
+				Commit: {
+					repositoryId,
+				},
+			},
+			select: {
+				status: true,
+				deployedAt: true,
+				buildDuration: true,
+			},
+			orderBy: { deployedAt: "asc" },
+		}),
+
+		// Commits
+		prisma.commit.findMany({
+			where: {
+				repositoryId,
+				organizationId,
+				committedAt: { gte: windowDate },
+			},
+			select: {
+				id: true,
+				committedAt: true,
+			},
+		}),
+
+		// Contributors
+		prisma.contributor.findMany({
+			where: {
+				repositoryId,
+				organizationId,
+				lastContributedAt: { gte: windowDate },
+			},
+			select: {
+				id: true,
+			},
+		}),
+
+		// Branches
+		prisma.branch.findMany({
+			where: {
+				repositoryId,
+				organizationId,
+			},
+			select: {
+				name: true,
+				lastCommitAt: true,
+			},
+		}),
+	]);
+
+	// ===== 1. ISSUE HEALTH =====
+	const now = Date.now();
+	const staleIssues = issues.filter((issue) => {
+		const daysSinceCreated =
+			(now - issue.createdAt.getTime()) / (1000 * 60 * 60 * 24);
+		return daysSinceCreated > 60;
+	});
+
+	const avgIssueResolutionHours =
+		closedIssues.length > 0
+			? closedIssues.reduce((sum, issue) => {
+					const hours =
+						(issue.closedAt!.getTime() -
+							issue.createdAt.getTime()) /
+						(1000 * 60 * 60);
+					return sum + hours;
+				}, 0) / closedIssues.length
+			: 0;
+
+	// Issue health score (0-100)
+	let issueScore = 100;
+	issueScore -= Math.min(issues.length * 0.5, 20); // -0.5 per open issue, max -20
+	issueScore -= Math.min(staleIssues.length * 2, 15); // -2 per stale issue, max -15
+	if (avgIssueResolutionHours > 72) issueScore -= 10; // -10 if >3 days
+	if (avgIssueResolutionHours > 168) issueScore -= 10; // -10 if >1 week
+	issueScore = Math.max(0, issueScore);
+
+	// ===== 2. PR HEALTH =====
+	const stalePrs = prs.filter((pr) => {
+		const daysSinceCreated =
+			(now - pr.createdAt.getTime()) / (1000 * 60 * 60 * 24);
+		return daysSinceCreated > 30;
+	});
+
+	const mergedPrs = closedPrs.filter((pr) => pr.status === "merged");
+	const prMergeRate =
+		closedPrs.length > 0
+			? (mergedPrs.length / closedPrs.length) * 100
+			: 100;
+
+	const avgPrReviewHours =
+		mergedPrs.length > 0
+			? mergedPrs.reduce((sum, pr) => {
+					return sum + (pr.avgReviewTime || 0);
+				}, 0) / mergedPrs.length
+			: 0;
+
+	// PR health score (0-100)
+	let prScore = 100;
+	prScore -= Math.min(prs.length * 1, 15); // -1 per open PR, max -15
+	prScore -= Math.min(stalePrs.length * 3, 15); // -3 per stale PR, max -15
+	prScore -= Math.max(0, 100 - prMergeRate) * 0.2; // Penalty for low merge rate
+	if (avgPrReviewHours > 48) prScore -= 5; // -5 if >2 days
+	if (avgPrReviewHours > 168) prScore -= 10; // -10 if >1 week
+	prScore = Math.max(0, prScore);
+
+	// ===== 3. DEPLOYMENT HEALTH (DORA) =====
+	const successfulDeploys = deployments.filter((d) => d.status === "success");
+	const failedDeploys = deployments.filter(
+		(d) => d.status === "failure" || d.status === "error"
+	);
+
+	const deploymentFrequency = (successfulDeploys.length / daysWindow) * 7; // per week
+	const failureRate =
+		deployments.length > 0
+			? (failedDeploys.length / deployments.length) * 100
+			: 0;
+
+	// Calculate MTTR (mean time to restore)
+	const restorationTimes: number[] = [];
+	for (let i = 0; i < deployments.length - 1; i++) {
+		const current = deployments[i];
+		const next = deployments[i + 1];
+
+		if (
+			(current.status === "failure" || current.status === "error") &&
+			next.status === "success"
+		) {
+			const hours =
+				(next.deployedAt!.getTime() - current.deployedAt!.getTime()) /
+				(1000 * 60 * 60);
+			restorationTimes.push(hours);
+		}
 	}
+	const avgRestoreHours =
+		restorationTimes.length > 0
+			? restorationTimes.reduce((a, b) => a + b, 0) /
+				restorationTimes.length
+			: 0;
+
+	// Deployment health score (0-100)
+	let deploymentScore = 100;
+	if (deploymentFrequency < 1) deploymentScore -= 15; // Less than 1/week
+	if (deploymentFrequency < 0.25) deploymentScore -= 15; // Less than 1/month
+	if (failureRate > 15) deploymentScore -= 15; // >15% failure
+	if (failureRate > 30) deploymentScore -= 15; // >30% failure
+	if (avgRestoreHours > 24) deploymentScore -= 10; // >1 day MTTR
+	if (avgRestoreHours > 168) deploymentScore -= 10; // >1 week MTTR
+	deploymentScore = Math.max(0, deploymentScore);
+
+	// ===== 4. ACTIVITY HEALTH =====
+	const weeklyCommits = (commits.length / daysWindow) * 7;
+	const activeContributors = contributors.length;
+
+	const staleBranches = branches.filter((branch) => {
+		if (!branch.lastCommitAt) return false; // Skip branches with null lastCommitAt
+		const daysSinceCommit =
+			(now - branch.lastCommitAt.getTime()) / (1000 * 60 * 60 * 24);
+		return (
+			daysSinceCommit > 90 &&
+			branch.name !== "main" &&
+			branch.name !== "master"
+		);
+	});
+
+	// Activity health score (0-100)
+	let activityScore = 100;
+	if (weeklyCommits < 5) activityScore -= 15; // Less than 5 commits/week
+	if (weeklyCommits < 2) activityScore -= 15; // Less than 2 commits/week
+	if (activeContributors < 2) activityScore -= 15; // Less than 2 contributors
+	activityScore -= Math.min(staleBranches.length * 2, 15); // -2 per stale branch
+	activityScore = Math.max(0, activityScore);
+
+	// ===== 5. OVERALL HEALTH SCORE =====
+	// Weighted average: Issues 20%, PRs 25%, Deployments 30%, Activity 25%
+	const overallScore = Math.round(
+		issueScore * 0.2 +
+			prScore * 0.25 +
+			deploymentScore * 0.3 +
+			activityScore * 0.25
+	);
+
+	// Assign letter grade
+	let grade: "A" | "B" | "C" | "D" | "F";
+	if (overallScore >= 90) grade = "A";
+	else if (overallScore >= 80) grade = "B";
+	else if (overallScore >= 70) grade = "C";
+	else if (overallScore >= 60) grade = "D";
+	else grade = "F";
+
+	return {
+		healthScore: overallScore,
+		grade,
+		issueHealth: {
+			score: Math.round(issueScore),
+			openCount: issues.length,
+			avgResolutionHours: Math.round(avgIssueResolutionHours * 10) / 10,
+			staleCount: staleIssues.length,
+		},
+		prHealth: {
+			score: Math.round(prScore),
+			openCount: prs.length,
+			avgReviewHours: Math.round(avgPrReviewHours * 10) / 10,
+			staleCount: stalePrs.length,
+			mergeRate: Math.round(prMergeRate * 10) / 10,
+		},
+		deploymentHealth: {
+			score: Math.round(deploymentScore),
+			weeklyFrequency: Math.round(deploymentFrequency * 10) / 10,
+			failureRate: Math.round(failureRate * 10) / 10,
+			avgRestoreHours: Math.round(avgRestoreHours * 10) / 10,
+		},
+		activityHealth: {
+			score: Math.round(activityScore),
+			weeklyCommits: Math.round(weeklyCommits * 10) / 10,
+			activeContributors,
+			staleBranches: staleBranches.length,
+		},
+	};
 }

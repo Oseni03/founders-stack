@@ -1,5 +1,6 @@
 import { withAuth } from "@/lib/middleware";
 import { prisma } from "@/lib/prisma";
+import { computeRepositoryHealth } from "@/server/categories/code";
 import { NextRequest, NextResponse } from "next/server";
 
 // Rate limiter setup (optional; configure env vars for Upstash)
@@ -76,22 +77,10 @@ export async function GET(
 				});
 
 				// Fetch health (assume pre-computed; or compute here)
-				const health = (await prisma.repositoryHealth.findUnique({
-					where: { repositoryId },
-					select: {
-						healthScore: true,
-						openIssues: true,
-						stalePrs: true,
-						avgReviewTime: true,
-						testCoverage: true,
-					},
-				})) ?? {
-					healthScore: 0,
-					openIssues: 0,
-					stalePrs: 0,
-					avgReviewTime: 0,
-					testCoverage: 0,
-				};
+				const health = await computeRepositoryHealth(
+					repositoryId,
+					productId
+				);
 
 				// Recent commits (last 10)
 				const recentCommits = await prisma.commit.findMany({

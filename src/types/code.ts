@@ -183,11 +183,39 @@ export interface Deployment {
 }
 
 export interface RepositoryHealth {
+	// Overall score
 	healthScore: number;
-	openIssues: number;
-	stalePrs: number;
-	avgReviewTime: number;
-	testCoverage: number;
+	grade: "A" | "B" | "C" | "D" | "F";
+
+	// Core metrics
+	issueHealth: {
+		score: number;
+		openCount: number;
+		avgResolutionHours: number;
+		staleCount: number; // >60 days
+	};
+
+	prHealth: {
+		score: number;
+		openCount: number;
+		avgReviewHours: number;
+		staleCount: number; // >30 days
+		mergeRate: number; // %
+	};
+
+	deploymentHealth: {
+		score: number;
+		weeklyFrequency: number;
+		failureRate: number; // %
+		avgRestoreHours: number;
+	};
+
+	activityHealth: {
+		score: number;
+		weeklyCommits: number;
+		activeContributors: number;
+		staleBranches: number; // >90 days
+	};
 }
 
 export interface CommitPR {

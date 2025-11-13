@@ -52,7 +52,6 @@ export async function syncGitHub(
 				pullRequests,
 				issues,
 				branches,
-				repoHealth,
 				contributors,
 				deploymentEvents, // ✅ Added deployment events
 			] = await Promise.all([
@@ -60,7 +59,6 @@ export async function syncGitHub(
 				connector.fetchAllPullRequests(),
 				connector.fetchAllIssues(),
 				connector.fetchAllBranches(),
-				connector.computeRepositoryHealth(),
 				connector.fetchAllContributors(),
 				connector.fetchAllDeployments(), // ✅ Fetch deployment events
 			]);
@@ -231,22 +229,6 @@ export async function syncGitHub(
 						})
 					);
 				}
-
-				// Upsert repository health
-				await tx.repositoryHealth.upsert({
-					where: {
-						organizationId_repositoryId: {
-							organizationId,
-							repositoryId: repo.id,
-						},
-					},
-					update: repoHealth,
-					create: {
-						...repoHealth,
-						organizationId,
-						repositoryId: repo.id,
-					},
-				});
 			});
 
 			// Update lastSyncedAt outside transaction to avoid rollback issues
