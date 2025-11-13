@@ -230,7 +230,7 @@ export async function saveRepositories(
 		}
 
 		// Sync related data (commits, PRs, issues, etc.)
-		syncGitHub(organizationId, results);
+		await syncGitHub(organizationId, results);
 
 		return results; // Return the created/updated repositories
 	} catch (error) {
