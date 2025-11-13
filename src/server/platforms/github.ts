@@ -54,6 +54,7 @@ export async function syncGitHub(
 				branches,
 				repoHealth,
 				contributors,
+				deploymentEvents, // ✅ Added deployment events
 			] = await Promise.all([
 				fetchAllCommits(connector),
 				connector.fetchAllPullRequests(),
@@ -61,6 +62,7 @@ export async function syncGitHub(
 				connector.fetchAllBranches(),
 				connector.computeRepositoryHealth(),
 				connector.fetchAllContributors(),
+				connector.fetchAllDeployments(), // ✅ Fetch deployment events
 			]);
 
 			console.log(`📊 Fetched data for ${repo.name}:`, {
@@ -69,11 +71,12 @@ export async function syncGitHub(
 				issues: issues.length,
 				branches: branches.length,
 				contributors: contributors.length,
+				deploymentEvents: deploymentEvents.length, // ✅ Log deployment events count
 			});
 
 			// Batch upsert using Prisma transaction
 			await prisma.$transaction(async (tx) => {
-				// Upsert commits in batches to avoid query size limits
+				// Upsert commits in batches
 				if (commits.length > 0) {
 					await batchUpsert(tx.commit, commits, 500, (commit) => ({
 						externalId: commit.externalId,
@@ -182,6 +185,49 @@ export async function syncGitHub(
 							organizationId,
 							sourceTool: "github",
 							repositoryId: repo.id,
+						})
+					);
+				}
+
+				// ✅ Upsert deployment events in batches
+				if (deploymentEvents.length > 0) {
+					// First, try to link deployment events to existing commits
+					const deploymentsWithCommits = await Promise.all(
+						deploymentEvents.map(async (deployment) => {
+							// Try to find the commit for this deployment
+							const commit = await tx.commit.findFirst({
+								where: {
+									sha: deployment.commitHash,
+									repositoryId: repo.id,
+									organizationId,
+								},
+								select: { id: true },
+							});
+
+							return {
+								...deployment,
+								commitId: commit?.id || null,
+							};
+						})
+					);
+
+					await batchUpsert(
+						tx.deploymentEvent,
+						deploymentsWithCommits,
+						500,
+						(deployment) => ({
+							externalId: deployment.externalId,
+							commitHash: deployment.commitHash,
+							status: deployment.status,
+							environment: deployment.environment,
+							errorLogSummary: deployment.errorLogSummary,
+							buildDuration: deployment.buildDuration,
+							deployedAt: deployment.deployedAt,
+							attributes: deployment.attributes,
+							commitId: deployment.commitId,
+							lastSyncedAt: new Date(),
+							organizationId,
+							sourceTool: "github",
 						})
 					);
 				}

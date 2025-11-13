@@ -39,6 +39,17 @@ export interface WebhookData {
 	updated_at: string;
 }
 
+interface DeploymentEventData {
+	externalId: string;
+	commitHash: string;
+	status: string;
+	environment: string;
+	errorLogSummary: string | null;
+	buildDuration: number | null;
+	deployedAt: Date;
+	attributes: Record<string, any>;
+}
+
 export class GitHubConnector {
 	private octokit: InstanceType<typeof OctokitWithPlugins>;
 	private owner?: string;
@@ -794,6 +805,162 @@ export class GitHubConnector {
 		}
 
 		return allContributors;
+	}
+
+	/**
+	 * Fetch all deployments for the repository with their latest status
+	 */
+	async fetchAllDeployments(): Promise<DeploymentEventData[]> {
+		const deploymentEvents: DeploymentEventData[] = [];
+		let page = 1;
+		const perPage = 100;
+
+		try {
+			while (true) {
+				const response = await this.octokit.request(
+					"GET /repos/{owner}/{repo}/deployments",
+					{
+						owner: this.owner!,
+						repo: this.repo!,
+						per_page: perPage,
+						page: page,
+					}
+				);
+
+				if (response.data.length === 0) break;
+
+				// Fetch deployment statuses for each deployment
+				const deploymentsWithStatus = await Promise.all(
+					response.data.map(async (deployment) => {
+						try {
+							// Fetch the latest status for this deployment
+							const statusResponse = await this.octokit.request(
+								"GET /repos/{owner}/{repo}/deployments/{deployment_id}/statuses",
+								{
+									owner: this.owner!,
+									repo: this.repo!,
+									deployment_id: deployment.id,
+									per_page: 1, // Only get the latest status
+								}
+							);
+
+							const latestStatus = statusResponse.data[0] || null;
+
+							// Calculate build duration if we have both created and updated times
+							let buildDuration: number | null = null;
+							if (
+								latestStatus &&
+								latestStatus.state === "success"
+							) {
+								const createdTime = new Date(
+									deployment.created_at
+								).getTime();
+								const updatedTime = new Date(
+									latestStatus.updated_at
+								).getTime();
+								buildDuration = Math.floor(
+									(updatedTime - createdTime) / 1000
+								); // in seconds
+							}
+
+							// Extract error information from failed deployments
+							let errorLogSummary: string | null = null;
+							if (
+								latestStatus &&
+								(latestStatus.state === "failure" ||
+									latestStatus.state === "error")
+							) {
+								errorLogSummary =
+									latestStatus.description ||
+									"Deployment failed without details";
+							}
+
+							return {
+								externalId: deployment.id.toString(),
+								commitHash: deployment.sha,
+								status: latestStatus?.state || "pending",
+								environment:
+									deployment.environment || "unknown",
+								errorLogSummary,
+								buildDuration,
+								deployedAt: new Date(
+									latestStatus?.updated_at ||
+										deployment.created_at
+								),
+								attributes: {
+									ref: deployment.ref,
+									task: deployment.task,
+									description: deployment.description,
+									creator: {
+										login: deployment.creator?.login,
+										id: deployment.creator?.id,
+										avatar_url:
+											deployment.creator?.avatar_url,
+									},
+									payload: deployment.payload,
+									statuses_url: deployment.statuses_url,
+									repository_url: deployment.repository_url,
+									deployment_url:
+										latestStatus?.deployment_url,
+									target_url: latestStatus?.target_url,
+									log_url: latestStatus?.log_url,
+									status_description:
+										latestStatus?.description,
+									created_at: deployment.created_at,
+									updated_at: deployment.updated_at,
+								},
+							};
+						} catch (error) {
+							console.error(
+								`Failed to fetch status for deployment ${deployment.id}:`,
+								error
+							);
+							// Return deployment without status if status fetch fails
+							return {
+								externalId: deployment.id.toString(),
+								commitHash: deployment.sha,
+								status: "unknown",
+								environment:
+									deployment.environment || "unknown",
+								errorLogSummary:
+									"Failed to fetch deployment status",
+								buildDuration: null,
+								deployedAt: new Date(deployment.created_at),
+								attributes: {
+									ref: deployment.ref,
+									task: deployment.task,
+									description: deployment.description,
+									creator: {
+										login: deployment.creator?.login,
+										id: deployment.creator?.id,
+										avatar_url:
+											deployment.creator?.avatar_url,
+									},
+									payload: deployment.payload,
+									statuses_url: deployment.statuses_url,
+									repository_url: deployment.repository_url,
+									created_at: deployment.created_at,
+									updated_at: deployment.updated_at,
+								},
+							};
+						}
+					})
+				);
+
+				deploymentEvents.push(...deploymentsWithStatus);
+
+				if (response.data.length < perPage) break;
+				page++;
+			}
+
+			console.log(
+				`✅ Fetched ${deploymentEvents.length} deployment events`
+			);
+			return deploymentEvents;
+		} catch (error) {
+			console.error("Failed to fetch deployment events:", error);
+			throw error;
+		}
 	}
 
 	/**
