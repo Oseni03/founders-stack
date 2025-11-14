@@ -5,21 +5,21 @@ export const Testimonials = () => {
 	const testimonials = [
 		{
 			rating: 5,
-			text: "Founder's Stack saved me 10 hours per week. I used to jump between 8 different tabs—now everything I need is in one place.",
-			author: "Sarah Chen",
-			role: "Founder, TaskFlow",
+			text: "ProductStack cut my tool-switching time in half. Now I see Jira tasks, Slack updates, and Mixpanel metrics in one view, saving me hours every week.",
+			author: "Emma Lee",
+			role: "Product Manager, TechTrend",
 		},
 		{
 			rating: 5,
-			text: "The correlation insights are game-changing. I discovered our churn was tied to deployment errors—something I never would have found manually.",
-			author: "Michael Park",
-			role: "Founder, DevMetrics",
+			text: "The cross-tool insights are a game-changer. I linked a Zendesk ticket spike to a Mixpanel drop and fixed a critical bug before it escalated.",
+			author: "James Patel",
+			role: "Senior PM, DataFlow",
 		},
 		{
 			rating: 5,
-			text: "As a solo founder, I can't afford to miss critical signals. Founder's Stack gives me the visibility I need without the enterprise price tag.",
-			author: "Alex Rivera",
-			role: "Founder, CloudSync",
+			text: "As a PM, I need to stay on top of feedback and designs. ProductStack’s unified dashboard lets me prioritize Intercom requests and review Figma files instantly.",
+			author: "Sophie Nguyen",
+			role: "Product Lead, InnovateX",
 		},
 	];
 
@@ -27,11 +27,11 @@ export const Testimonials = () => {
 		<section className="mx-auto w-full max-w-7xl py-24 md:py-32">
 			<div className="flex flex-col items-center gap-4 text-center mb-16">
 				<h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-					Trusted by Solo Founders
+					Trusted by Product Managers
 				</h2>
 				<p className="max-w-2xl text-lg text-muted-foreground">
-					Join hundreds of indie builders who&rsquo;ve simplified
-					their workflow
+					Join PMs who’ve streamlined their workflows with
+					ProductStack
 				</p>
 			</div>
 

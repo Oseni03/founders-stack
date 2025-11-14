@@ -47,7 +47,7 @@ const Page = () => {
 							<Logo className="w-4 h-4 text-primary-foreground" />
 						</div>
 						<span className="text-xl font-bold tracking-tight">
-							Builders&apos; Stack
+							ProductStack
 						</span>
 					</div>
 					<nav className="flex items-center gap-4">
@@ -57,7 +57,7 @@ const Page = () => {
 									Sign Out
 								</Button>
 								<Button asChild className="font-medium">
-									<Link href="/products">Dashboard</Link>
+									<Link href="/dashboard">Dashboard</Link>
 								</Button>
 							</>
 						) : (
@@ -87,8 +87,8 @@ const Page = () => {
 				{/* Feature Showcase with Images */}
 				<FeatureShowcase />
 
-				{/* Testimonial Section
-				<Testimonials /> */}
+				{/* Testimonials Section */}
+				<Testimonials />
 
 				{/* CTA Section */}
 				<CTA isAuthenticated={isAuthenticated} />

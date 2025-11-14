@@ -5,71 +5,71 @@ export const FeatureShowcase = () => {
 	const featureShowcase = [
 		{
 			badge: "Real-Time Sync",
-			title: "Connect Once, Sync Forever",
+			title: "Seamless Tool Integration",
 			description:
-				"Our intelligent sync engine connects to your existing tools via OAuth and API keys. Data flows automatically every 60 seconds, ensuring you always have the latest metrics without manual updates or data exports.",
+				"Connect Jira, Slack, Notion, and more via OAuth for automatic data syncing. Webhooks and polling ensure your dashboard reflects the latest tasks, metrics, and feedback in seconds, without manual updates.",
 			features: [
 				{
-					title: "Instant Integration",
-					description: "One-click OAuth for major platforms",
+					title: "One-Click OAuth",
+					description: "Securely connect tools in seconds",
 				},
 				{
-					title: "Canonical Data Model",
-					description: "Normalized data across all sources",
+					title: "Real-Time Webhooks",
+					description: "Instant updates for supported tools",
 				},
 				{
-					title: "Background Processing",
-					description: "Zero impact on your workflow",
+					title: "Smart Polling",
+					description: "Frequent syncs for Notion and Mixpanel",
 				},
 			],
 			image: "/assets/feature-sync.png",
-			imageAlt: "Real-time data synchronization across platforms",
+			imageAlt: "Real-time data sync across PM tools",
 			imageOrder: "right",
 		},
 		{
-			badge: "Smart Analytics",
-			title: "Insights That Drive Decisions",
+			badge: "Cross-Tool Insights",
+			title: "Uncover Hidden Connections",
 			description:
-				"Our AI-powered analytics engine identifies correlations between metrics across your stack. Discover how code deploys affect user behavior, or how churn correlates with error rates—all automatically surfaced in your dashboard.",
+				"Our analytics engine correlates data across tools to reveal insights, like how Zendesk ticket spikes relate to Mixpanel usage drops or how Jira tasks align with Figma designs, helping you make data-driven decisions.",
 			features: [
 				{
-					title: "Cross-Stack Correlation",
-					description: "Find hidden patterns in your data",
+					title: "Data Correlation",
+					description: "Link tasks, metrics, and feedback",
 				},
 				{
 					title: "Anomaly Detection",
-					description: "Get alerted to unusual activity instantly",
+					description: "Spot issues before they escalate",
 				},
 				{
-					title: "Predictive Forecasting",
-					description: "Plan ahead with confidence",
+					title: "Actionable Insights",
+					description: "Prioritize based on real data",
 				},
 			],
 			image: "/assets/feature-insights.png",
-			imageAlt: "Actionable insights and data analytics",
+			imageAlt: "Cross-tool analytics for PMs",
 			imageOrder: "left",
 		},
 		{
-			badge: "Enterprise Grade",
-			title: "Security You Can Trust",
+			badge: "Customizable Views",
+			title: "Your Workflow, Your Way",
 			description:
-				"Built on enterprise-grade infrastructure with bank-level encryption. Your data never leaves secure, compliant data centers. We're SOC 2 Type II certified and GDPR compliant from day one.",
+				"Create tailored dashboard views for daily standups, sprint planning, or product health checks. Drag-and-drop widgets to focus on what matters, from Jira tasks to Intercom feedback trends.",
 			features: [
 				{
-					title: "256-bit Encryption",
-					description: "Both in transit and at rest",
+					title: "Drag-and-Drop Layouts",
+					description: "Customize your dashboard easily",
 				},
 				{
-					title: "Role-Based Access",
-					description: "Granular permission controls",
+					title: "Pre-Built Templates",
+					description: "Start with PM-focused views",
 				},
 				{
-					title: "Audit Logging",
-					description: "Complete activity transparency",
+					title: "Saved Filters",
+					description: "Quick access to key data",
 				},
 			],
-			image: "/assets/feature-security.png",
-			imageAlt: "Enterprise-grade security and compliance",
+			image: "/assets/feature-custom-views.png",
+			imageAlt: "Customizable PM dashboard views",
 			imageOrder: "right",
 		},
 	];

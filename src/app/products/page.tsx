@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Package } from "lucide-react";
+import { Briefcase } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import {
@@ -25,7 +25,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import ThemeToggle from "@/components/theme-toggle";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { ProductCard } from "@/components/dashboard/product-card";
-import { formatCurrency } from "@/lib/utils";
 
 export default function ProductsPage() {
 	const { data: session } = authClient.useSession();
@@ -60,18 +59,13 @@ export default function ProductsPage() {
 								{userName}
 							</h1>
 							<p className="text-muted-foreground">
-								{organizations.length} product
-								{organizations.length !== 1 ? "s" : ""} with
-								verified revenue
+								Managing {organizations.length} product
+								{organizations.length !== 1 ? "s" : ""}
 							</p>
 						</div>
 					</div>
 					<div className="flex items-center gap-2">
 						<ThemeToggle />
-						{/* <Button variant="outline" size="sm" className="gap-2">
-							<Share2 className="h-4 w-4" />
-							<span className="hidden sm:inline">Share</span>
-						</Button> */}
 						<SettingsDialog />
 					</div>
 				</div>
@@ -92,12 +86,10 @@ export default function ProductsPage() {
 							<Card className="hover-scale">
 								<CardHeader className="pb-2">
 									<CardDescription className="text-xs">
-										Total revenue
+										Active Tasks
 									</CardDescription>
 									<CardTitle className="text-2xl sm:text-3xl font-bold">
-										{formatCurrency(
-											organizationStats?.totalRevenue || 0
-										)}
+										{organizationStats?.activeTasks || 0}
 									</CardTitle>
 									<p className="text-xs text-muted-foreground">
 										Across all products
@@ -107,46 +99,41 @@ export default function ProductsPage() {
 							<Card className="hover-scale">
 								<CardHeader className="pb-2">
 									<CardDescription className="text-xs">
-										Last 30 days
+										Pending Feedback
 									</CardDescription>
 									<CardTitle className="text-2xl sm:text-3xl font-bold">
-										{formatCurrency(
-											organizationStats?.revenue30Days ||
-												0
-										)}
-									</CardTitle>
-									<p className="text-xs text-muted-foreground">
-										Recent revenue
-									</p>
-								</CardHeader>
-							</Card>
-							<Card className="hover-scale">
-								<CardHeader className="pb-2">
-									<CardDescription className="text-xs">
-										Total MRR
-									</CardDescription>
-									<CardTitle className="text-2xl sm:text-3xl font-bold">
-										{formatCurrency(
-											organizationStats?.totalMRR || 0
-										)}
-									</CardTitle>
-									<p className="text-xs text-muted-foreground">
-										Combined MRR
-									</p>
-								</CardHeader>
-							</Card>
-							<Card className="hover-scale">
-								<CardHeader className="pb-2">
-									<CardDescription className="text-xs">
-										Products
-									</CardDescription>
-									<CardTitle className="text-2xl sm:text-3xl font-bold">
-										{organizationStats?.totalOrganizations ||
+										{organizationStats?.pendingFeedback ||
 											0}
 									</CardTitle>
 									<p className="text-xs text-muted-foreground">
-										{organizationStats?.totalCustomers || 0}{" "}
-										total customers
+										From Intercom
+									</p>
+								</CardHeader>
+							</Card>
+							<Card className="hover-scale">
+								<CardHeader className="pb-2">
+									<CardDescription className="text-xs">
+										Open Tickets
+									</CardDescription>
+									<CardTitle className="text-2xl sm:text-3xl font-bold">
+										{organizationStats?.openTickets || 0}
+									</CardTitle>
+									<p className="text-xs text-muted-foreground">
+										From Zendesk
+									</p>
+								</CardHeader>
+							</Card>
+							<Card className="hover-scale">
+								<CardHeader className="pb-2">
+									<CardDescription className="text-xs">
+										Connected Tools
+									</CardDescription>
+									<CardTitle className="text-2xl sm:text-3xl font-bold">
+										{organizationStats?.totalIntegrations ||
+											0}
+									</CardTitle>
+									<p className="text-xs text-muted-foreground">
+										Across all products
 									</p>
 								</CardHeader>
 							</Card>
@@ -159,13 +146,14 @@ export default function ProductsPage() {
 							</h2>
 							<Dialog>
 								<DialogTrigger asChild>
-									<Button>Create Product</Button>
+									<Button>Add Product</Button>
 								</DialogTrigger>
 								<DialogContent showCloseButton={true}>
 									<DialogHeader>
-										<DialogTitle>Add product</DialogTitle>
+										<DialogTitle>Add Product</DialogTitle>
 										<DialogDescription>
-											Add a new product to get started.
+											Create a new product to manage its
+											tools and workflows.
 										</DialogDescription>
 									</DialogHeader>
 									<CreateOrganizationForm />
@@ -175,8 +163,11 @@ export default function ProductsPage() {
 
 						{/* Products Grid */}
 						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 animate-scale-in">
-							{organizations.map((org) => (
-								<ProductCard key={org.id} org={org} />
+							{organizations.map((product) => (
+								<ProductCard
+									key={product.id}
+									product={product}
+								/>
 							))}
 						</div>
 					</>
@@ -185,26 +176,26 @@ export default function ProductsPage() {
 				{organizations.length === 0 && (
 					<Card className="p-12">
 						<div className="text-center space-y-3">
-							<Package className="h-12 w-12 mx-auto text-muted-foreground" />
+							<Briefcase className="h-12 w-12 mx-auto text-muted-foreground" />
 							<h3 className="text-lg font-semibold">
 								No Products Yet
 							</h3>
 							<p className="text-muted-foreground max-w-md mx-auto">
-								Start building your indie hacker portfolio!
-								Create your first SaaS or startup project and
-								track verified revenue as you grow.
+								Start managing your product portfolio! Add your
+								first product to track tasks, feedback, and
+								support metrics.
 							</p>
 							<Dialog>
 								<DialogTrigger asChild>
 									<Button className="mt-4">
-										Create Your First Product
+										Add Your First Product
 									</Button>
 								</DialogTrigger>
 								<DialogContent showCloseButton={true}>
 									<DialogHeader>
-										<DialogTitle>Add product</DialogTitle>
+										<DialogTitle>Add Product</DialogTitle>
 										<DialogDescription>
-											Add a new product to get started.
+											Create a new product to get started.
 										</DialogDescription>
 									</DialogHeader>
 									<CreateOrganizationForm />

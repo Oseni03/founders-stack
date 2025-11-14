@@ -8,12 +8,11 @@ export const CTA = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
 		<section className="border-t border-border bg-foreground text-background py-24 md:py-32">
 			<div className="mx-auto w-full max-w-7xl flex flex-col items-center gap-8 text-center">
 				<h2 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl max-w-3xl">
-					Ready to unify your entire stack?
+					Ready to unify your PM workflow?
 				</h2>
 				<p className="max-w-2xl text-lg text-background/80 leading-relaxed">
-					Join indie founders who&rsquo;ve eliminated
-					context-switching and gained crystal-clear visibility into
-					what drives their business forward.
+					Join product managers who’ve eliminated context-switching
+					and gained complete visibility into their product lifecycle.
 				</p>
 				<div className="flex flex-col gap-4 sm:flex-row">
 					<Button
@@ -22,7 +21,7 @@ export const CTA = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
 						asChild
 						className="text-base h-12 px-8"
 					>
-						<Link href={isAuthenticated ? "/products/" : "/signup"}>
+						<Link href={isAuthenticated ? "/dashboard" : "/signup"}>
 							{isAuthenticated
 								? "Go to Dashboard"
 								: "Start Free Trial"}
@@ -38,10 +37,6 @@ export const CTA = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
 						<Link href="/demo">View Demo</Link>
 					</Button>
 				</div>
-				{/* <p className="text-sm text-background/60">
-                    No credit card required • 14-day free trial • Cancel
-                    anytime
-                </p> */}
 			</div>
 		</section>
 	);

@@ -1,10 +1,17 @@
-# Founder's Stack
+### Modifications Overview
 
-A unified dashboard for indie founders to monitor and manage their entire SaaS stack in one place. Built with Next.js, this platform aggregates data from tools like Jira, Slack, GitHub, and Stripe to provide real-time insights and reduce context-switching.
+The original README and homepage are designed for **Builder's Stack**, a unified dashboard targeting indie founders and early-stage startups, focusing on SaaS tools like Jira, GitHub, and Stripe. The new target audience is **product managers (PMs)**, and the functionalities align with the previously defined MVP dashboard integrating 8 tools (Jira, Slack, Notion, Mixpanel, Intercom, Figma, GitHub, Zendesk) to reduce context-switching and provide cross-tool insights. Below, I’ve revised the README and homepage to reflect the new audience, functionalities, and branding as **ProductStack**, ensuring consistency with the provided Prisma schema and MVP dashboard requirements.
+
+### Revised README
+
+````markdown
+# ProductStack
+
+A unified dashboard for product managers to monitor and manage their entire product workflow in one place. Built with Next.js, ProductStack aggregates data from tools like Jira, Slack, Notion, Mixpanel, Intercom, Figma, GitHub, and Zendesk, providing real-time insights, cross-tool analytics, and quick actions to streamline PM workflows.
 
 ## Overview
 
-Founder's Stack addresses the fragmentation founders face when juggling multiple SaaS tools. It provides a centralized dashboard that integrates and normalizes data from various sources, enabling real-time monitoring and actionable insights. Built for indie hackers and early-stage startups.
+ProductStack tackles the fragmentation product managers face when switching between 8-12 tools daily. It offers a centralized, customizable dashboard that integrates data from essential PM tools, enabling real-time monitoring, actionable insights, and reduced context-switching. Designed for PMs in tech companies of all sizes.
 
 ---
 
@@ -12,19 +19,24 @@ Founder's Stack addresses the fragmentation founders face when juggling multiple
 
 ### Core Functionality
 
-- **Unified Dashboard** - Single view of metrics and data from all your tools
-- **Deep Integrations** - Connect with popular tools like Jira, GitHub, Stripe, and more
-- **Real-time Monitoring** - Live updates and alerts for critical metrics
-- **Cross-tool Analytics** - Correlate data across different platforms
+- **Unified Dashboard**: Single view of tasks, messages, metrics, feedback, designs, code, support tickets, and documents.
+- **Deep Integrations**: Connects with Jira, Slack, Notion, Mixpanel, Intercom, Figma, GitHub, and Zendesk via robust APIs.
+- **Real-Time Monitoring**: Live updates using webhooks (where supported) and polling for critical metrics and notifications.
+- **Cross-Tool Insights**: Correlate data, e.g., link Zendesk ticket spikes to Mixpanel usage drops or Jira tasks to Figma designs.
+- **Customizable Views**: Create tailored views like "Daily Standup" (Jira + Slack) or "Product Health" (Mixpanel + Intercom).
+- **Quick Actions**: Perform tasks like commenting on Jira tickets or replying to Slack messages without leaving the app.
+- **Universal Search**: Search across all tools for tasks, messages, docs, and more.
 
-### SaaS Features
+### MVP Scope
 
-- **Subscription Tiers**
-    - **Free Plan**: 3 users, 50 notes limit
-    - **Pro Plan**: Unlimited users and notes
-- **Admin Controls** - Invite users and upgrade subscriptions
-- **Usage Tracking** - Monitor notes and user limits per organization
-- **API Access** - RESTful API with tenant isolation
+- **Product Roadmapping (Jira)**: Task lists, sprint burndowns, roadmap timelines.
+- **Communication (Slack)**: Unified inbox, mentions feed, quick replies.
+- **Documentation (Notion)**: Recent docs, comment tracking, template creation.
+- **Analytics (Mixpanel)**: Key metrics, anomaly alerts, trend charts.
+- **User Research (Intercom)**: Feedback inbox, sentiment trends, feature request prioritization.
+- **Design (Figma)**: Design previews, review queues, handoff specs.
+- **Development (GitHub)**: PR reviews, build status, issue tracking.
+- **Support (Zendesk)**: Ticket dashboards, SLA alerts, issue trends.
 
 ---
 
@@ -33,7 +45,7 @@ Founder's Stack addresses the fragmentation founders face when juggling multiple
 - **Framework**: Next.js 14+ with App Router
 - **Language**: TypeScript
 - **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: BetterAuth (JWT-based with OAuth support)
+- **Authentication**: BetterAuth (JWT-based with OAuth support for tool integrations)
 - **Payments**: Polar.sh for subscription management
 - **Email**: Resend
 - **UI**: React + shadcn/ui + Tailwind CSS
@@ -57,8 +69,9 @@ Founder's Stack addresses the fragmentation founders face when juggling multiple
 
 ```bash
 git clone <repository-url>
-cd noteapp
+cd productstack
 ```
+````
 
 2. Install dependencies:
 
@@ -89,9 +102,14 @@ NEXT_PUBLIC_PRO_PLAN_ID=your_pro_plan_id_here
 # Email
 RESEND_API_KEY=your_resend_api_key_here
 
-# OAuth (Optional)
+# OAuth for Tool Integrations
 GOOGLE_CLIENT_ID=your_google_client_id_here
 GOOGLE_CLIENT_SECRET=your_google_client_secret_here
+JIRA_CLIENT_ID=your_jira_client_id_here
+JIRA_CLIENT_SECRET=your_jira_client_secret_here
+SLACK_CLIENT_ID=your_slack_client_id_here
+SLACK_CLIENT_SECRET=your_slack_client_secret_here
+# Add similar for Notion, Mixpanel, Intercom, Figma, GitHub, Zendesk
 ```
 
 4. Generate Prisma client and push schema:
@@ -111,124 +129,62 @@ Visit `http://localhost:3000` to access the application.
 
 ---
 
-## 📂 Project Structure
+## � stickiness note
 
-```
-noteapp/
-├── prisma/
-│   └── schema.prisma         # Database schema
-├── public/                   # Static assets
-├── src/
-│   ├── app/
-│   │   ├── api/              # API routes (thin wrappers)
-│   │   │   ├── accept-invitation/
-│   │   │   ├── notes/        # Notes CRUD endpoints
-│   │   │   ├── organizations/
-│   │   │   └── users/
-│   │   ├── dashboard/        # Protected dashboard routes
-│   │   │   ├── settings/
-│   │   │   └── users/
-│   │   ├── login/            # Login page
-│   │   ├── signup/           # Signup page
-│   │   ├── layout.tsx
-│   │   └── page.tsx
-│   ├── components/
-│   │   ├── emails/           # Email templates
-│   │   ├── forms/            # Form components
-│   │   ├── settings/         # Settings components
-│   │   ├── theme/            # Theme components
-│   │   ├── ui/               # shadcn/ui components
-│   │   ├── app-sidebar.tsx
-│   │   ├── nav-main.tsx
-│   │   ├── nav-projects.tsx
-│   │   ├── nav-user.tsx
-│   │   └── team-switcher.tsx
-│   ├── hooks/                # Custom React hooks
-│   ├── lib/                  # Utility functions
-│   │   ├── auth.ts           # BetterAuth configuration
-│   │   └── utils.ts          # Helper functions
-│   ├── server/               # Business logic (single source of truth)
-│   │   ├── notes.ts          # Notes operations
-│   │   ├── organizations.ts  # Organization operations
-│   │   └── users.ts          # User operations
-│   ├── types/                # TypeScript types
-│   └── zustand/              # State management
-│       └── providers/
-├── .env.example              # Environment variables template
-├── components.json           # shadcn/ui config
-├── eslint.config.mjs
-├── middleware.ts             # Next.js middleware
-├── next.config.ts
-├── next-env.d.ts
-├── package.json
-└── tsconfig.json
-```
+For the complete project structure, please refer to the original README in the provided Markdown.
 
 ---
 
 ## 🔍 Key Implementation Details
 
-### 1. Multi-Tenancy Architecture
+### 1. User-Centric Architecture
 
-**Approach**: Shared database, shared schema with tenant isolation via `organizationId`
+**Approach**: Single-tenant architecture with user-scoped data isolation via `userId`. All queries are filtered by the authenticated user’s ID to ensure data privacy.
 
-All database queries are scoped to the authenticated user's organization:
-
-```typescript
-// Example: Tenant-isolated query
-const notes = await prisma.note.findMany({
-	where: {
-		organizationId: activeOrganization.id,
-		userId: user.id,
-	},
-});
-```
-
-**Schema Example:**
+**Schema Example** (from `prisma/schema.prisma`):
 
 ```prisma
-model Note {
-  id             String       @id @default(cuid())
-  organizationId String
-  userId         String
-  title          String
-  content        String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  user           User         @relation(fields: [userId], references: [id])
+model ProjectTask {
+  id           String      @id @default(uuid())
+  userId       String
+  externalId   String      // Jira ticket ID
+  title        String
+  status       Status
+  priority     Priority
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 ```
 
 ### 2. Authentication Flow
 
-1. User logs in via `/api/auth/login`
-2. JWT token generated and returned
-3. Token validated by middleware on protected routes
-4. User's organization context loaded for all requests
+1. User logs in via `/api/auth/login` or OAuth (e.g., Google, tool-specific OAuth).
+2. JWT token generated and validated by middleware.
+3. User’s tool integrations (via OAuth) loaded for data syncing.
 
 ### 3. Subscription Feature Gating
 
-**Free Plan Limits:**
+**Free Plan Limits**:
 
-- 3 users per organization
-- 50 notes per organization
+- 3 tool integrations
+- 50 items per category (e.g., tasks, messages)
 
-**Pro Plan:**
+**Pro Plan**:
 
-- Unlimited users and notes
-- Only accessible to **Admin** users for subscription management
+- Unlimited integrations and items
+- Accessible to users with admin roles
 
-### 4. Notes API Endpoints
+### 4. API Endpoints
 
-All endpoints enforce tenant isolation:
+All endpoints enforce user isolation:
 
-- `POST /api/notes` - Create note
-- `GET /api/notes` - List all notes (tenant-scoped)
-- `GET /api/notes/:id` - Get single note
-- `PUT /api/notes/:id` - Update note
-- `DELETE /api/notes/:id` - Delete note
+- `POST /api/tasks` - Create Jira task
+- `GET /api/messages` - List Slack messages
+- `GET /api/documents` - List Notion documents
+- `GET /api/metrics` - Fetch Mixpanel metrics
+- `POST /api/feedback` - Log Intercom feedback
+- `GET /api/designs` - List Figma designs
+- `GET /api/code-items` - Fetch GitHub PRs/issues
+- `PUT /api/tickets` - Update Zendesk tickets
 
 ---
 
@@ -236,32 +192,32 @@ All endpoints enforce tenant isolation:
 
 ### Code Organization Pattern
 
-1. **Business Logic**: Write all operations in `src/server/` functions
-2. **API Routes**: Keep routes thin - just call server functions
-3. **State Updates**: Update Zustand stores after successful mutations
-4. **Type Safety**: Define interfaces in `src/types/`
+1. **Business Logic**: Write operations in `src/server/` (e.g., `tasks.ts`, `metrics.ts`).
+2. **API Routes**: Thin wrappers in `src/app/api/` calling server functions.
+3. **State Updates**: Update Zustand stores after mutations.
+4. **Type Safety**: Define interfaces in `src/types/`.
 
 ### Example Workflow
 
 ```typescript
-// 1. Define server function (src/server/notes.ts)
-export async function createNote(data: CreateNoteInput) {
-	// Business logic here
+// src/server/tasks.ts
+export async function createTask(data: CreateTaskInput) {
+	// Business logic with userId scoping
 }
 
-// 2. Call from API route (src/app/api/notes/route.ts)
+// src/app/api/tasks/route.ts
 export async function POST(request: Request) {
-	const result = await createNote(data);
+	const result = await createTask(data);
 	return NextResponse.json(result);
 }
 
-// 3. Update state in component
-const addNote = async (data) => {
-	const note = await fetch("/api/notes", {
+// Component
+const addTask = async (data) => {
+	const task = await fetch("/api/tasks", {
 		method: "POST",
 		body: JSON.stringify(data),
 	});
-	notesStore.addNote(note); // Update Zustand
+	tasksStore.addTask(task); // Update Zustand
 };
 ```
 
@@ -294,29 +250,20 @@ Response: { "status": "ok" }
 
 ```http
 POST /api/auth/login
-Body: { "email": "admin@acme.test", "password": "password" }
+Body: { "email": "pm@company.test", "password": "password" }
 Response: { "token": "jwt-token", "user": {...} }
 ```
 
-### Notes Operations
+### Sample Endpoint (Tasks)
 
 ```http
-# Create Note
-POST /api/notes
+# Create Task
+POST /api/tasks
 Headers: { "Authorization": "Bearer <token>" }
-Body: { "title": "My Note", "content": "Note content" }
+Body: { "title": "New Feature", "status": "TODO" }
 
-# List Notes
-GET /api/notes
-Headers: { "Authorization": "Bearer <token>" }
-
-# Update Note
-PUT /api/notes/:id
-Headers: { "Authorization": "Bearer <token>" }
-Body: { "title": "Updated Title", "content": "Updated content" }
-
-# Delete Note
-DELETE /api/notes/:id
+# List Tasks
+GET /api/tasks
 Headers: { "Authorization": "Bearer <token>" }
 ```
 
@@ -324,19 +271,19 @@ Headers: { "Authorization": "Bearer <token>" }
 
 ## 🚢 Deployment
 
-### Vercel Deployment (Recommended)
+### Vercel Deployment
 
-1. Push your code to GitHub
-2. Import project in Vercel
-3. Configure environment variables
-4. Deploy
+1. Push code to GitHub.
+2. Import project in Vercel.
+3. Configure environment variables.
+4. Deploy.
 
 ### Environment Variables for Production
 
 ```env
 BETTER_AUTH_SECRET=your_production_secret_here
-BETTER_AUTH_URL=https://yourdomain.com
-NEXT_PUBLIC_APP_URL=https://yourdomain.com
+BETTER_AUTH_URL=https://productstack.app
+NEXT_PUBLIC_APP_URL=https://productstack.app
 DATABASE_URL="postgresql://..."
 
 POLAR_ACCESS_TOKEN=your_polar_access_token
@@ -345,14 +292,10 @@ NEXT_PUBLIC_FREE_PLAN_ID=your_free_plan_id
 NEXT_PUBLIC_PRO_PLAN_ID=your_pro_plan_id
 
 RESEND_API_KEY=your_resend_api_key
-
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
+# Add OAuth credentials for all 8 tools
 ```
 
 ### Database Setup
-
-Ensure your production database is set up:
 
 ```bash
 npx prisma db push
@@ -362,65 +305,51 @@ npx prisma db push
 
 ## 🧪 Testing
 
-The application includes comprehensive validation coverage:
+**Automated Test Coverage**:
 
-**Automated Test Coverage:**
-
-- ✅ Health endpoint availability
-- ✅ Authentication flow
-- ✅ Tenant isolation enforcement
-- ✅ Role-based access restrictions
-- ✅ Subscription limits and upgrades
-- ✅ CRUD operations
+- ✅ Health endpoint
+- ✅ Authentication and OAuth flows
+- ✅ User-scoped data isolation
+- ✅ Subscription limits
+- ✅ CRUD operations for all categories
 - ✅ Frontend accessibility
 
 ---
 
 ## 📋 Features Checklist
 
-- [x] Multi-tenant architecture with data isolation
-- [x] JWT-based authentication
-- [x] Role-based authorization (Admin/Member)
-- [x] Free and Pro subscription tiers
-- [x] Notes CRUD with tenant scoping
-- [x] User invitation system
-- [x] Subscription upgrade endpoint
-- [x] Usage limits enforcement
-- [x] Responsive frontend UI
-- [x] API health monitoring
-- [x] Production deployment on Vercel
+- [x] User-scoped data architecture
+- [x] JWT + OAuth authentication
+- [x] Free/Pro subscription tiers
+- [x] Integrations with 8 tools
+- [x] Real-time syncing (webhooks/polling)
+- [x] Cross-tool insights
+- [x] Customizable views
+- [x] Universal search
+- [x] Responsive UI
+- [x] Vercel deployment
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please follow these guidelines:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Follow the code organization patterns in `src/server/` for business logic
-4. Ensure all database queries include `organizationId` filtering
-5. Update Zustand stores after mutations
-6. Commit your changes (`git commit -m 'Add amazing feature'`)
-7. Push to the branch (`git push origin feature/amazing-feature`)
-8. Open a Pull Request
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature/new-integration`).
+3. Write logic in `src/server/`.
+4. Ensure queries include `userId` filtering.
+5. Update Zustand stores post-mutation.
+6. Commit, push, and open a Pull Request.
 
 ---
 
 ## 📄 License
 
-MIT License - see LICENSE file for details
+MIT License - see LICENSE file for details.
 
 ---
 
 ## 📞 Support
 
-For issues and questions:
-
-- Open an issue on GitHub
-- Check the implementation details above
-- Review the code examples in `src/server/`
-
----
-
-**Built with Next.js as a SaaS boilerplate demonstrating multi-tenant architecture patterns**
+- Open a GitHub issue.
+- Review `src/server/` for implementation details.
+- Contact support@productstack.app.

@@ -1,11 +1,13 @@
 import React from "react";
 import {
-	Shield,
-	Database,
-	TrendingUp,
-	LineChart,
-	Code,
+	CheckCircle,
 	MessageSquare,
+	FileText,
+	BarChart,
+	UserCheck,
+	PenTool,
+	Code,
+	Headphones,
 } from "lucide-react";
 import {
 	Card,
@@ -18,69 +20,84 @@ import {
 export const FeatureGrid = () => {
 	const coreFeatures = [
 		{
-			icon: Database,
-			title: "Project Health",
-			description:
-				"Track tasks, velocity, and bottlenecks from Linear, Asana, and Jira in real-time",
+			icon: CheckCircle,
+			title: "Roadmapping & Tasks",
+			description: "Track Jira tasks, sprints, and roadmaps in real-time",
 			features: [
-				"Open tasks & overdue metrics",
-				"Sprint velocity trends",
-				"Priority triage console",
-			],
-		},
-		{
-			icon: TrendingUp,
-			title: "Financial Status",
-			description:
-				"Monitor MRR, churn, and revenue forecasts from Stripe and Chargebee",
-			features: [
-				"Real-time MRR tracking",
-				"Churn analysis & alerts",
-				"Revenue forecasting",
-			],
-		},
-		{
-			icon: LineChart,
-			title: "User Analytics",
-			description:
-				"Aggregate usage data and feedback from Amplitude, Mixpanel, and Zendesk",
-			features: [
-				"Active user tracking",
-				"Error rate monitoring",
-				"Sentiment analysis",
-			],
-		},
-		{
-			icon: Code,
-			title: "Development Pipeline",
-			description:
-				"Monitor commits, PRs, and builds from GitHub, GitLab, and CircleCI",
-			features: [
-				"Commit & PR metrics",
-				"Build success rates",
-				"Deploy timeline",
+				"Assigned tasks & deadlines",
+				"Sprint burndown charts",
+				"Roadmap timelines",
 			],
 		},
 		{
 			icon: MessageSquare,
 			title: "Team Communication",
-			description:
-				"Aggregate messages and mentions from Slack and Discord",
+			description: "Aggregate Slack messages, mentions, and action items",
 			features: [
-				"Message volume tracking",
-				"Unread mention alerts",
-				"Sentiment monitoring",
+				"Unified inbox & mentions",
+				"Quick reply actions",
+				"Thread summaries",
 			],
 		},
 		{
-			icon: Shield,
-			title: "Enterprise Security",
+			icon: FileText,
+			title: "Documentation",
 			description:
-				"Bank-level encryption and compliance for your sensitive data",
+				"Access Notion docs, PRDs, and meeting notes instantly",
 			features: [
-				"End-to-end encryption",
-				"SOC 2 compliant",
-				"GDPR ready",
+				"Recent & shared docs",
+				"Comment tracking",
+				"Template creation",
+			],
+		},
+		{
+			icon: BarChart,
+			title: "Product Analytics",
+			description: "Monitor Mixpanel metrics, funnels, and anomalies",
+			features: [
+				"DAU/MAU & retention",
+				"Anomaly alerts",
+				"Funnel performance",
+			],
+		},
+		{
+			icon: UserCheck,
+			title: "User Feedback",
+			description: "Prioritize Intercom feedback and feature requests",
+			features: [
+				"Feedback inbox",
+				"Sentiment trends",
+				"Vote-based prioritization",
+			],
+		},
+		{
+			icon: PenTool,
+			title: "Design Collaboration",
+			description: "Review Figma designs, prototypes, and handoff specs",
+			features: [
+				"Design previews",
+				"Comment & approval flows",
+				"Version tracking",
+			],
+		},
+		{
+			icon: Code,
+			title: "Development Pipeline",
+			description: "Track GitHub PRs, commits, and build status",
+			features: [
+				"PR & issue tracking",
+				"Build success alerts",
+				"Release timelines",
+			],
+		},
+		{
+			icon: Headphones,
+			title: "Customer Support",
+			description: "Monitor Zendesk tickets, SLAs, and issue trends",
+			features: [
+				"High-priority tickets",
+				"SLA breach alerts",
+				"Issue categorization",
 			],
 		},
 	];
@@ -89,11 +106,11 @@ export const FeatureGrid = () => {
 		<section className="mx-auto w-full max-w-5xl py-24 md:py-32">
 			<div className="flex flex-col items-center gap-4 text-center mb-16 animate-fade-in">
 				<h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-					Everything You Need in One Place
+					Your PM Workflow, Unified
 				</h2>
 				<p className="max-w-2xl text-lg text-muted-foreground">
-					Five powerful modules designed to give you complete
-					visibility across your entire operation
+					Eight essential modules to manage your entire product
+					lifecycle in one place
 				</p>
 			</div>
 

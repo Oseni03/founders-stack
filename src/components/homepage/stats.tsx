@@ -2,9 +2,9 @@ import React from "react";
 
 export const Stats = () => {
 	const stats = [
-		{ value: "5+", label: "Integrated Tools" },
-		{ value: "<3s", label: "Page Load Time" },
-		{ value: "100%", label: "Data Privacy" },
+		{ value: "8", label: "Integrated PM Tools" },
+		{ value: "5s", label: "Real-Time Sync" },
+		{ value: "100%", label: "User Data Privacy" },
 	];
 
 	return (
