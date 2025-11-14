@@ -7,11 +7,10 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export type OrganizationStats = {
-	totalRevenue: number;
-	revenue30Days: number;
-	totalMRR: number;
-	totalOrganizations: number;
-	totalCustomers: number;
+	activeTasks: number;
+	pendingFeedback: number;
+	openTickets: number;
+	totalIntegrations: number;
 };
 
 export type OrganizationState = {
@@ -49,7 +48,7 @@ type OrganizationActions = {
 	openPortal: () => Promise<void>;
 	updateSubscription: (subscription: Subscription) => void;
 	setLoading: (loading: boolean) => void;
-	setAdmin: (loading: boolean) => void;
+	setAdmin: (isAdmin: boolean) => void;
 	loadOrganizationStats: () => Promise<void>;
 	setOrganizationStats: (stats: OrganizationStats) => void;
 };
@@ -77,7 +76,7 @@ export const createOrganizationStore = (
 		persist(
 			(set, get) => ({
 				...initState,
-				// Separate sync function for setting organization data
+				// Set organization data
 				setOrganizationData: (
 					organization,
 					members,
@@ -102,25 +101,19 @@ export const createOrganizationStore = (
 					set((state) => ({ ...state, isAdmin }));
 				},
 
-				// Async function that handles the data fetching properly
+				// Set active organization
 				setActiveOrganization: async (organizationId) => {
-					// Set loading state
 					get().setLoading(true);
-
 					try {
 						const { data, success } =
 							await getOrganizationById(organizationId);
-
 						const session = await getCurrentUser();
-
 						const isAdmin = !!data?.members?.find(
 							(member) =>
 								member.userId == session?.user?.id &&
 								member.role == "admin"
 						);
-
 						if (success && data) {
-							// Use the sync function to update state
 							get().setOrganizationData(
 								data as Organization,
 								(data?.members as Member[]) || [],
@@ -136,18 +129,22 @@ export const createOrganizationStore = (
 						get().setLoading(false);
 					}
 				},
+
+				// Organization actions
 				setOrganizations: async (organizations) => {
 					set((state) => ({
 						...state,
-						organizations: organizations,
+						organizations,
 					}));
 				},
+
 				addOrganization: async (organization) => {
 					set((state) => ({
 						...state,
 						organizations: [...state.organizations, organization],
 					}));
 				},
+
 				updateOrganization: async (organization) => {
 					set((state) => ({
 						...state,
@@ -156,22 +153,37 @@ export const createOrganizationStore = (
 								? { ...org, ...organization }
 								: org
 						),
+						activeOrganization:
+							state.activeOrganization?.id === organization.id
+								? {
+										...state.activeOrganization,
+										...organization,
+									}
+								: state.activeOrganization,
 					}));
 				},
+
 				removeOrganization: async (organizationId) => {
 					set((state) => ({
 						...state,
 						organizations: state.organizations.filter(
 							(org) => org.id !== organizationId
 						),
+						activeOrganization:
+							state.activeOrganization?.id === organizationId
+								? undefined
+								: state.activeOrganization,
 					}));
 				},
+
+				// Invitation actions
 				addInvitation: async (invitation) => {
 					set((state) => ({
 						...state,
 						invitations: [...state.invitations, invitation],
 					}));
 				},
+
 				removeInvite: async (invitationId) => {
 					set((state) => ({
 						...state,
@@ -180,17 +192,17 @@ export const createOrganizationStore = (
 						),
 					}));
 				},
+
+				// Member actions
 				updateMember: async (member) => {
 					set((state) => ({
 						...state,
-						members: state.members.map((m) => {
-							if (m.id === member.id) {
-								return member;
-							}
-							return m;
-						}),
+						members: state.members.map((m) =>
+							m.id === member.id ? member : m
+						),
 					}));
 				},
+
 				removeMember: async (memberId) => {
 					set((state) => ({
 						...state,
@@ -201,18 +213,15 @@ export const createOrganizationStore = (
 				},
 				loadSubscription: async (organizationId: string) => {
 					if (!organizationId) return;
-
 					set((state) => ({
 						...state,
 						isLoading: true,
 						error: null,
 					}));
-
 					try {
 						const response = await fetch(
 							`/api/subscription/${organizationId}`
 						);
-
 						if (!response.ok) {
 							if (response.status === 404) {
 								set((state) => ({
@@ -224,7 +233,6 @@ export const createOrganizationStore = (
 							}
 							throw new Error("Failed to fetch subscription");
 						}
-
 						const { data } = await response.json();
 						set((state) => ({
 							...state,
@@ -252,9 +260,11 @@ export const createOrganizationStore = (
 						set({ error: "Organization ID required" });
 						return;
 					}
-
-					set((state) => ({ ...state, loading: true, error: null }));
-
+					set((state) => ({
+						...state,
+						isLoading: true,
+						error: null,
+					}));
 					try {
 						const { data, error } = await authClient.checkout({
 							products,
@@ -265,7 +275,6 @@ export const createOrganizationStore = (
 							throw new Error(error.message);
 						}
 						if (data?.url) window.location.href = data.url;
-						// Note: subscription will be updated via webhook after successful checkout
 					} catch (error) {
 						console.error("Error creating checkout:", error);
 						set((state) => ({
@@ -281,8 +290,11 @@ export const createOrganizationStore = (
 				},
 
 				openPortal: async () => {
-					set((state) => ({ ...state, loading: true, error: null }));
-
+					set((state) => ({
+						...state,
+						isLoading: true,
+						error: null,
+					}));
 					try {
 						await authClient.customer.portal();
 						set({ isLoading: false });
@@ -294,7 +306,7 @@ export const createOrganizationStore = (
 								error instanceof Error
 									? error.message
 									: "Failed to open customer portal",
-							loading: false,
+							isLoading: false,
 						}));
 						throw error;
 					}
@@ -304,27 +316,25 @@ export const createOrganizationStore = (
 					set((state) => ({ ...state, subscription }));
 				},
 
+				// Stats actions
 				loadOrganizationStats: async () => {
 					set((state) => ({
 						...state,
 						statsLoading: true,
 						statsError: null,
 					}));
-
 					try {
-						const response = await fetch("/api/products");
-
+						const response = await fetch("/api/products/stats");
 						if (!response.ok) {
 							throw new Error(
 								"Failed to fetch organization stats"
 							);
 						}
-
 						const data = await response.json();
-
 						set((state) => ({
 							...state,
-							organizations: data.products, // Products are organizations
+							products: data.products,
+							integrations: data.integrations,
 							organizationStats: data.stats,
 							statsLoading: false,
 						}));

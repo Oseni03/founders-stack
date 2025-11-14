@@ -12,8 +12,6 @@ import { FREE_PLAN } from "@/lib/utils";
 export async function getOrganizations() {
 	const { currentUser } = await getCurrentUser();
 
-	const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
 	// Get organization IDs for the user
 	const members = await prisma.member.findMany({
 		where: { userId: currentUser.id },
@@ -27,107 +25,48 @@ export async function getOrganizations() {
 	}
 
 	// Fetch all data in parallel
-	const [organizations, invoices, subscriptions, customerCounts] =
-		await Promise.all([
-			prisma.organization.findMany({
-				where: { id: { in: organizationIds } },
-				include: {
-					members: {
-						include: {
-							user: true,
-						},
+	const [organizations, taskCounts, integrationCounts] = await Promise.all([
+		prisma.organization.findMany({
+			where: { id: { in: organizationIds } },
+			include: {
+				members: {
+					include: {
+						user: true,
 					},
-					invitations: true,
-					subscription: true,
 				},
-			}),
-			prisma.invoice.findMany({
-				where: {
-					organizationId: { in: organizationIds },
-					status: "paid",
-				},
-				select: {
-					amountPaid: true,
-					issuedDate: true,
-					organizationId: true,
-				},
-			}),
-			prisma.financeSubscription.findMany({
-				where: {
-					organizationId: { in: organizationIds },
-					status: { in: ["active", "trialing"] },
-				},
-				select: {
-					amount: true,
-					billingCycle: true,
-					organizationId: true,
-				},
-			}),
-			prisma.customer.groupBy({
-				by: ["organizationId"],
-				where: { organizationId: { in: organizationIds } },
-				_count: { id: true },
-			}),
-		]);
+				invitations: true,
+				subscription: true,
+			},
+		}),
+		prisma.task.groupBy({
+			by: ["organizationId"],
+			where: {
+				organizationId: { in: organizationIds },
+				status: { not: "done" }, // Assuming "DONE" indicates completed tasks
+			},
+			_count: { id: true },
+		}),
+		prisma.integration.groupBy({
+			by: ["organizationId"],
+			where: { organizationId: { in: organizationIds } },
+			_count: { id: true },
+		}),
+	]);
 
-	// Create lookup maps
-	const customerCountMap = new Map(
-		customerCounts.map((c) => [c.organizationId, c._count.id])
+	// Create lookup maps for counts
+	const taskCountMap = new Map(
+		taskCounts.map((t) => [t.organizationId, t._count.id])
+	);
+	const integrationCountMap = new Map(
+		integrationCounts.map((i) => [i.organizationId, i._count.id])
 	);
 
-	// Group data by organization
-	const invoicesByOrg = new Map<string, typeof invoices>();
-	const subscriptionsByOrg = new Map<string, typeof subscriptions>();
-
-	invoices.forEach((inv) => {
-		if (!invoicesByOrg.has(inv.organizationId)) {
-			invoicesByOrg.set(inv.organizationId, []);
-		}
-		invoicesByOrg.get(inv.organizationId)!.push(inv);
-	});
-
-	subscriptions.forEach((sub) => {
-		if (!subscriptionsByOrg.has(sub.organizationId)) {
-			subscriptionsByOrg.set(sub.organizationId, []);
-		}
-		subscriptionsByOrg.get(sub.organizationId)!.push(sub);
-	});
-
 	// Map organizations with metrics
-	const organizationsWithMetrics = organizations.map((org) => {
-		const orgInvoices = invoicesByOrg.get(org.id) || [];
-		const orgSubscriptions = subscriptionsByOrg.get(org.id) || [];
-
-		// Calculate revenue
-		let totalRevenue = 0;
-		let revenue30Days = 0;
-
-		for (const inv of orgInvoices) {
-			totalRevenue += inv.amountPaid;
-			if (inv.issuedDate && inv.issuedDate >= thirtyDaysAgo) {
-				revenue30Days += inv.amountPaid;
-			}
-		}
-
-		// Calculate MRR
-		let mrr = 0;
-		for (const sub of orgSubscriptions) {
-			if (sub.billingCycle === "monthly") {
-				mrr += sub.amount;
-			} else if (sub.billingCycle === "yearly") {
-				mrr += sub.amount / 12;
-			}
-		}
-
-		return {
-			...org,
-			revenue30Days: Math.round(revenue30Days),
-			totalRevenue: Math.round(totalRevenue),
-			activeSubscriptions: orgSubscriptions.length,
-			mrr: Math.round(mrr),
-			totalCustomers: customerCountMap.get(org.id) || 0,
-		};
-	});
+	const organizationsWithMetrics = organizations.map((org) => ({
+		...org,
+		activeTasks: taskCountMap.get(org.id) || 0,
+		toolCount: integrationCountMap.get(org.id) || 0,
+	}));
 
 	return organizationsWithMetrics;
 }
@@ -182,49 +121,30 @@ export async function getOrganizationBySlug(slug: string) {
 
 export async function getOrganizationById(orgId: string) {
 	try {
-		const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
 		// Execute all queries in parallel
-		const [organization, invoices, subscriptions, customerCount] =
-			await Promise.all([
-				prisma.organization.findUnique({
-					where: { id: orgId },
-					include: {
-						members: {
-							include: {
-								user: true,
-							},
+		const [organization, taskCount, integrationCount] = await Promise.all([
+			prisma.organization.findUnique({
+				where: { id: orgId },
+				include: {
+					members: {
+						include: {
+							user: true,
 						},
-						invitations: true,
-						subscription: true,
 					},
-				}),
-				prisma.invoice.findMany({
-					where: {
-						organizationId: orgId,
-						status: "paid",
-					},
-					select: {
-						amountPaid: true,
-						issuedDate: true,
-					},
-				}),
-				prisma.financeSubscription.findMany({
-					where: {
-						organizationId: orgId,
-						status: { in: ["active", "trialing"] },
-					},
-					select: {
-						amount: true,
-						billingCycle: true,
-					},
-				}),
-				prisma.customer.count({
-					where: {
-						organizationId: orgId,
-					},
-				}),
-			]);
+					invitations: true,
+					subscription: true,
+				},
+			}),
+			prisma.task.count({
+				where: {
+					organizationId: orgId,
+					status: { not: "done" }, // Assuming "DONE" indicates completed tasks
+				},
+			}),
+			prisma.integration.count({
+				where: { organizationId: orgId },
+			}),
+		]);
 
 		if (!organization) {
 			return {
@@ -234,35 +154,11 @@ export async function getOrganizationById(orgId: string) {
 			};
 		}
 
-		// Calculate metrics efficiently
-		let totalRevenue = 0;
-		let revenue30Days = 0;
-
-		for (const invoice of invoices) {
-			totalRevenue += invoice.amountPaid;
-			if (invoice.issuedDate && invoice.issuedDate >= thirtyDaysAgo) {
-				revenue30Days += invoice.amountPaid;
-			}
-		}
-
-		// Calculate MRR
-		let mrr = 0;
-		for (const sub of subscriptions) {
-			if (sub.billingCycle === "monthly") {
-				mrr += sub.amount;
-			} else if (sub.billingCycle === "yearly") {
-				mrr += sub.amount / 12;
-			}
-		}
-
 		// Combine organization data with metrics
 		const organizationWithMetrics = {
 			...organization,
-			revenue30Days: Math.round(revenue30Days),
-			totalRevenue: Math.round(totalRevenue),
-			activeSubscriptions: subscriptions.length,
-			mrr: Math.round(mrr),
-			totalCustomers: customerCount,
+			activeTasks: taskCount,
+			toolCount: integrationCount,
 		};
 
 		return { data: organizationWithMetrics, success: true };
@@ -274,7 +170,7 @@ export async function getOrganizationById(orgId: string) {
 
 export async function updateOrganization(
 	organizationId: string,
-	data: { name: string; description: string }
+	data: { name: string; description: string; logo?: string }
 ) {
 	try {
 		const result = await auth.api.updateOrganization({
@@ -282,15 +178,35 @@ export async function updateOrganization(
 				data,
 				organizationId,
 			},
-			// This endpoint requires session cookies.
 			headers: await headers(),
 		});
-		return { data: result, success: true };
+
+		// Fetch updated counts to ensure Organization interface compliance
+		const [taskCount, integrationCount] = await Promise.all([
+			prisma.task.count({
+				where: {
+					organizationId,
+					status: { not: "done" },
+				},
+			}),
+			prisma.integration.count({
+				where: { organizationId },
+			}),
+		]);
+
+		return {
+			data: {
+				...result,
+				activeTasks: taskCount,
+				toolCount: integrationCount,
+			},
+			success: true,
+		};
 	} catch (error) {
-		console.error("Error updating project: ", error);
+		console.error("Error updating organization: ", error);
 		return {
 			success: false,
-			error: "Failed to upgrade project",
+			error: "Failed to update organization",
 		};
 	}
 }
