@@ -2,9 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-
 import { z } from "zod";
-
 import { Button } from "@/components/ui/button";
 import {
 	Form,
@@ -32,8 +30,8 @@ import { getUser } from "@/server/users";
 import { MemberUser } from "@/types";
 
 const formSchema = z.object({
-	email: z.email(),
-	role: z.enum(["admin", "member"]),
+	email: z.string().email(),
+	role: z.enum(["owner", "admin", "member", "viewer", "guest"]),
 });
 
 export function UpdateMemberRoleForm({
@@ -48,6 +46,7 @@ export function UpdateMemberRoleForm({
 	const {
 		activeOrganization: organization,
 		isAdmin,
+		isOwner,
 		updateMember,
 	} = useOrganizationStore((state) => state);
 	const [isLoading, setIsLoading] = useState(false);
@@ -59,12 +58,20 @@ export function UpdateMemberRoleForm({
 
 	async function onSubmit(values: z.infer<typeof formSchema>) {
 		try {
-			toast.loading("Sending invite...");
+			toast.loading("Updating role...");
 			setIsLoading(true);
 
 			if (!organization) return;
 
-			if (!isAdmin) {
+			// Only Owners can assign or change the Owner role
+			if (values.role === "owner" && !isOwner) {
+				toast.dismiss();
+				toast.error("Only Owners can assign the Owner role");
+				return;
+			}
+
+			// Admins and Owners can change other roles
+			if (!isAdmin && !isOwner) {
 				toast.dismiss();
 				toast.error("You do not have permission to change member role");
 				return;
@@ -84,7 +91,7 @@ export function UpdateMemberRoleForm({
 			}
 
 			toast.dismiss();
-			toast.error("Member role updated successfully");
+			toast.success("Member role updated successfully");
 			onSuccess();
 
 			if (data) {
@@ -139,14 +146,19 @@ export function UpdateMemberRoleForm({
 							>
 								<FormControl>
 									<SelectTrigger>
-										<SelectValue placeholder="Select a verified email to display" />
+										<SelectValue placeholder="Select a role" />
 									</SelectTrigger>
 								</FormControl>
 								<SelectContent>
+									<SelectItem value="owner">Owner</SelectItem>
+									<SelectItem value="admin">Admin</SelectItem>
 									<SelectItem value="member">
 										Member
 									</SelectItem>
-									<SelectItem value="admin">Admin</SelectItem>
+									<SelectItem value="viewer">
+										Viewer
+									</SelectItem>
+									<SelectItem value="guest">Guest</SelectItem>
 								</SelectContent>
 							</Select>
 							<FormMessage />

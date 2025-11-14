@@ -2,9 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-
 import { z } from "zod";
-
 import { Button } from "@/components/ui/button";
 import {
 	Form,
@@ -31,8 +29,8 @@ import { useOrganizationStore } from "@/zustand/providers/organization-store-pro
 import { Invitation } from "better-auth/plugins";
 
 const formSchema = z.object({
-	email: z.email(),
-	role: z.enum(["admin", "member"]),
+	email: z.string().email(),
+	role: z.enum(["owner", "admin", "member", "viewer", "guest"]),
 });
 
 export function InvitationForm({ onSuccess }: { onSuccess: () => void }) {
@@ -111,21 +109,26 @@ export function InvitationForm({ onSuccess }: { onSuccess: () => void }) {
 					name="role"
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Slug</FormLabel>
+							<FormLabel>Role</FormLabel>
 							<Select
 								onValueChange={field.onChange}
 								defaultValue={field.value}
 							>
 								<FormControl>
 									<SelectTrigger>
-										<SelectValue placeholder="Select a verified email to display" />
+										<SelectValue placeholder="Select a role" />
 									</SelectTrigger>
 								</FormControl>
 								<SelectContent>
+									<SelectItem value="owner">Owner</SelectItem>
+									<SelectItem value="admin">Admin</SelectItem>
 									<SelectItem value="member">
 										Member
 									</SelectItem>
-									<SelectItem value="admin">Admin</SelectItem>
+									<SelectItem value="viewer">
+										Viewer
+									</SelectItem>
+									<SelectItem value="guest">Guest</SelectItem>
 								</SelectContent>
 							</Select>
 							<FormMessage />

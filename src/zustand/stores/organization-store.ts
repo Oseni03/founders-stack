@@ -20,6 +20,7 @@ export type OrganizationState = {
 	organizations: Organization[];
 	subscription?: Subscription;
 	isAdmin: boolean;
+	isOwner: boolean;
 	isLoading: boolean;
 	error: string | null;
 	organizationStats: OrganizationStats | null;
@@ -49,6 +50,7 @@ type OrganizationActions = {
 	updateSubscription: (subscription: Subscription) => void;
 	setLoading: (loading: boolean) => void;
 	setAdmin: (isAdmin: boolean) => void;
+	setOwner: (isOwner: boolean) => void;
 	loadOrganizationStats: () => Promise<void>;
 	setOrganizationStats: (stats: OrganizationStats) => void;
 };
@@ -62,6 +64,7 @@ export const defaultInitState: OrganizationState = {
 	organizations: [],
 	subscription: undefined,
 	isAdmin: false,
+	isOwner: false,
 	isLoading: false,
 	error: null,
 	organizationStats: null,
@@ -101,6 +104,10 @@ export const createOrganizationStore = (
 					set((state) => ({ ...state, isAdmin }));
 				},
 
+				setOwner: (isOwner: boolean) => {
+					set((state) => ({ ...state, isOwner }));
+				},
+
 				// Set active organization
 				setActiveOrganization: async (organizationId) => {
 					get().setLoading(true);
@@ -113,6 +120,11 @@ export const createOrganizationStore = (
 								member.userId == session?.user?.id &&
 								member.role == "admin"
 						);
+						const isOwner = !!data?.members?.find(
+							(member) =>
+								member.userId == session?.user?.id &&
+								member.role == "owner"
+						);
 						if (success && data) {
 							get().setOrganizationData(
 								data as Organization,
@@ -121,6 +133,7 @@ export const createOrganizationStore = (
 								data.subscription!
 							);
 							get().setAdmin(isAdmin);
+							get().setOwner(isOwner);
 						} else {
 							get().setLoading(false);
 						}

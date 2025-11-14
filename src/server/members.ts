@@ -52,7 +52,7 @@ export const removeMember = async (
 export async function updateMemberRole(
 	memberId: string,
 	organizationId: string,
-	role: "admin" | "member" | ("admin" | "member")[]
+	role: "owner" | "admin" | "member" | "viewer" | "guest"
 ) {
 	try {
 		const result = await auth.api.updateMemberRole({
