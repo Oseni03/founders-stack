@@ -2,72 +2,173 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { persist } from "zustand/middleware";
-import { Project, Task } from "@prisma/client";
 import { logger } from "@/lib/logger";
 
-export interface ProjectMetrics {
-	openTasks: number;
-	velocity: number[];
-	overdueTasks: number;
-	tasks: Task[];
-	insight: string;
-}
-
-export interface TaskFormData {
+export interface Task {
+	id: string;
+	externalId: string;
 	title: string;
 	description?: string;
-	status: "open" | "in_progress" | "done" | null;
-	priority: "low" | "medium" | "high" | "urgent" | null;
-	assignee: string | null;
-	dueDate?: string | Date;
+	status: string;
+	priority?: string;
+	type?: string;
+	assignee?: {
+		id: string;
+		name: string;
+		email: string;
+		avatar?: string;
+	} | null;
+	reporterId?: string;
+	reporterName?: string;
+	dueDate?: string;
+	startDate?: string;
+	completedAt?: string;
+	estimatedHours?: number;
+	actualHours?: number;
+	storyPoints?: number;
+	labels: string[];
+	sprintId?: string;
+	sprintName?: string;
+	epicId?: string;
+	epicName?: string;
+	parentTaskId?: string;
+	dependencies: string[];
+	url?: string;
+	metadata?: any;
+	project: {
+		id: string;
+		name: string;
+		platform?: string;
+		status: string;
+	};
+	sourceTool: string;
+	integrationId: string;
+	commentsCount: number;
+	linkedItemsCount: number;
+	isWatching: boolean;
+	createdAt: string;
+	updatedAt: string;
+	syncedAt: string;
+}
+
+export interface Project {
+	id: string;
+	name: string;
+	description?: string;
+	externalId?: string;
+	platform?: string;
+	attributes?: any;
+	status: string;
+	taskCount: number;
+	openTasks: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface Comment {
+	id: string;
+	content: string;
+	author: {
+		id: string;
+		name: string;
+		email: string;
+		image?: string;
+	};
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface TaskFilters {
+	view: "my-tasks" | "team-tasks" | "all-projects" | "sprints";
+	status: string;
+	priority: string;
+	assigneeId: string;
 	projectId: string;
-	labels?: string[];
+	integrationId: string;
+	dateRange: "today" | "week" | "month" | "overdue" | "all";
+	search: string;
 }
 
 export interface ProjectState {
-	data: ProjectMetrics | null;
+	tasks: Task[];
 	projects: Project[];
+	selectedTask: Task | null;
 	loading: boolean;
 	error: string | null;
-	range: "7d" | "30d" | "90d";
-	organizationId: string | null;
+	filters: TaskFilters;
+	viewMode: "list" | "board" | "calendar";
 
-	setData: (data: ProjectMetrics | null) => void;
+	// Setters
+	setTasks: (tasks: Task[]) => void;
 	setProjects: (projects: Project[]) => void;
+	setSelectedTask: (task: Task | null) => void;
 	setLoading: (loading: boolean) => void;
 	setError: (error: string | null) => void;
-	setRange: (range: "7d" | "30d" | "90d") => void;
-	setOrganizationId: (id: string) => void;
+	setFilter: (key: keyof TaskFilters, value: any) => void;
+	setViewMode: (mode: "list" | "board" | "calendar") => void;
 	clearError: () => void;
 
-	fetchData: (
-		productId: string,
-		range: "7d" | "30d" | "90d"
+	// API Actions
+	fetchTasks: (orgId: string) => Promise<void>;
+	fetchProjects: (orgId: string) => Promise<void>;
+	fetchTaskDetails: (orgId: string, taskId: string) => Promise<void>;
+	updateTask: (
+		orgId: string,
+		taskId: string,
+		updates: Partial<Task>
 	) => Promise<void>;
-	createTask: (data: TaskFormData) => Promise<void>;
-	updateTask: (taskId: string, data: Partial<TaskFormData>) => Promise<void>;
-	deleteTask: (productId: string, taskId: string) => Promise<void>;
+	deleteTask: (orgId: string, taskId: string) => Promise<void>;
+	bulkUpdateTasks: (
+		orgId: string,
+		taskIds: string[],
+		updates: any
+	) => Promise<void>;
+	addComment: (
+		orgId: string,
+		taskId: string,
+		content: string
+	) => Promise<void>;
+	toggleWatcher: (
+		orgId: string,
+		taskId: string,
+		isWatching: boolean
+	) => Promise<void>;
 }
 
 export const createProjectStore = () => {
 	return create<ProjectState>()(
 		persist(
 			immer((set, get) => ({
-				data: null,
+				tasks: [],
 				projects: [],
+				selectedTask: null,
 				loading: false,
 				error: null,
-				range: "30d",
-				organizationId: null,
+				filters: {
+					view: "my-tasks",
+					status: "all",
+					priority: "all",
+					assigneeId: "me",
+					projectId: "",
+					integrationId: "",
+					dateRange: "all",
+					search: "",
+				},
+				viewMode: "list",
 
-				setData: (data) =>
+				setTasks: (tasks) =>
 					set((state) => {
-						state.data = data;
+						state.tasks = tasks;
 					}),
 
 				setProjects: (projects) =>
 					set((state) => {
 						state.projects = projects;
+					}),
+
+				setSelectedTask: (task) =>
+					set((state) => {
+						state.selectedTask = task;
 					}),
 
 				setLoading: (loading) =>
@@ -80,14 +181,17 @@ export const createProjectStore = () => {
 						state.error = error;
 					}),
 
-				setRange: (range) =>
+				setFilter: <K extends keyof TaskFilters>(
+					key: K,
+					value: TaskFilters[K]
+				) =>
 					set((state) => {
-						state.range = range;
+						state.filters[key] = value;
 					}),
 
-				setOrganizationId: (id) =>
+				setViewMode: (mode) =>
 					set((state) => {
-						state.organizationId = id;
+						state.viewMode = mode;
 					}),
 
 				clearError: () =>
@@ -95,338 +199,399 @@ export const createProjectStore = () => {
 						state.error = null;
 					}),
 
-				fetchData: async (productId, range) => {
-					const {
-						setLoading,
-						setData,
-						setProjects,
-						setError,
-						setRange,
-					} = get();
+				fetchTasks: async (orgId) => {
+					const { setLoading, setError, setTasks, filters } = get();
 					setLoading(true);
 					setError(null);
-					setRange(range);
 
 					try {
-						logger.info("Fetching project data", {
-							productId,
-							range,
-						});
+						logger.info("Fetching tasks", { orgId, filters });
+
+						// Build query params
+						const params = new URLSearchParams();
+						if (filters.status !== "all")
+							params.append("status", filters.status);
+						if (filters.priority !== "all")
+							params.append("priority", filters.priority);
+						if (filters.assigneeId)
+							params.append("assigneeId", filters.assigneeId);
+						if (filters.projectId)
+							params.append("projectId", filters.projectId);
+						if (filters.integrationId)
+							params.append(
+								"integrationId",
+								filters.integrationId
+							);
+						if (filters.dateRange !== "all")
+							params.append("dateRange", filters.dateRange);
+						if (filters.view) params.append("view", filters.view);
+						if (filters.search)
+							params.append("search", filters.search);
+
 						const res = await fetch(
-							`/api/products/${productId}/project-health?range=${range}`
+							`/api/products/${orgId}/tasks?${params.toString()}`
 						);
+
 						if (!res.ok) {
 							const errorText = await res.text();
 							throw new Error(errorText);
 						}
-						const { data, projects } = await res.json();
-						logger.info("Project data fetched successfully", {
-							taskCount: data?.tasks?.length || 0,
-							projectCount: projects?.length || 0,
+
+						const { tasks } = await res.json();
+						logger.info("Tasks fetched successfully", {
+							count: tasks.length,
 						});
-						setData(data);
-						setProjects(projects);
+
+						setTasks(tasks);
 					} catch (err: any) {
-						logger.error("Error fetching project data", {
+						logger.error("Error fetching tasks", {
 							error: err,
-							productId,
-							range,
+							orgId,
 						});
-						setError(err.message || "Failed to fetch project data");
+						setError(err.message || "Failed to fetch tasks");
 					} finally {
 						setLoading(false);
 					}
 				},
 
-				createTask: async (taskData) => {
-					const {
-						organizationId,
-						setLoading,
-						setError,
-						data,
-						setData,
-					} = get();
-
-					if (!organizationId) {
-						const errorMsg = "Organization ID is required";
-						logger.error(
-							"Cannot create task: Organization ID is missing"
-						);
-						setError(errorMsg);
-						return Promise.reject(new Error(errorMsg));
-					}
-
-					const project = get().projects.find(
-						(p) => p.id === taskData.projectId
-					);
-					if (!project) {
-						const errorMsg = "Project not found";
-						setError(errorMsg);
-						return Promise.reject(new Error(errorMsg));
-					}
-
+				fetchProjects: async (orgId) => {
+					const { setLoading, setError, setProjects } = get();
 					setLoading(true);
 					setError(null);
 
 					try {
-						logger.info("Creating task", {
-							projectId: taskData.projectId,
-							projectName: project.name,
-							sourceTool: project.sourceTool,
-							title: taskData.title,
-						});
+						logger.info("Fetching projects", { orgId });
 
 						const res = await fetch(
-							`/api/integrations/${project.sourceTool}/resources/tasks`,
-							{
-								method: "POST",
-								headers: { "Content-Type": "application/json" },
-								body: JSON.stringify({
-									...taskData,
-									organizationId,
-								}),
-							}
+							`/api/products/${orgId}/projects?status=active`
 						);
 
 						if (!res.ok) {
 							const errorText = await res.text();
-							logger.error("Task creation API failed", {
-								status: res.status,
-								error: errorText,
-								projectId: taskData.projectId,
-							});
-							throw new Error(
-								errorText || "Failed to create task"
-							);
+							throw new Error(errorText);
 						}
 
-						const newTask: Task = await res.json();
-
-						logger.info("Task created successfully", {
-							taskId: newTask.id,
-							title: newTask.title,
-							sourceTool: project.sourceTool,
+						const { projects } = await res.json();
+						logger.info("Projects fetched successfully", {
+							count: projects.length,
 						});
 
-						// Update local state only on success
-						if (data) {
-							setData({
-								...data,
-								tasks: [...data.tasks, newTask],
-								openTasks:
-									newTask.status === "open"
-										? data.openTasks + 1
-										: data.openTasks,
-							});
-						}
+						setProjects(projects);
 					} catch (err: any) {
-						logger.error("Error creating task", {
+						logger.error("Error fetching projects", {
 							error: err,
-							taskData,
+							orgId,
 						});
-						const errorMessage =
-							err.message || "Failed to create task";
-						setError(errorMessage);
-						return Promise.reject(err);
+						setError(err.message || "Failed to fetch projects");
 					} finally {
 						setLoading(false);
 					}
 				},
 
-				updateTask: async (taskId, updates) => {
+				fetchTaskDetails: async (orgId, taskId) => {
+					const { setLoading, setError, setSelectedTask } = get();
+					setLoading(true);
+					setError(null);
+
+					try {
+						logger.info("Fetching task details", { orgId, taskId });
+
+						const res = await fetch(
+							`/api/products/${orgId}/tasks/${taskId}`
+						);
+
+						if (!res.ok) {
+							const errorText = await res.text();
+							throw new Error(errorText);
+						}
+
+						const { task } = await res.json();
+						logger.info("Task details fetched successfully", {
+							taskId,
+						});
+
+						setSelectedTask(task);
+					} catch (err: any) {
+						logger.error("Error fetching task details", {
+							error: err,
+							taskId,
+						});
+						setError(err.message || "Failed to fetch task details");
+					} finally {
+						setLoading(false);
+					}
+				},
+
+				updateTask: async (orgId, taskId, updates) => {
 					const {
-						organizationId,
 						setLoading,
 						setError,
-						data,
-						setData,
+						tasks,
+						setTasks,
+						selectedTask,
+						setSelectedTask,
 					} = get();
-
-					if (!organizationId) {
-						const errorMsg = "Organization ID is required";
-						logger.error(
-							"Cannot update task: Organization ID is missing"
-						);
-						setError(errorMsg);
-						return Promise.reject(new Error(errorMsg));
-					}
-
-					const task = data?.tasks.find((t) => t.id === taskId);
-					if (!task) {
-						const errorMsg = "Task not found";
-						setError(errorMsg);
-						return Promise.reject(new Error(errorMsg));
-					}
-
-					const project = get().projects.find(
-						(p) => p.id === task.projectId
-					);
-					if (!project) {
-						const errorMsg = "Project not found";
-						setError(errorMsg);
-						return Promise.reject(new Error(errorMsg));
-					}
-
 					setLoading(true);
 					setError(null);
 
 					try {
 						logger.info("Updating task", {
+							orgId,
 							taskId,
-							title: task.title,
-							sourceTool: project.sourceTool,
 							updates,
 						});
 
 						const res = await fetch(
-							`/api/integrations/${project.sourceTool}/resources/tasks/${taskId}`,
+							`/api/products/${orgId}/tasks/${taskId}`,
 							{
 								method: "PATCH",
 								headers: { "Content-Type": "application/json" },
-								body: JSON.stringify({
-									...updates,
-									organizationId,
-								}),
+								body: JSON.stringify(updates),
 							}
 						);
 
 						if (!res.ok) {
 							const errorText = await res.text();
-							logger.error("Task update API failed", {
-								taskId,
-								status: res.status,
-								error: errorText,
-							});
-							throw new Error(
-								errorText || "Failed to update task"
-							);
+							throw new Error(errorText);
 						}
 
-						const updatedTask: Task = await res.json();
+						const { task } = await res.json();
+						logger.info("Task updated successfully", { taskId });
 
-						logger.info("Task updated successfully", {
-							taskId,
-							title: updatedTask.title,
-							sourceTool: project.sourceTool,
-						});
+						// Update in tasks list
+						const updatedTasks = tasks.map((t) =>
+							t.id === taskId ? { ...t, ...task } : t
+						);
+						setTasks(updatedTasks);
 
-						// Update local state only on success
-						if (data) {
-							const updatedTasks = data.tasks.map((t) =>
-								t.id === taskId ? updatedTask : t
-							);
-
-							const openTasks = updatedTasks.filter(
-								(t) => t.status === "open"
-							).length;
-
-							setData({
-								...data,
-								tasks: updatedTasks,
-								openTasks,
-							});
+						// Update selected task if it's the same
+						if (selectedTask?.id === taskId) {
+							setSelectedTask({ ...selectedTask, ...task });
 						}
 					} catch (err: any) {
 						logger.error("Error updating task", {
-							taskId,
 							error: err,
+							taskId,
 						});
-						const errorMessage =
-							err.message || "Failed to update task";
-						setError(errorMessage);
-						return Promise.reject(err);
+						setError(err.message || "Failed to update task");
+						throw err;
 					} finally {
 						setLoading(false);
 					}
 				},
 
-				deleteTask: async (productId: string, taskId: string) => {
+				deleteTask: async (orgId, taskId) => {
 					const {
-						organizationId,
 						setLoading,
 						setError,
-						data,
-						setData,
+						tasks,
+						setTasks,
+						setSelectedTask,
 					} = get();
-
-					if (!organizationId) {
-						const errorMsg = "Organization ID is required";
-						logger.error(
-							"Cannot delete task: Organization ID is missing"
-						);
-						setError(errorMsg);
-						return Promise.reject(new Error(errorMsg));
-					}
-
-					if (!productId) {
-						const errorMsg = "Product ID is required";
-						logger.error(
-							"Cannot delete task: Product ID is missing"
-						);
-						setError(errorMsg);
-						return Promise.reject(new Error(errorMsg));
-					}
-
-					if (!taskId) {
-						const errorMsg = "Task ID is required";
-						logger.error("Cannot delete task: Task ID is missing");
-						setError(errorMsg);
-						return Promise.reject(new Error(errorMsg));
-					}
-
 					setLoading(true);
 					setError(null);
 
 					try {
-						logger.info("Deleting task", { taskId, productId });
+						logger.info("Deleting task", { orgId, taskId });
 
 						const res = await fetch(
-							`/api/products/${productId}/tasks/${taskId}`,
+							`/api/products/${orgId}/tasks/${taskId}`,
 							{
 								method: "DELETE",
-								headers: { "Content-Type": "application/json" },
 							}
 						);
 
 						if (!res.ok) {
-							const errText = await res.text();
-							logger.error("Task deletion API failed", {
-								taskId,
-								status: res.status,
-								error: errText,
-							});
-							throw new Error(errText || "Failed to delete task");
+							const errorText = await res.text();
+							throw new Error(errorText);
 						}
 
 						logger.info("Task deleted successfully", { taskId });
 
-						// Update local state only on success
-						if (data) {
-							const taskToDelete = data.tasks.find(
-								(t) => t.id === taskId
-							);
-							const updatedTasks = data.tasks.filter(
-								(t) => t.id !== taskId
-							);
+						// Remove from tasks list
+						const updatedTasks = tasks.filter(
+							(t) => t.id !== taskId
+						);
+						setTasks(updatedTasks);
 
-							setData({
-								...data,
-								tasks: updatedTasks,
-								openTasks:
-									taskToDelete?.status === "open"
-										? data.openTasks - 1
-										: data.openTasks,
+						// Clear selected task if it's the deleted one
+						setSelectedTask(null);
+					} catch (err: any) {
+						logger.error("Error deleting task", {
+							error: err,
+							taskId,
+						});
+						setError(err.message || "Failed to delete task");
+						throw err;
+					} finally {
+						setLoading(false);
+					}
+				},
+
+				bulkUpdateTasks: async (orgId, taskIds, updates) => {
+					const { setLoading, setError, tasks, setTasks } = get();
+					setLoading(true);
+					setError(null);
+
+					try {
+						logger.info("Bulk updating tasks", {
+							orgId,
+							taskIds,
+							updates,
+						});
+
+						const res = await fetch(
+							`/api/products/${orgId}/tasks/bulk`,
+							{
+								method: "PATCH",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({ taskIds, updates }),
+							}
+						);
+
+						if (!res.ok) {
+							const errorText = await res.text();
+							throw new Error(errorText);
+						}
+
+						const { tasks: updatedTasks } = await res.json();
+						logger.info("Tasks bulk updated successfully", {
+							count: updatedTasks.length,
+						});
+
+						// Update tasks in state
+						const taskMap = new Map(
+							updatedTasks.map((t: Task) => [t.id, t])
+						);
+						const newTasks = tasks.map((t) =>
+							taskMap.has(t.id) ? taskMap.get(t.id)! : t
+						) as Task[];
+						setTasks(newTasks);
+					} catch (err: any) {
+						logger.error("Error bulk updating tasks", {
+							error: err,
+						});
+						setError(err.message || "Failed to bulk update tasks");
+						throw err;
+					} finally {
+						setLoading(false);
+					}
+				},
+
+				addComment: async (orgId, taskId, content) => {
+					const {
+						setLoading,
+						setError,
+						selectedTask,
+						setSelectedTask,
+					} = get();
+					setLoading(true);
+					setError(null);
+
+					try {
+						logger.info("Adding comment", {
+							orgId,
+							taskId,
+							content,
+						});
+
+						const res = await fetch(
+							`/api/products/${orgId}/tasks/${taskId}/comments`,
+							{
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({ content }),
+							}
+						);
+
+						if (!res.ok) {
+							const errorText = await res.text();
+							throw new Error(errorText);
+						}
+
+						const { comment } = await res.json();
+						logger.info("Comment added successfully", { taskId });
+
+						// Update selected task with new comment
+						if (selectedTask?.id === taskId) {
+							setSelectedTask({
+								...selectedTask,
+								commentsCount: selectedTask.commentsCount + 1,
+							});
+						}
+
+						// Re-fetch task details to get updated comments
+						await get().fetchTaskDetails(orgId, taskId);
+					} catch (err: any) {
+						logger.error("Error adding comment", {
+							error: err,
+							taskId,
+						});
+						setError(err.message || "Failed to add comment");
+						throw err;
+					} finally {
+						setLoading(false);
+					}
+				},
+
+				toggleWatcher: async (orgId, taskId, isWatching) => {
+					const {
+						setLoading,
+						setError,
+						tasks,
+						setTasks,
+						selectedTask,
+						setSelectedTask,
+					} = get();
+					setLoading(true);
+					setError(null);
+
+					try {
+						logger.info("Toggling watcher", {
+							orgId,
+							taskId,
+							isWatching,
+						});
+
+						const res = await fetch(
+							`/api/products/${orgId}/tasks/${taskId}/watchers`,
+							{
+								method: isWatching ? "DELETE" : "POST",
+							}
+						);
+
+						if (!res.ok) {
+							const errorText = await res.text();
+							throw new Error(errorText);
+						}
+
+						logger.info("Watcher toggled successfully", {
+							taskId,
+							isWatching: !isWatching,
+						});
+
+						// Update tasks list
+						const updatedTasks = tasks.map((t) =>
+							t.id === taskId
+								? { ...t, isWatching: !isWatching }
+								: t
+						);
+						setTasks(updatedTasks);
+
+						// Update selected task
+						if (selectedTask?.id === taskId) {
+							setSelectedTask({
+								...selectedTask,
+								isWatching: !isWatching,
 							});
 						}
 					} catch (err: any) {
-						logger.error("Error deleting task", {
-							taskId,
+						logger.error("Error toggling watcher", {
 							error: err,
+							taskId,
 						});
-						const errorMessage =
-							err.message || "Failed to delete task";
-						setError(errorMessage);
-						return Promise.reject(err);
+						setError(err.message || "Failed to toggle watcher");
+						throw err;
 					} finally {
 						setLoading(false);
 					}
@@ -435,8 +600,8 @@ export const createProjectStore = () => {
 			{
 				name: "project-store",
 				partialize: (state) => ({
-					range: state.range,
-					organizationId: state.organizationId,
+					filters: state.filters,
+					viewMode: state.viewMode,
 				}),
 			}
 		)

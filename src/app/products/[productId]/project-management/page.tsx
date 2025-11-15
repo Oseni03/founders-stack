@@ -1,285 +1,175 @@
-"use client";
-
-import { useEffect } from "react";
-import Link from "next/link";
-import {
-	ArrowLeft,
-	TrendingUp,
-	AlertCircle,
-	CheckCircle2,
-	Clock,
-} from "lucide-react";
+import { TaskDetailPanel } from "@/components/tasks/task-detail-panel";
+import { TaskFilterBar } from "@/components/tasks/task-filter-bar";
+import { priorityColors, TaskCard } from "@/components/tasks/tasks-card";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import {
-	LineChart,
-	Line,
-	BarChart,
-	Bar,
-	XAxis,
-	YAxis,
-	CartesianGrid,
-	Tooltip,
-	ResponsiveContainer,
-} from "recharts";
 import { useProjectStore } from "@/zustand/providers/project-store-provider";
-import { TasksPageLoading } from "@/components/tasks/tasks-loading";
-import { TasksNoDataState } from "@/components/tasks/tasks-no-data";
-import { TasksCard } from "@/components/tasks/tasks-card";
+import { Task } from "@/zustand/stores/project-store";
+import { Layout, List, User } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useEffect, useMemo } from "react";
 
-export default function TasksPage() {
-	const { productId } = useParams();
-	const data = useProjectStore((s) => s.data);
-	const loading = useProjectStore((s) => s.loading);
-	const error = useProjectStore((s) => s.error);
-	const range = useProjectStore((s) => s.range);
-	const fetchData = useProjectStore((s) => s.fetchData);
-	const setOrganizationId = useProjectStore((s) => s.setOrganizationId);
+type StatusType = "todo" | "in-progress" | "in-review" | "done";
+
+export default function TasksProjectsPage() {
+	const { productId: organizationId } = useParams<{ productId: string }>();
+	const {
+		tasks,
+		loading,
+		fetchTasks,
+		viewMode,
+		setViewMode,
+		selectedTask,
+		setSelectedTask,
+		filters,
+	} = useProjectStore((state) => state);
 
 	useEffect(() => {
-		fetchData(productId as string, range);
-		setOrganizationId(productId as string);
-	}, [range]);
+		fetchTasks(organizationId);
+	}, [organizationId]);
 
-	if (loading) {
-		return <TasksPageLoading productId={productId as string} />;
-	}
+	const filteredTasks = useMemo(() => {
+		return tasks.filter((task) => {
+			if (filters.status !== "all" && task.status !== filters.status)
+				return false;
+			if (
+				filters.priority !== "all" &&
+				task.priority !== filters.priority
+			)
+				return false;
+			if (
+				filters.search &&
+				!task.title.toLowerCase().includes(filters.search.toLowerCase())
+			)
+				return false;
+			return true;
+		});
+	}, [tasks, filters]);
 
-	if (error || !data) {
-		return <TasksNoDataState productId={productId as string} />;
-	}
-
-	const velocityData = data.velocity.map((v, i) => ({
-		name: `W${i + 1}`,
-		value: v,
-	}));
-
-	const taskStatusData = [
-		{ name: "Open", value: data.openTasks, fill: "var(--chart-1)" },
-		{ name: "Overdue", value: data.overdueTasks, fill: "var(--chart-2)" },
-		{
-			name: "In Progress",
-			value: Math.max(0, data.openTasks - data.overdueTasks),
-			fill: "var(--chart-3)",
-		},
-	];
-
-	const completionRate =
-		data.openTasks > 0
-			? Math.round(
-					((data.openTasks - data.overdueTasks) / data.openTasks) *
-						100
-				)
-			: 100;
-
-	const avgVelocity =
-		data.velocity.length > 0
-			? Math.round(
-					data.velocity.reduce((a, b) => a + b, 0) /
-						data.velocity.length
-				)
-			: 0;
+	const groupedByStatus = useMemo(() => {
+		const groups: Record<StatusType, Task[]> = {
+			todo: [],
+			"in-progress": [],
+			"in-review": [],
+			done: [],
+		};
+		filteredTasks.forEach((task) => {
+			if (groups[task.status as StatusType])
+				groups[task.status as StatusType].push(task);
+		});
+		return groups;
+	}, [filteredTasks]);
 
 	return (
-		<main className="min-h-screen bg-background">
-			<div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-				{/* Header with Back Button */}
-				<div className="mb-8 flex items-center gap-4">
-					<Link href="/products">
-						<Button variant="ghost" size="icon">
-							<ArrowLeft className="h-5 w-5" />
+		<div className="min-h-screen">
+			<div className="p-6">
+				<div className="flex items-center justify-between">
+					<h1 className="text-2xl font-bold">Tasks & Projects</h1>
+					<div className="flex items-center gap-3">
+						<Button
+							onClick={() => setViewMode("list")}
+							className="p-2 rounded"
+						>
+							<List className="h-5 w-5" />
 						</Button>
-					</Link>
-					<div>
-						<h1 className="text-3xl font-bold text-foreground">
-							Project Health
-						</h1>
-						<p className="mt-1 text-muted-foreground">
-							Task management & velocity tracking
-						</p>
+						<Button
+							onClick={() => setViewMode("board")}
+							className="p-2 rounded"
+						>
+							<Layout className="h-5 w-5" />
+						</Button>
 					</div>
 				</div>
-
-				{/* Key Metrics Grid */}
-				<div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-					<Card>
-						<CardHeader className="pb-3">
-							<CardTitle className="flex items-center gap-2 text-sm font-medium">
-								<TrendingUp className="h-4 w-4 text-chart-1" />
-								Open Tasks
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<p className="text-3xl font-bold">
-								{data.openTasks}
-							</p>
-							<p className="mt-1 text-xs text-muted-foreground">
-								Active work items
-							</p>
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader className="pb-3">
-							<CardTitle className="flex items-center gap-2 text-sm font-medium">
-								<AlertCircle className="h-4 w-4 text-destructive" />
-								Overdue Tasks
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<p className="text-3xl font-bold text-destructive">
-								{data.overdueTasks}
-							</p>
-							<p className="mt-1 text-xs text-muted-foreground">
-								Require attention
-							</p>
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader className="pb-3">
-							<CardTitle className="flex items-center gap-2 text-sm font-medium">
-								<CheckCircle2 className="h-4 w-4 text-green-500" />
-								Completion Rate
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<p className="text-3xl font-bold">
-								{completionRate}%
-							</p>
-							<p className="mt-1 text-xs text-muted-foreground">
-								On-time delivery
-							</p>
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader className="pb-3">
-							<CardTitle className="flex items-center gap-2 text-sm font-medium">
-								<Clock className="h-4 w-4 text-chart-4" />
-								Avg Velocity
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<p className="text-3xl font-bold">{avgVelocity}</p>
-							<p className="mt-1 text-xs text-muted-foreground">
-								Tasks per week
-							</p>
-						</CardContent>
-					</Card>
-				</div>
-
-				{/* Charts Grid */}
-				<div className="mb-8 grid gap-6 lg:grid-cols-2">
-					{/* Velocity Trend */}
-					<Card>
-						<CardHeader>
-							<CardTitle>Velocity Trend</CardTitle>
-							<CardDescription>
-								Tasks completed per week over the last 12 weeks
-							</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<div className="h-80 w-full">
-								<ResponsiveContainer width="100%" height="100%">
-									<LineChart data={velocityData}>
-										<CartesianGrid
-											strokeDasharray="3 3"
-											stroke="var(--border)"
-										/>
-										<XAxis
-											dataKey="name"
-											stroke="var(--muted-foreground)"
-										/>
-										<YAxis stroke="var(--muted-foreground)" />
-										<Tooltip
-											contentStyle={{
-												backgroundColor: "var(--card)",
-												border: "1px solid var(--border)",
-												borderRadius: "var(--radius)",
-											}}
-											formatter={(value) =>
-												`${value} tasks`
-											}
-										/>
-										<Line
-											type="monotone"
-											dataKey="value"
-											stroke="var(--chart-1)"
-											strokeWidth={2}
-											dot={{ fill: "var(--chart-1)" }}
-										/>
-									</LineChart>
-								</ResponsiveContainer>
-							</div>
-						</CardContent>
-					</Card>
-
-					{/* Task Status Distribution */}
-					<Card>
-						<CardHeader>
-							<CardTitle>Task Status Distribution</CardTitle>
-							<CardDescription>
-								Current breakdown of task statuses
-							</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<div className="h-80 w-full">
-								<ResponsiveContainer width="100%" height="100%">
-									<BarChart data={taskStatusData}>
-										<CartesianGrid
-											strokeDasharray="3 3"
-											stroke="var(--border)"
-										/>
-										<XAxis
-											dataKey="name"
-											stroke="var(--muted-foreground)"
-										/>
-										<YAxis stroke="var(--muted-foreground)" />
-										<Tooltip
-											contentStyle={{
-												backgroundColor: "var(--card)",
-												border: "1px solid var(--border)",
-												borderRadius: "var(--radius)",
-											}}
-											formatter={(value) =>
-												`${value} tasks`
-											}
-										/>
-										<Bar
-											dataKey="value"
-											fill="var(--chart-1)"
-										/>
-									</BarChart>
-								</ResponsiveContainer>
-							</div>
-						</CardContent>
-					</Card>
-				</div>
-
-				{/* Top Priorities */}
-				<TasksCard />
-
-				{/* Insights */}
-				<Card>
-					<CardHeader>
-						<CardTitle>Key Insights</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900">
-							<p className="font-medium">Analysis:</p>
-							<p className="mt-2">{data.insight}</p>
-						</div>
-					</CardContent>
-				</Card>
 			</div>
-		</main>
+
+			<TaskFilterBar />
+
+			{loading ? (
+				<div className="flex items-center justify-center h-64">
+					<div className="animate-spin rounded-full h-12 w-12"></div>
+				</div>
+			) : (
+				<div className="p-6">
+					{viewMode === "list" && (
+						<div className="grid gap-4">
+							{filteredTasks.length === 0 ? (
+								<div className="text-center py-12">
+									<p>No tasks found</p>
+								</div>
+							) : (
+								filteredTasks.map((task) => (
+									<TaskCard
+										key={task.id}
+										task={task}
+										onClick={setSelectedTask}
+									/>
+								))
+							)}
+						</div>
+					)}
+
+					{viewMode === "board" && (
+						<div className="grid grid-cols-4 gap-4">
+							{Object.entries(groupedByStatus).map(
+								([status, tasks]) => (
+									<div
+										key={status}
+										className="rounded-lg p-4"
+									>
+										<div className="flex items-center justify-between mb-4">
+											<h3 className="font-semibold capitalize">
+												{status.replace("-", " ")}
+											</h3>
+											<span className="text-sm">
+												{tasks.length}
+											</span>
+										</div>
+										<div className="space-y-3">
+											{tasks.map((task) => (
+												<div
+													key={task.id}
+													onClick={() =>
+														setSelectedTask(task)
+													}
+													className="rounded-lg p-3 cursor-pointer"
+												>
+													<div className="flex items-center gap-2 mb-2">
+														<span className="text-xs font-mono">
+															{task.externalId}
+														</span>
+														<span
+															className={`text-xs px-1.5 py-0.5 rounded ${priorityColors[task.priority || "low"]}`}
+														>
+															{task.priority}
+														</span>
+													</div>
+													<h4 className="font-medium text-sm mb-2">
+														{task.title}
+													</h4>
+													<div className="flex items-center gap-2 text-xs">
+														<User className="h-3 w-3" />
+														<span>
+															{task.assignee
+																?.name ||
+																"Unassigned"}
+														</span>
+													</div>
+												</div>
+											))}
+										</div>
+									</div>
+								)
+							)}
+						</div>
+					)}
+				</div>
+			)}
+
+			{selectedTask && (
+				<TaskDetailPanel
+					task={selectedTask}
+					onClose={() => setSelectedTask(null)}
+				/>
+			)}
+		</div>
 	);
 }

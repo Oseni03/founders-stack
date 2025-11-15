@@ -34,6 +34,8 @@ model User {
 
   // Items assigned to or owned by user
   assignedTasks    Task[]         @relation("TaskAssignee")
+  watchers         TaskWatcher[]
+  linkedItems      LinkedItem[]   @relation("UserLinks")
   ownedCustomViews CustomView[]
   notifications    Notification[]
 
@@ -111,6 +113,7 @@ model Organization {
 
   // Team data
   tasks          Task[]
+  watchers       TaskWatcher[]
   messages       Message[]
   documents      Document[]
   analyticsData  AnalyticsData[]
@@ -125,6 +128,7 @@ model Organization {
 
   // Settings
   settings OrganizationSettings?
+  Project  Project[]
 
   @@unique([slug])
   @@map("organization")
@@ -369,6 +373,30 @@ model OAuthTemp {
 // ============================================
 // PROJECT TRACKING & TASKS
 // ============================================
+model Project {
+  id             String  @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  externalId     String? // External PM tool project/board ID (e.g., Asana project ID)
+  platform       String? // e.g., "jira", "asana" if linked to one tool
+  attributes     Json? // Tool-specific: { boardId: string, workspaceId: string }, Slack-specific metadata (e.g., { is_private: boolean, num_members: number })
+  status         String  @default("active") // e.g., "active", "archived"
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tasks        Task[]
+  messages     Message[]
+  analytics    AnalyticsData[]
+  feeds        FeedbackItem[]
+
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  DesignFile DesignFile[]
+
+  @@unique([externalId, platform])
+  @@index([organizationId, status])
+}
+
 model Task {
   id         String @id @default(cuid())
   externalId String // ID from source system
@@ -402,8 +430,6 @@ model Task {
   labels       String[]
   sprintId     String?
   sprintName   String?
-  projectId    String?
-  projectName  String?
   epicId       String?
   epicName     String?
   parentTaskId String?
@@ -415,20 +441,26 @@ model Task {
   url      String?
   metadata Json?
 
-  createdAt      DateTime
-  updatedAt      DateTime
-  syncedAt       DateTime     @default(now())
+  createdAt DateTime
+  updatedAt DateTime
+  syncedAt  DateTime @default(now())
+
   // Belongs to organization (team-shared)
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  // Belongs to project
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
   // Came from which integration
   integrationId String
-  integration   Integration   @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
   // Team collaboration
-  comments      Comment[]     @relation("TaskComments")
-  linkedItems   LinkedItem[]  @relation("TaskLinks")
-  watchers      TaskWatcher[]
+  comments    Comment[]     @relation("TaskComments")
+  linkedItems LinkedItem[]  @relation("TaskLinks")
+  watchers    TaskWatcher[]
 
   @@unique([organizationId, externalId, integrationId])
   @@index([organizationId, status])
@@ -475,6 +507,8 @@ model Message {
   integration   Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
   comments      Comment[]    @relation("MessageComments")
   linkedItems   LinkedItem[] @relation("MessageLinks")
+  Project       Project      @relation(fields: [projectId], references: [id])
+  projectId     String
 
   @@unique([externalId, platform])
   @@unique([organizationId, externalId, integrationId])
@@ -485,10 +519,15 @@ model Message {
 }
 
 model TaskWatcher {
-  id      String   @id @default(cuid())
-  taskId  String
-  task    Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  userId  String
+  id     String @id @default(cuid())
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   addedAt DateTime @default(now())
 
   @@unique([taskId, userId])
@@ -577,10 +616,14 @@ model FeedbackItem {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
   integrationId String
-  integration   Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
-  comments      Comment[]    @relation("FeedbackComments")
-  linkedItems   LinkedItem[] @relation("FeedbackLinks")
+  integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  comments    Comment[]    @relation("FeedbackComments")
+  linkedItems LinkedItem[] @relation("FeedbackLinks")
 
   @@unique([externalId, platform])
   @@unique([organizationId, externalId, integrationId])
@@ -600,6 +643,7 @@ model DesignFile {
   description String? @db.Text
   type        String
   fileType    String?
+  platform    String
 
   url          String?
   thumbnailUrl String?
@@ -612,8 +656,8 @@ model DesignFile {
   lastEditorId   String?
   lastEditorName String?
 
-  projectId   String?
-  projectName String?
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   tags     String[]
   metadata Json?
@@ -629,14 +673,12 @@ model DesignFile {
   comments      Comment[]    @relation("DesignComments")
   linkedItems   LinkedItem[] @relation("DesignLinks")
 
+  @@unique([externalId, platform])
   @@unique([organizationId, externalId, integrationId])
   @@index([organizationId, status])
   @@index([organizationId, updatedAt])
 }
 
-// ============================================
-// CODE REPOSITORIES
-// ============================================
 // ============================================
 // ANALYTICS
 // ============================================
@@ -660,6 +702,8 @@ model AnalyticsData {
 
   integrationId String
   integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  Project       Project?    @relation(fields: [projectId], references: [id])
+  projectId     String?
 
   @@unique([organizationId, integrationId, metricName, dimension, dimensionValue, timestamp])
   @@index([organizationId, metricName, timestamp])
@@ -846,12 +890,24 @@ model SupportTicket {
 // ============================================
 // UNIVERSAL COMMENT SYSTEM
 // ============================================
+enum EntityType {
+  TASK
+  MESSAGE
+  DOCUMENT
+  FEEDBACK
+  DESIGN
+  PR
+  TICKET
+  INTEGRATION
+  MEMBER
+}
+
 model Comment {
   id      String @id @default(cuid())
   content String @db.Text
 
   // Polymorphic - can comment on anything
-  entityType String // TASK, MESSAGE, DOCUMENT, FEEDBACK, DESIGN, PR, TICKET
+  entityType EntityType // TASK, MESSAGE, DOCUMENT, FEEDBACK, DESIGN, PR, TICKET
   entityId   String
 
   // Author
@@ -894,13 +950,24 @@ model Comment {
 // ============================================
 // CROSS-TOOL LINKING
 // ============================================
+enum SourceType {
+  TASK
+  MESSAGE
+  DOCUMENT
+  FEEDBACK
+  DESIGN
+  PR
+  TICKET
+}
+
 model LinkedItem {
   id String @id @default(cuid())
 
-  sourceType String
+  sourceType SourceType
   sourceId   String
   targetType String
   targetId   String
+  userId     String?
 
   linkType    String? // RELATED_TO, BLOCKS, CAUSED_BY, IMPLEMENTS, FIXES, etc.
   description String?
@@ -915,6 +982,7 @@ model LinkedItem {
   design      DesignFile?    @relation("DesignLinks", fields: [sourceId], references: [id], onDelete: Cascade, map: "fk_link_to_design")
   pullRequest PullRequest?   @relation("PRLinks", fields: [sourceId], references: [id], onDelete: Cascade, map: "fk_link_to_pr")
   ticket      SupportTicket? @relation("TicketLinks", fields: [sourceId], references: [id], onDelete: Cascade, map: "fk_link_to_ticket")
+  user        User?          @relation("UserLinks", fields: [userId], references: [id], onDelete: Cascade, map: "fk_link_to_user")
 
   @@unique([sourceType, sourceId, targetType, targetId])
   @@index([sourceType, sourceId])
@@ -968,7 +1036,7 @@ model Notification {
   priority String @default("MEDIUM")
 
   // Related entity
-  entityType String?
+  entityType EntityType?
   entityId   String?
 
   actionUrl  String?
@@ -996,7 +1064,7 @@ model ActivityLog {
   id String @id @default(cuid())
 
   action     String // CREATED, UPDATED, DELETED, COMMENTED, etc.
-  entityType String // TASK, INTEGRATION, MEMBER, etc.
+  entityType EntityType // TASK, INTEGRATION, MEMBER, etc.
   entityId   String?
 
   description String @db.Text

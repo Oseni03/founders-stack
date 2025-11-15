@@ -1,277 +1,128 @@
-import { useState } from "react";
+import { Task } from "@/zustand/stores/project-store";
+import { ToolBadge } from "./tool-badge";
 import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-	CardDescription,
-} from "@/components/ui/card";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Plus, Loader2 } from "lucide-react";
-import { useProjectStore } from "@/zustand/providers/project-store-provider";
-import { useIntegrationsStore } from "@/zustand/providers/integrations-store-provider";
-import { Task } from "@prisma/client";
-import { TaskListItem } from "./task-list";
-import { AsanaTaskDialog } from "./platform-forms/asana-task-dialog";
-import { JiraTaskDialog } from "./platform-forms/jira-task-dialog";
-import { DeleteTaskDialog } from "./delete-task-dialog";
-import { useParams } from "next/navigation";
-import { logger } from "@/lib/logger";
-import { toast } from "sonner";
+	AlertCircle,
+	Calendar,
+	Eye,
+	MessageSquare,
+	Paperclip,
+	User,
+} from "lucide-react";
 
-export function TasksCard() {
-	const { productId } = useParams();
-	const [isPlatformSelectOpen, setIsPlatformSelectOpen] = useState(false);
-	const [selectedPlatform, setSelectedPlatform] = useState<string | null>(
-		null
-	);
-	const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
-	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-	const [editingTask, setEditingTask] = useState<Task | null>(null);
-	const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+export const priorityColors: { [key: string]: string } = {
+	critical: "bg-red-100 text-red-800 border-red-300",
+	high: "bg-orange-100 text-orange-800 border-orange-300",
+	medium: "bg-yellow-100 text-yellow-800 border-yellow-300",
+	low: "bg-green-100 text-green-800 border-green-300",
+};
 
-	const {
-		data,
-		projects,
-		loading,
-		error,
-		createTask,
-		updateTask,
-		deleteTask,
-	} = useProjectStore((state) => state);
+const statusColors: { [key: string]: string } = {
+	todo: "bg-gray-100 text-gray-800",
+	"in-progress": "bg-blue-100 text-blue-800",
+	"in-review": "bg-purple-100 text-purple-800",
+	blocked: "bg-red-100 text-red-800",
+	done: "bg-green-100 text-green-800",
+};
 
-	const { integrations } = useIntegrationsStore((state) => state);
-
-	// Filter project management integrations
-	const projectManagementIntegrations = integrations.filter(
-		(integration) =>
-			integration.category === "PROJECT_MGMT" &&
-			integration.status === "CONNECTED"
-	);
-
-	const handleAddTaskClick = () => {
-		if (projectManagementIntegrations.length === 0) {
-			logger.warn("Add task clicked but no integrations available");
-			return;
-		}
-		if (projectManagementIntegrations.length === 1) {
-			// Auto-select if only one integration
-			const platform =
-				projectManagementIntegrations[0].toolName.toLowerCase();
-			logger.info("Auto-selecting single PM integration", { platform });
-			setSelectedPlatform(platform);
-			setIsTaskDialogOpen(true);
-		} else {
-			logger.info(
-				"Multiple PM integrations available, showing platform selector",
-				{
-					count: projectManagementIntegrations.length,
-					platforms: projectManagementIntegrations.map(
-						(i) => i.toolName
-					),
-				}
-			);
-			// Show platform selector
-			setIsPlatformSelectOpen(true);
-		}
-	};
-
-	const handlePlatformSelect = (platform: string) => {
-		logger.info("Platform selected for task creation", { platform });
-		setSelectedPlatform(platform);
-		setIsPlatformSelectOpen(false);
-		setIsTaskDialogOpen(true);
-	};
-
-	const handleEditTask = (task: Task) => {
-		logger.info("Task selected for editing", {
-			taskId: task.id,
-			title: task.title,
-		});
-		setEditingTask(task);
-		setSelectedPlatform(task.sourceTool?.toLowerCase() || null);
-		setIsTaskDialogOpen(true);
-	};
-
-	const handleCloseTaskDialog = () => {
-		setIsTaskDialogOpen(false);
-		setEditingTask(null);
-		setSelectedPlatform(null);
-	};
-
-	const handleDeleteClick = (taskId: string) => {
-		logger.info("Delete task requested", { taskId });
-		setTaskToDelete(taskId);
-		setIsDeleteDialogOpen(true);
-	};
-
-	const handleDeleteConfirm = async () => {
-		if (!taskToDelete) return;
-		try {
-			logger.info("Confirming task deletion", { taskId: taskToDelete });
-			await deleteTask(productId as string, taskToDelete);
-			logger.info("Task deleted successfully", { taskId: taskToDelete });
-			toast.success("Task deleted successfully");
-			setIsDeleteDialogOpen(false);
-			setTaskToDelete(null);
-		} catch (error) {
-			logger.error("Error deleting task", {
-				taskId: taskToDelete,
-				error,
-			});
-			toast.error(
-				error instanceof Error ? error.message : "Failed to delete task"
-			);
-		}
-	};
-
-	const tasks = data?.tasks || [];
+export const TaskCard = ({
+	task,
+	onClick,
+}: {
+	task: Task;
+	onClick: (task: Task) => void;
+}) => {
+	const isOverdue =
+		task.dueDate &&
+		new Date(task.dueDate) < new Date() &&
+		task.status !== "done";
+	const dueDate = task.dueDate ? new Date(task.dueDate) : new Date();
+	const dueDateStr = dueDate.toLocaleDateString("en-US", {
+		month: "short",
+		day: "numeric",
+	});
 
 	return (
-		<>
-			<Card className="mb-8">
-				<CardHeader>
-					<div className="flex items-center justify-between">
-						<div>
-							<CardTitle>All Tasks</CardTitle>
-							<CardDescription>
-								Your tasks, prioritized by urgency and due date
-							</CardDescription>
-						</div>
-						<Button
-							onClick={handleAddTaskClick}
-							size="sm"
-							disabled={
-								projectManagementIntegrations.length === 0
-							}
+		<div
+			onClick={() => onClick(task)}
+			className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+		>
+			<div className="flex items-start justify-between mb-2">
+				<div className="flex items-center gap-2">
+					<span className="text-sm font-mono text-gray-500">
+						{task.externalId}
+					</span>
+					<ToolBadge tool={task.sourceTool} />
+				</div>
+				<span
+					className={`text-xs px-2 py-1 rounded-full font-medium ${task.priority && priorityColors[task.priority]}`}
+				>
+					{task.priority}
+				</span>
+			</div>
+
+			<h3 className="font-medium text-gray-900 mb-2">{task.title}</h3>
+
+			<div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+				<span
+					className={`px-2 py-1 rounded ${statusColors[task.status]}`}
+				>
+					{task.status.replace("-", " ")}
+				</span>
+				{isOverdue && (
+					<span className="flex items-center gap-1 text-red-600">
+						<AlertCircle className="h-4 w-4" />
+						Overdue
+					</span>
+				)}
+				<span className="flex items-center gap-1">
+					<Calendar className="h-4 w-4" />
+					{dueDateStr}
+				</span>
+				<span className="flex items-center gap-1">
+					<User className="h-4 w-4" />
+					{task.assignee?.name || "Unassigned"}
+				</span>
+			</div>
+
+			{task.labels && task.labels.length > 0 && (
+				<div className="flex gap-2 mt-2">
+					{task.labels.map((label) => (
+						<span
+							key={label}
+							className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded"
 						>
-							<Plus className="h-4 w-4 mr-2" />
-							Add Task
-						</Button>
-					</div>
-				</CardHeader>
-				<CardContent>
-					{error && (
-						<div className="mb-4 p-3 bg-destructive/10 text-destructive rounded-md text-sm">
-							{error}
-						</div>
-					)}
-
-					{projectManagementIntegrations.length === 0 && !loading && (
-						<div className="text-center py-8 text-muted-foreground">
-							No project management integrations found. Please
-							connect Jira, Asana, or another PM tool first.
-						</div>
-					)}
-
-					<div className="max-h-96 overflow-y-auto space-y-3">
-						{loading && tasks.length === 0 ? (
-							<div className="flex justify-center items-center py-8">
-								<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-							</div>
-						) : tasks.length === 0 ? (
-							<p className="text-muted-foreground text-center py-8">
-								No tasks found. Add a task to get started!
-							</p>
-						) : (
-							tasks.map((task) => (
-								<TaskListItem
-									key={task.id}
-									task={task}
-									onEdit={handleEditTask}
-									onDelete={handleDeleteClick}
-									disabled={loading}
-								/>
-							))
-						)}
-					</div>
-				</CardContent>
-			</Card>
-
-			{/* Platform Selection Dialog */}
-			<Dialog
-				open={isPlatformSelectOpen}
-				onOpenChange={setIsPlatformSelectOpen}
-			>
-				<DialogContent className="sm:max-w-md">
-					<DialogHeader>
-						<DialogTitle>Select Platform</DialogTitle>
-						<DialogDescription>
-							Choose which platform to create the task in
-						</DialogDescription>
-					</DialogHeader>
-					<div className="space-y-4 py-4">
-						<div className="space-y-2">
-							<Label>Platform</Label>
-							<Select onValueChange={handlePlatformSelect}>
-								<SelectTrigger>
-									<SelectValue placeholder="Select a platform" />
-								</SelectTrigger>
-								<SelectContent>
-									{projectManagementIntegrations.map(
-										(integration) => (
-											<SelectItem
-												key={integration.id}
-												value={integration.toolName.toLowerCase()}
-											>
-												{integration.toolName}
-											</SelectItem>
-										)
-									)}
-								</SelectContent>
-							</Select>
-						</div>
-					</div>
-				</DialogContent>
-			</Dialog>
-
-			{/* Platform-Specific Task Dialogs */}
-			{selectedPlatform === "asana" && (
-				<AsanaTaskDialog
-					open={isTaskDialogOpen}
-					onClose={handleCloseTaskDialog}
-					editingTask={editingTask}
-					projects={projects.filter((p) => p.sourceTool === "asana")}
-					onCreate={createTask}
-					onUpdate={updateTask}
-					loading={loading}
-				/>
+							{label}
+						</span>
+					))}
+				</div>
 			)}
 
-			{selectedPlatform === "jira" && (
-				<JiraTaskDialog
-					open={isTaskDialogOpen}
-					onClose={handleCloseTaskDialog}
-					editingTask={editingTask}
-					projects={projects.filter((p) => p.sourceTool === "jira")}
-					onCreate={createTask}
-					onUpdate={updateTask}
-					loading={loading}
-				/>
-			)}
-
-			{/* Delete Confirmation Dialog */}
-			<DeleteTaskDialog
-				open={isDeleteDialogOpen}
-				onClose={() => setIsDeleteDialogOpen(false)}
-				onConfirm={handleDeleteConfirm}
-				loading={loading}
-			/>
-		</>
+			<div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+				{task.commentsCount > 0 && (
+					<span className="flex items-center gap-1">
+						<MessageSquare className="h-4 w-4" />
+						{task.commentsCount}
+					</span>
+				)}
+				{task.linkedItemsCount > 0 && (
+					<span className="flex items-center gap-1">
+						<Paperclip className="h-4 w-4" />
+						{task.linkedItemsCount}
+					</span>
+				)}
+				{task.dependencies.length > 0 && (
+					<span className="flex items-center gap-1 text-red-600">
+						<AlertCircle className="h-4 w-4" />
+						Blocked by {task.dependencies[0]}
+					</span>
+				)}
+				{task.isWatching && (
+					<span className="flex items-center gap-1 text-blue-600">
+						<Eye className="h-4 w-4" />
+						Watching
+					</span>
+				)}
+			</div>
+		</div>
 	);
-}
+};
