@@ -19,68 +19,72 @@ export async function GET(
 	{ params }: { params: Promise<{ productId: string; taskId: string }> }
 ) {
 	const { productId, taskId } = await params;
-	return withAuth(req, async () => {
-		try {
-			const task = await prisma.task.findFirst({
-				where: {
-					id: taskId,
-					organizationId: productId,
-				},
-				include: {
-					project: true,
-					integration: true,
-					assignee: true,
-					comments: {
-						include: {
-							author: {
-								select: {
-									id: true,
-									name: true,
-									email: true,
-									image: true,
+	return withAuth(
+		req,
+		async () => {
+			try {
+				const task = await prisma.task.findFirst({
+					where: {
+						id: taskId,
+						organizationId: productId,
+					},
+					include: {
+						project: true,
+						integration: true,
+						assignee: true,
+						comments: {
+							include: {
+								author: {
+									select: {
+										id: true,
+										name: true,
+										email: true,
+										image: true,
+									},
+								},
+							},
+							orderBy: { createdAt: "desc" },
+						},
+						linkedItems: {
+							include: {
+								task: true,
+								design: true,
+								message: true,
+							},
+						},
+						watchers: {
+							include: {
+								user: {
+									select: {
+										id: true,
+										name: true,
+										email: true,
+										image: true,
+									},
 								},
 							},
 						},
-						orderBy: { createdAt: "desc" },
 					},
-					linkedItems: {
-						include: {
-							task: true,
-							design: true,
-							message: true,
-						},
-					},
-					watchers: {
-						include: {
-							user: {
-								select: {
-									id: true,
-									name: true,
-									email: true,
-									image: true,
-								},
-							},
-						},
-					},
-				},
-			});
+				});
 
-			if (!task) {
+				if (!task) {
+					return NextResponse.json(
+						{ error: "Task not found" },
+						{ status: 404 }
+					);
+				}
+
+				return NextResponse.json({ task });
+			} catch (error) {
+				console.error("Error fetching task:", error);
 				return NextResponse.json(
-					{ error: "Task not found" },
-					{ status: 404 }
+					{ error: "Failed to fetch task" },
+					{ status: 500 }
 				);
 			}
-
-			return NextResponse.json({ task });
-		} catch (error) {
-			console.error("Error fetching task:", error);
-			return NextResponse.json(
-				{ error: "Failed to fetch task" },
-				{ status: 500 }
-			);
-		}
-	});
+		},
+		productId
+	);
 }
 
 export async function PATCH(
@@ -88,92 +92,98 @@ export async function PATCH(
 	{ params }: { params: Promise<{ productId: string; taskId: string }> }
 ) {
 	const { productId, taskId } = await params;
-	return withAuth(req, async (request, user) => {
-		try {
-			if (
-				!user.role ||
-				!["owner", "admin", "member"].includes(user.role)
-			) {
-				return NextResponse.json(
-					{ error: "Forbidden" },
-					{ status: 403 }
-				);
-			}
-
-			const body = await req.json();
-			const data = updateTaskSchema.parse(body);
-
-			// Get the task with integration info
-			const existingTask = await prisma.task.findFirst({
-				where: {
-					id: taskId,
-					organizationId: productId,
-				},
-				include: {
-					integration: true,
-					project: true,
-				},
-			});
-
-			if (!existingTask) {
-				return NextResponse.json(
-					{ error: "Task not found" },
-					{ status: 404 }
-				);
-			}
-
-			// If updating assignee, fetch user info
-			let assigneeData = {};
-			if (data.assigneeId !== undefined) {
-				if (data.assigneeId) {
-					const assignee = await prisma.user.findUnique({
-						where: { id: data.assigneeId },
-						select: { name: true, image: true },
-					});
-					assigneeData = {
-						assigneeId: data.assigneeId,
-						assigneeName: assignee?.name,
-						assigneeAvatar: assignee?.image,
-					};
-				} else {
-					assigneeData = {
-						assigneeId: null,
-						assigneeName: null,
-						assigneeAvatar: null,
-					};
+	return withAuth(
+		req,
+		async (request, user) => {
+			try {
+				if (
+					!user.role ||
+					!["owner", "admin", "member"].includes(user.role)
+				) {
+					return NextResponse.json(
+						{ error: "Forbidden" },
+						{ status: 403 }
+					);
 				}
+
+				const body = await req.json();
+				const data = updateTaskSchema.parse(body);
+
+				// Get the task with integration info
+				const existingTask = await prisma.task.findFirst({
+					where: {
+						id: taskId,
+						organizationId: productId,
+					},
+					include: {
+						integration: true,
+						project: true,
+					},
+				});
+
+				if (!existingTask) {
+					return NextResponse.json(
+						{ error: "Task not found" },
+						{ status: 404 }
+					);
+				}
+
+				// If updating assignee, fetch user info
+				let assigneeData = {};
+				if (data.assigneeId !== undefined) {
+					if (data.assigneeId) {
+						const assignee = await prisma.user.findUnique({
+							where: { id: data.assigneeId },
+							select: { name: true, image: true },
+						});
+						assigneeData = {
+							assigneeId: data.assigneeId,
+							assigneeName: assignee?.name,
+							assigneeAvatar: assignee?.image,
+						};
+					} else {
+						assigneeData = {
+							assigneeId: null,
+							assigneeName: null,
+							assigneeAvatar: null,
+						};
+					}
+				}
+
+				// Update local task
+				const updatedTask = await prisma.task.update({
+					where: { id: taskId },
+					data: {
+						...data,
+						...assigneeData,
+						dueDate: data.dueDate
+							? new Date(data.dueDate)
+							: undefined,
+						syncedAt: new Date(),
+					},
+					include: {
+						project: true,
+						integration: true,
+						assignee: true,
+						comments: { select: { id: true } },
+						linkedItems: { select: { id: true } },
+					},
+				});
+
+				// TODO: Sync back to source tool (Jira/Linear/Asana) via integration
+				// This would call the integration's API to update the external task
+
+				return NextResponse.json({ task: updatedTask });
+			} catch (error) {
+				console.error("Error updating task:", error);
+				return NextResponse.json(
+					{ error: "Failed to update task" },
+					{ status: 500 }
+				);
 			}
-
-			// Update local task
-			const updatedTask = await prisma.task.update({
-				where: { id: taskId },
-				data: {
-					...data,
-					...assigneeData,
-					dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
-					syncedAt: new Date(),
-				},
-				include: {
-					project: true,
-					integration: true,
-					assignee: true,
-					comments: { select: { id: true } },
-					linkedItems: { select: { id: true } },
-				},
-			});
-
-			// TODO: Sync back to source tool (Jira/Linear/Asana) via integration
-			// This would call the integration's API to update the external task
-
-			return NextResponse.json({ task: updatedTask });
-		} catch (error) {
-			console.error("Error updating task:", error);
-			return NextResponse.json(
-				{ error: "Failed to update task" },
-				{ status: 500 }
-			);
-		}
-	});
+		},
+		productId
+	);
 }
 
 export async function DELETE(
@@ -181,35 +191,39 @@ export async function DELETE(
 	{ params }: { params: Promise<{ productId: string; taskId: string }> }
 ) {
 	const { productId, taskId } = await params;
-	return withAuth(req, async (request, user) => {
-		try {
-			if (
-				!user.role ||
-				!["owner", "admin", "member"].includes(user.role)
-			) {
+	return withAuth(
+		req,
+		async (request, user) => {
+			try {
+				if (
+					!user.role ||
+					!["owner", "admin", "member"].includes(user.role)
+				) {
+					return NextResponse.json(
+						{ error: "Forbidden" },
+						{ status: 403 }
+					);
+				}
+
+				// Delete task
+				await prisma.task.delete({
+					where: {
+						id: taskId,
+						organizationId: productId,
+					},
+				});
+
+				// TODO: Optionally delete from source tool as well
+
+				return NextResponse.json({ success: true });
+			} catch (error) {
+				console.error("Error deleting task:", error);
 				return NextResponse.json(
-					{ error: "Forbidden" },
-					{ status: 403 }
+					{ error: "Failed to delete task" },
+					{ status: 500 }
 				);
 			}
-
-			// Delete task
-			await prisma.task.delete({
-				where: {
-					id: taskId,
-					organizationId: productId,
-				},
-			});
-
-			// TODO: Optionally delete from source tool as well
-
-			return NextResponse.json({ success: true });
-		} catch (error) {
-			console.error("Error deleting task:", error);
-			return NextResponse.json(
-				{ error: "Failed to delete task" },
-				{ status: 500 }
-			);
-		}
-	});
+		},
+		productId
+	);
 }
