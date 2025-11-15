@@ -10,7 +10,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Repository } from "@/types/code";
-import { DeleteRepositoryDialog } from "../code/delete-repository-dialog";
+import { DeleteRepositoryDialog } from "../development/delete-repository-dialog";
 import { useIntegrationsStore } from "@/zustand/providers/integrations-store-provider";
 import { useRouter } from "next/navigation";
 

@@ -47,7 +47,7 @@ const getNavs = (productId: string) => {
 				url: "#",
 				items: [
 					{
-						id: "version-control",
+						id: "project-tracking",
 						label: "Project Tracking",
 						icon: GitFork,
 						url: `/products/${productId}/project-tracking`,

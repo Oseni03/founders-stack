@@ -45,7 +45,7 @@ export function CodeCICard({ productId, data }: CodeCICardProps) {
 		);
 
 	return (
-		<Link href={`/products/${productId}/version-control`}>
+		<Link href={`/products/${productId}/development`}>
 			<Card className="cursor-pointer transition-all hover:shadow-lg hover:border-primary">
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">

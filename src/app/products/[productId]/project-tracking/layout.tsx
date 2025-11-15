@@ -1,6 +1,6 @@
 import { ProjectStoreProvider } from "@/zustand/providers/project-store-provider";
 
-export default function ProjectHealthLayout({
+export default function TasksProjectsLayout({
 	children,
 }: Readonly<{
 	children: React.ReactNode;

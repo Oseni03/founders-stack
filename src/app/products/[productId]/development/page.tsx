@@ -22,20 +22,20 @@ import { Progress } from "@/components/ui/progress";
 import { RepositoryManager } from "@/components/dashboard/repository-manager";
 import { useCodeStore } from "@/zustand/providers/code-store-provider";
 import { CodeCIMetrics } from "@/types/code";
-import { CommitsCard } from "@/components/code/commits-card";
-import { PRCard } from "@/components/code/pr-card";
-import { SuccessRateCard } from "@/components/code/success-rate-card";
-import { CommitPRChart } from "@/components/code/commit-pr-chart";
-import { SuccessRateChart } from "@/components/code/success-rate-chart";
-import { ContributorsCard } from "@/components/code/contributors-card";
-import { DeploymentsCard } from "@/components/code/deployments-card";
-import { CodeCIErrorState } from "@/components/code/code-ci-error-state";
-import { CodeCINoRepositoriesState } from "@/components/code/code-ci-no-repositories-state";
-import CodeCIPageLoading from "@/components/code/code-ci-page-loading";
+import { CommitsCard } from "@/components/development/commits-card";
+import { PRCard } from "@/components/development/pr-card";
+import { SuccessRateCard } from "@/components/development/success-rate-card";
+import { CommitPRChart } from "@/components/development/commit-pr-chart";
+import { SuccessRateChart } from "@/components/development/success-rate-chart";
+import { ContributorsCard } from "@/components/development/contributors-card";
+import { DeploymentsCard } from "@/components/development/deployments-card";
+import { CodeCIErrorState } from "@/components/development/code-ci-error-state";
+import { CodeCINoRepositoriesState } from "@/components/development/code-ci-no-repositories-state";
+import CodeCIPageLoading from "@/components/development/code-ci-page-loading";
 import { useIntegrationsStore } from "@/zustand/providers/integrations-store-provider";
 import { useParams } from "next/navigation";
 
-export default function CodeCIPage() {
+export default function DevelopmentPage() {
 	const { productId } = useParams();
 	const repositories = useCodeStore((state) => state.repositories);
 	const selectedRepositoryId = useCodeStore(
