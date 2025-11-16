@@ -1,190 +1,57 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
-
-interface EventType {
-	name: string;
-	count: number;
-	percentage: number;
-}
-
-interface DeviceType {
-	name: string;
-	count: number;
-	percentage: number;
-}
-
-interface TopPage {
-	pathname: string;
-	pageviews: number;
-	avgDuration: number;
-}
-
-interface TopReferrer {
-	referringDomain: string;
-	count: number;
-	percentage: number;
-}
-
-interface GeoMetric {
-	geoipCountryName: string;
-	geoipCountryCode: string;
-	count: number;
-	percentage: number;
-}
-
-interface BrowserLanguage {
-	browserLanguagePrefix: string;
-	count: number;
-	percentage: number;
-}
-
-interface EventTrend {
-	timestamp: string;
-	pageviews: number;
-	events: number;
-}
-
-interface AnalyticsData {
-	timeRange: string;
-	summary: {
-		totalEvents: number;
-		totalPageviews: number;
-		uniqueVisitors: number;
-		avgSessionDuration: number;
-	};
-	eventTypes: EventType[];
-	deviceTypes: DeviceType[];
-	topPages: TopPage[];
-	topReferrers: TopReferrer[];
-	geoMetrics: GeoMetric[];
-	browserLanguages: BrowserLanguage[];
-	eventTrends: EventTrend[];
-	insight: string;
-}
+import type { AnalyticsData } from "@prisma/client";
 
 export interface AnalyticsState {
-	data: AnalyticsData | null;
-	loading: boolean;
-	timeRange: string;
-	error: string | null;
-
-	setData: (data: AnalyticsData) => void;
-	setLoading: (loading: boolean) => void;
-	setTimeRange: (range: string) => void;
-	setError: (error: string | null) => void;
-	clearError: () => void;
-
-	updateSummary: (summary: Partial<AnalyticsData["summary"]>) => void;
-	addEventType: (eventType: EventType) => void;
-	updateEventTrends: (trends: EventTrend[]) => void;
-
-	reset: () => void;
+	metrics: AnalyticsData[];
+	selectedMetric: AnalyticsData | null;
+	filters: { timeRange: string; comparePeriod: boolean; segments: string[] };
+	activeTab: string;
+	anomalies: Array<{
+		id: string;
+		title: string;
+		description: string;
+		detectedAt: Date;
+	}>;
+	setMetrics: (metrics: AnalyticsData[]) => void;
+	setSelectedMetric: (metric: AnalyticsData | null) => void;
+	setFilters: (filters: Partial<AnalyticsState["filters"]>) => void;
+	setActiveTab: (tab: string) => void;
+	addAnomaly: (anomaly: AnalyticsState["anomalies"][0]) => void;
+	acknowledgeAnomaly: (id: string) => void;
 }
-
-const initialState = {
-	data: null,
-	loading: true,
-	timeRange: "30d",
-	error: null,
-};
 
 export const createAnalyticsStore = () => {
 	return create<AnalyticsState>()(
 		persist(
 			immer((set) => ({
-				...initialState,
-
-				setData: (data) => {
+				metrics: [],
+				selectedMetric: null,
+				filters: {
+					timeRange: "7d",
+					comparePeriod: false,
+					segments: [],
+				},
+				activeTab: "overview",
+				anomalies: [],
+				setMetrics: (metrics) => set({ metrics }),
+				setSelectedMetric: (selectedMetric) => set({ selectedMetric }),
+				setFilters: (newFilters) =>
+					set((state) => ({
+						filters: { ...state.filters, ...newFilters },
+					})),
+				setActiveTab: (activeTab) => set({ activeTab }),
+				addAnomaly: (anomaly) =>
 					set((state) => {
-						state.data = data;
-						state.loading = false;
-						state.error = null;
-					});
-				},
-
-				setLoading: (loading) => {
-					set((state) => {
-						state.loading = loading;
-					});
-				},
-
-				setTimeRange: (range) => {
-					set((state) => {
-						state.timeRange = range;
-					});
-				},
-
-				setError: (error) => {
-					set((state) => {
-						state.error = error;
-					});
-				},
-
-				clearError: () => {
-					set((state) => {
-						state.error = null;
-					});
-				},
-
-				updateSummary: (summary) => {
-					set((state) => {
-						if (state.data) {
-							state.data.summary = {
-								...state.data.summary,
-								...summary,
-							};
-						}
-					});
-				},
-
-				addEventType: (eventType) => {
-					set((state) => {
-						if (state.data) {
-							const existingIndex =
-								state.data.eventTypes.findIndex(
-									(et) => et.name === eventType.name
-								);
-
-							if (existingIndex !== -1) {
-								state.data.eventTypes[existingIndex] =
-									eventType;
-							} else {
-								state.data.eventTypes.push(eventType);
-							}
-
-							// Recalculate percentages
-							const total = state.data.eventTypes.reduce(
-								(sum, et) => sum + et.count,
-								0
-							);
-							state.data.eventTypes.forEach((et) => {
-								et.percentage = parseFloat(
-									((et.count / total) * 100).toFixed(1)
-								);
-							});
-						}
-					});
-				},
-
-				updateEventTrends: (trends) => {
-					set((state) => {
-						if (state.data) {
-							state.data.eventTrends = trends;
-						}
-					});
-				},
-
-				reset: () => {
-					set(initialState);
-				},
+						state.anomalies.push(anomaly);
+					}),
+				acknowledgeAnomaly: (id) =>
+					set((state) => ({
+						anomalies: state.anomalies.filter((a) => a.id !== id),
+					})),
 			})),
-			{
-				name: "analytics-store",
-				partialize: (state) => ({
-					timeRange: state.timeRange,
-				}),
-			}
+			{ name: "analytics-store" }
 		)
 	);
 };
