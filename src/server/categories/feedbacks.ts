@@ -1,60 +1,141 @@
 "use server";
-
 import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { getSession } from "@/lib/auth-utils";
 
-export async function updateFeedbackStatus(data: {
-	feedbackId: string;
-	status: string;
-}) {
-	const { feedbackId, status } = data;
+// Input validation schemas
+const CommentSchema = z.object({
+	feedbackId: z.cuid(),
+	content: z.string().min(1, "Comment cannot be empty"),
+});
 
-	const feedback = await prisma.feed.update({
-		where: { id: feedbackId },
-		data: {
-			status,
-			updatedAt: new Date(),
-		},
-	});
+const LinkToJiraSchema = z.object({
+	feedbackId: z.cuid(),
+	jiraTicketId: z.string().min(1, "Jira ticket ID is required"),
+});
 
-	return feedback;
+export async function getFeedbackItems(organizationId: string, filters = {}) {
+	const session = await getSession();
+	if (!session?.user) throw new Error("Unauthorized");
+
+	try {
+		return await prisma.feedbackItem.findMany({
+			where: {
+				organizationId,
+				...filters,
+			},
+			include: {
+				project: true,
+				integration: true,
+				comments: {
+					include: {
+						author: true,
+						replies: true,
+					},
+				},
+				linkedItems: true,
+			},
+			orderBy: { createdAt: "desc" },
+		});
+	} catch (error) {
+		console.error("Error fetching feedback items:", error);
+		throw new Error("Failed to fetch feedback items");
+	}
 }
 
-export async function generateFeedbackInsight(metrics: {
-	totalFeedback: number;
-	averageScore: number;
-	topStatus?: string;
-	topCategory?: string;
-	openCount: number;
-}): Promise<string> {
-	const insights = [];
+export async function updateFeedbackStatus(id: string, status: string) {
+	const session = await getSession();
+	if (!session?.user) throw new Error("Unauthorized");
 
-	if (metrics.totalFeedback > 100) {
-		insights.push(
-			`Strong engagement with ${metrics.totalFeedback} feedback items`
-		);
-	} else if (metrics.totalFeedback < 10) {
-		insights.push("Consider encouraging more user feedback");
+	try {
+		await prisma.feedbackItem.update({
+			where: { id },
+			data: { status },
+		});
+		revalidatePath("/feedback");
+	} catch (error) {
+		console.error("Error updating feedback status:", error);
+		throw new Error("Failed to update feedback status");
+	}
+}
+
+export async function assignFeedback(id: string, assignedTo: string) {
+	const session = await getSession();
+	if (!session?.user) throw new Error("Unauthorized");
+
+	try {
+		await prisma.feedbackItem.update({
+			where: { id },
+			data: { assignedTo },
+		});
+		revalidatePath("/feedback");
+	} catch (error) {
+		console.error("Error assigning feedback:", error);
+		throw new Error("Failed to assign feedback");
+	}
+}
+
+export async function addComment(
+	organizationId: string,
+	feedbackId: string,
+	content: string
+) {
+	const session = await getSession();
+	if (!session?.user) throw new Error("Unauthorized");
+
+	// Validate input
+	const validated = CommentSchema.safeParse({ feedbackId, content });
+	if (!validated.success) {
+		throw new Error(validated.error.message);
 	}
 
-	if (metrics.averageScore >= 4) {
-		insights.push(
-			`Excellent satisfaction with ${metrics.averageScore.toFixed(1)}/5 rating`
-		);
-	} else if (metrics.averageScore < 3) {
-		insights.push(
-			`Low satisfaction score of ${metrics.averageScore.toFixed(1)}/5 needs attention`
-		);
+	try {
+		await prisma.comment.create({
+			data: {
+				content,
+				entityType: "FEEDBACK",
+				entityId: feedbackId,
+				authorId: session.user.id,
+				organizationId,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			},
+		});
+		revalidatePath("/feedback");
+	} catch (error) {
+		console.error("Error adding comment:", error);
+		throw new Error("Failed to add comment");
+	}
+}
+
+export async function linkToJira(feedbackId: string, jiraTicketId: string) {
+	const session = await getSession();
+	if (!session?.user) throw new Error("Unauthorized");
+
+	// Validate input
+	const validated = LinkToJiraSchema.safeParse({ feedbackId, jiraTicketId });
+	if (!validated.success) {
+		throw new Error(validated.error.message);
 	}
 
-	if (metrics.openCount > 20) {
-		insights.push(`${metrics.openCount} open items require review`);
+	try {
+		await prisma.linkedItem.create({
+			data: {
+				sourceType: "FEEDBACK",
+				sourceId: feedbackId,
+				targetType: "TICKET",
+				targetId: jiraTicketId,
+				linkType: "RELATED_TO",
+				userId: session.user.id,
+				createdBy: session.user.email || session.user.id,
+				// organizationId,
+				createdAt: new Date(),
+			},
+		});
+		revalidatePath("/feedback");
+	} catch (error) {
+		console.error("Error linking to Jira:", error);
+		throw new Error("Failed to link to Jira ticket");
 	}
-
-	if (metrics.topCategory) {
-		insights.push(`Most feedback is about ${metrics.topCategory}`);
-	}
-
-	return insights.length > 0
-		? insights.join(". ") + "."
-		: "Feedback metrics are within normal ranges.";
 }
