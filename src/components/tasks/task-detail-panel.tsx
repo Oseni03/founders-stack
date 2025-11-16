@@ -1,233 +1,111 @@
-import { ExternalLink, Eye, EyeOff, Trash2, User, X } from "lucide-react";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import Link from "next/link";
-import { Task } from "@/zustand/stores/project-store";
-import { useParams } from "next/navigation";
-import { useProjectStore } from "@/zustand/providers/project-store-provider";
+"use client";
+import { useTasksStore } from "@/zustand/providers/task-store-provider";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { format } from "date-fns";
 import { useState } from "react";
-import { ToolBadge } from "./tool-badge";
-import { Label } from "../ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "../ui/select";
+import { addComment } from "@/server/categories/tasks";
+import { useParams } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
+import { Badge } from "../ui/badge";
 
-export const TaskDetailPanel = ({
-	task,
-	onClose,
-}: {
-	task: Task;
-	onClose: () => void;
-}) => {
-	const { productId: organizationId } = useParams<{ productId: string }>();
-	const { updateTask, deleteTask, toggleWatcher } = useProjectStore(
-		(state) => state
-	);
-	const [isUpdating, setIsUpdating] = useState(false);
+export function TaskDetailPanel() {
+	const { productId } = useParams<{ productId: string }>();
+	const { selectedTask, setSelectedTask } = useTasksStore((state) => ({
+		selectedTask: state.selectedTask,
+		setSelectedTask: state.setSelectedTask,
+	}));
+	const { data: session } = authClient.useSession();
+	const [comment, setComment] = useState("");
 
-	if (!task) return null;
+	if (!selectedTask) return null;
 
-	const handleUpdate = async (field: string, value: string) => {
-		setIsUpdating(true);
+	const handleAddComment = async () => {
+		if (!comment.trim()) return;
+		if (!session?.user.id) return;
 		try {
-			await updateTask(organizationId, task.id, {
-				[field]: value,
-			});
-		} catch (err) {
-			console.error("Update failed:", err);
-		} finally {
-			setIsUpdating(false);
+			await addComment(
+				productId,
+				selectedTask.id,
+				comment,
+				session.user.id
+			); // Replace with actual user ID
+			setComment("");
+			// Refetch task or update locally
+		} catch (error) {
+			console.error("Failed to add comment:", error);
 		}
-	};
-
-	const handleDelete = async () => {
-		if (confirm("Are you sure you want to delete this task?")) {
-			await deleteTask(organizationId, task.id);
-			onClose();
-		}
-	};
-
-	const handleToggleWatch = async () => {
-		await toggleWatcher(organizationId, task.id, task.isWatching);
 	};
 
 	return (
-		<div className="fixed inset-y-0 right-0 w-[600px] z-50 overflow-y-auto">
-			<div className="sticky top-0 p-4 flex items-center justify-between">
-				<div className="flex items-center gap-3">
-					<span className="text-lg font-mono">{task.externalId}</span>
-					<ToolBadge tool={task.sourceTool} />
-					{task.url && (
-						<Link
-							href={task.url}
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							<ExternalLink className="h-5 w-5" />
-						</Link>
-					)}
-				</div>
-				<Button onClick={onClose}>
-					<X className="h-6 w-6" />
-				</Button>
-			</div>
-
-			<div className="p-6">
-				<h2 className="text-2xl font-semibold mb-6">{task.title}</h2>
-
-				<div className="grid grid-cols-2 gap-4 mb-6">
+		<div className="fixed right-0 top-0 h-screen w-[400px] bg-background shadow-lg">
+			<Card className="h-full border-0">
+				<CardHeader>
+					<CardTitle>
+						{selectedTask.title}{" "}
+						<Badge>{selectedTask.project.name}</Badge>
+					</CardTitle>
+					<Button
+						variant="ghost"
+						onClick={() => setSelectedTask(null)}
+					>
+						Close
+					</Button>
+				</CardHeader>
+				<CardContent className="space-y-4">
 					<div>
-						<Label className="block text-sm font-medium mb-1">
-							Status
-						</Label>
-						<Select
-							value={task.status}
-							onValueChange={(v) => {
-								handleUpdate("status", v);
-							}}
-						>
-							<SelectTrigger>
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="todo">To Do</SelectItem>
-								<SelectItem value="in-progress">
-									In Progress
-								</SelectItem>
-								<SelectItem value="in-review">
-									In Review
-								</SelectItem>
-								<SelectItem value="done">Done</SelectItem>
-								<SelectItem value="blocked">Blocked</SelectItem>
-							</SelectContent>
-						</Select>
+						<p className="text-sm text-muted-foreground">
+							Status: {selectedTask.status}
+						</p>
+						<p className="text-sm text-muted-foreground">
+							Due:{" "}
+							{selectedTask.dueDate
+								? format(new Date(selectedTask.dueDate), "PPP")
+								: "N/A"}
+						</p>
+						<p className="text-sm text-muted-foreground">
+							Assignee: {selectedTask.assigneeName}
+						</p>
 					</div>
-
 					<div>
-						<Label className="block text-sm font-medium mb-1">
-							Priority
-						</Label>
-						<Select
-							value={task.priority}
-							onValueChange={(v) => {
-								handleUpdate("priority", v);
-							}}
-						>
-							<SelectTrigger>
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="low">Low</SelectItem>
-								<SelectItem value="medium">Medium</SelectItem>
-								<SelectItem value="high">High</SelectItem>
-								<SelectItem value="critical">
-									Critical
-								</SelectItem>
-							</SelectContent>
-						</Select>
+						<h4 className="font-semibold">Description</h4>
+						<p>{selectedTask.description || "No description"}</p>
 					</div>
-
 					<div>
-						<Label className="block text-sm font-medium mb-1">
-							Assignee
-						</Label>
-						<div className="flex items-center gap-2 px-3 py-2 rounded-lg">
-							<User className="h-4 w-4" />
-							<span className="text-sm">
-								{task.assignee?.name || "Unassigned"}
-							</span>
-						</div>
+						<h4 className="font-semibold">Linked Items</h4>
+						{selectedTask.linkedItems?.map((item) => (
+							<p key={item.id} className="text-sm">
+								{item.linkType}: {item.description}
+							</p>
+						))}
 					</div>
-
 					<div>
-						<Label className="block text-sm font-medium mb-1">
-							Due Date
-						</Label>
-						<Input
-							type="date"
-							value={task.dueDate?.split("T")[0]}
-							onChange={(e) =>
-								handleUpdate("dueDate", e.target.value)
-							}
-							disabled={isUpdating}
-							className="w-full px-3 py-2 rounded-lg"
+						<h4 className="font-semibold">Comments</h4>
+						{selectedTask.comments?.map((comment) => (
+							<div key={comment.id} className="border-b py-2">
+								<p className="text-sm">{comment.content}</p>
+								<p className="text-xs text-muted-foreground">
+									{comment.author.name} •{" "}
+									{format(
+										new Date(comment.createdAt),
+										"PPP p"
+									)}
+								</p>
+							</div>
+						))}
+						<Textarea
+							value={comment}
+							onChange={(e) => setComment(e.target.value)}
+							placeholder="Add a comment..."
+							className="mt-2"
 						/>
-					</div>
-				</div>
-
-				<div className="mb-6">
-					<h3 className="text-sm font-medium mb-2">Project</h3>
-					<div className="flex items-center gap-2 text-sm">
-						<span className="font-medium">{task.project.name}</span>
-						<span>•</span>
-						<span className="capitalize">
-							{task.project.platform}
-						</span>
-					</div>
-				</div>
-
-				<div className="mb-6">
-					<h3 className="text-sm font-medium mb-2">Description</h3>
-					<p>{task.description || "No description"}</p>
-				</div>
-
-				{task.labels && task.labels.length > 0 && (
-					<div className="mb-6">
-						<h3 className="text-sm font-medium mb-2">Labels</h3>
-						<div className="flex flex-wrap gap-2">
-							{task.labels.map((label) => (
-								<span
-									key={label}
-									className="px-3 py-1 rounded-full text-sm"
-								>
-									{label}
-								</span>
-							))}
-						</div>
-					</div>
-				)}
-
-				{task.storyPoints && (
-					<div className="mb-6">
-						<h3 className="text-sm font-medium mb-2">
-							Story Points
-						</h3>
-						<span className="text-2xl font-bold">
-							{task.storyPoints}
-						</span>
-					</div>
-				)}
-
-				<div className="pt-6 mt-6">
-					<div className="flex gap-2">
-						<Button
-							onClick={handleToggleWatch}
-							className="flex-1 px-4 py-2 rounded-lg flex items-center justify-center gap-2"
-						>
-							{task.isWatching ? (
-								<EyeOff className="h-4 w-4" />
-							) : (
-								<Eye className="h-4 w-4" />
-							)}
-							{task.isWatching ? "Unwatch" : "Watch"}
-						</Button>
-						<Button className="flex-1 px-4 py-2 rounded-lg">
-							Link Item
-						</Button>
-						<Button
-							onClick={handleDelete}
-							className="px-4 py-2 rounded-lg flex items-center gap-2"
-						>
-							<Trash2 className="h-4 w-4" />
-							Delete
+						<Button onClick={handleAddComment} className="mt-2">
+							Post Comment
 						</Button>
 					</div>
-				</div>
-			</div>
+				</CardContent>
+			</Card>
 		</div>
 	);
-};
+}

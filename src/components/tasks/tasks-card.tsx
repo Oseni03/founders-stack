@@ -1,4 +1,4 @@
-import { Task } from "@/zustand/stores/project-store";
+import { Task } from "@/zustand/stores/task-store";
 import { ToolBadge } from "./tool-badge";
 import {
 	AlertCircle,

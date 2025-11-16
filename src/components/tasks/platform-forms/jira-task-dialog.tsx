@@ -30,7 +30,7 @@ import { Loader2 } from "lucide-react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { TaskFormData } from "@/zustand/stores/project-store";
+import { TaskFormData } from "@/zustand/stores/task-store";
 import { Project, Task } from "@prisma/client";
 import { logger } from "@/lib/logger";
 import { toast } from "sonner";
