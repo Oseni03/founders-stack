@@ -5,9 +5,5 @@ export default function CommunicationLayout({
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
-	return (
-		<>
-			<CommunicationStoreProvider>{children}</CommunicationStoreProvider>
-		</>
-	);
+	return <CommunicationStoreProvider>{children}</CommunicationStoreProvider>;
 }
