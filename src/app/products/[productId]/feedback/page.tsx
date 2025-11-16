@@ -1,466 +1,507 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import Link from "next/link";
-import {
-	ArrowLeft,
-	MessageSquare,
-	Star,
-	MessageCircle,
-	Filter,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import {
-	PieChart,
-	Pie,
-	Cell,
-	BarChart,
-	Bar,
-	XAxis,
-	YAxis,
-	CartesianGrid,
-	Tooltip,
-	ResponsiveContainer,
-} from "recharts";
-import { Badge } from "@/components/ui/badge";
+import React, { useEffect, useState } from "react";
 import { useFeedbackStore } from "@/zustand/providers/feedback-store-provider";
-import { FeedbackPageLoading } from "@/components/feedbacks/feedback-loading";
-import { FeedbackNoDataState } from "@/components/feedbacks/feedback-no-data";
+import { formatDistanceToNow } from "date-fns";
+import axios from "axios";
+import { FeedbackItem } from "@/types/feedback";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 
-export default function FeedbackPage() {
-	const { productId } = useParams();
-	const data = useFeedbackStore((state) => state.data);
-	const loading = useFeedbackStore((state) => state.loading);
-	const timeRange = useFeedbackStore((state) => state.timeRange);
-	const selectedStatus = useFeedbackStore((state) => state.selectedStatus);
-	const selectedCategory = useFeedbackStore(
-		(state) => state.selectedCategory
-	);
-	const setData = useFeedbackStore((state) => state.setData);
-	const setLoading = useFeedbackStore((state) => state.setLoading);
-	const setTimeRange = useFeedbackStore((state) => state.setTimeRange);
-	const setSelectedStatus = useFeedbackStore(
-		(state) => state.setSelectedStatus
-	);
-	const setSelectedCategory = useFeedbackStore(
-		(state) => state.setSelectedCategory
-	);
+const FeedbackPage: React.FC = () => {
+	const { productId } = useParams<{ productId: string }>();
+	const {
+		data,
+		timeRange,
+		selectedSource,
+		selectedType,
+		selectedStatus,
+		selectedSentiment,
+		selectedCategory,
+		setData,
+		setLoading,
+		setTimeRange,
+		setSelectedSource,
+		setSelectedType,
+		setSelectedStatus,
+		setSelectedSentiment,
+		updateFeedback,
+		setError,
+	} = useFeedbackStore((state) => state);
+
+	const [selectedFeedback, setSelectedFeedback] =
+		useState<FeedbackItem | null>(null);
 
 	useEffect(() => {
-		fetchMetrics();
-	}, [timeRange]);
-
-	const fetchMetrics = async () => {
-		try {
+		const fetchFeedback = async () => {
 			setLoading(true);
-			const response = await fetch(
-				`/api/products/${productId}/feedbacks?range=${timeRange}`
-			);
+			try {
+				const response = await axios.get("/api/feedback/list", {
+					params: {
+						organizationId: productId, // Replace with actual org ID from context
+						timeRange,
+						source: selectedSource,
+						type: selectedType,
+						status: selectedStatus,
+						sentiment: selectedSentiment,
+						category: selectedCategory,
+					},
+				});
+				setData(response.data);
+			} catch (error) {
+				setError(
+					(error as Error).message || "Failed to fetch feedback"
+				);
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchFeedback();
+	}, [
+		productId,
+		timeRange,
+		selectedSource,
+		selectedType,
+		selectedStatus,
+		selectedSentiment,
+		selectedCategory,
+		setData,
+		setLoading,
+		setError,
+	]);
 
-			if (!response.ok) throw new Error("Failed to fetch metrics");
-
-			const fetchedData = await response.json();
-			setData(fetchedData);
-		} catch (err) {
-			console.error("[Feedback] Fetch error:", err);
-		} finally {
-			setLoading(false);
+	const handleUpdateFeedback = async (
+		feedbackId: string,
+		updates: Partial<FeedbackItem>
+	) => {
+		try {
+			const response = await axios.patch("/api/feedbacks/update", {
+				id: feedbackId,
+				...updates,
+			});
+			updateFeedback(feedbackId, response.data);
+		} catch (error) {
+			setError((error as Error).message || "Failed to update feedback");
 		}
 	};
 
-	const filteredFeedback = useMemo(() => {
-		if (!data) return [];
-		return data.recentFeedback.filter(
-			(item) =>
-				(!selectedStatus || item.status === selectedStatus) &&
-				(!selectedCategory || item.category === selectedCategory)
-		);
-	}, [data, selectedStatus, selectedCategory]);
-
-	const getStatusColor = (status: string) => {
-		switch (status) {
-			case "Open":
-				return "bg-blue-100 text-blue-700";
-			case "In Progress":
-				return "bg-yellow-100 text-yellow-700";
-			case "Resolved":
-				return "bg-green-100 text-green-700";
-			default:
-				return "bg-gray-100 text-gray-700";
+	const handleReply = async (feedbackId: string, content: string) => {
+		try {
+			await axios.post("/api/feedbacks/reply", {
+				feedbackId,
+				content,
+				integrationId: "int_123", // Replace with actual integration ID
+			});
+			// Refresh feedback list or update comments count
+		} catch (error) {
+			setError((error as Error).message || "Failed to send reply");
 		}
 	};
-
-	const getCategoryColor = (category: string) => {
-		switch (category) {
-			case "Bug":
-				return "bg-red-100 text-red-700";
-			case "Feature Request":
-				return "bg-purple-100 text-purple-700";
-			case "Improvement":
-				return "bg-blue-100 text-blue-700";
-			case "Documentation":
-				return "bg-green-100 text-green-700";
-			default:
-				return "bg-gray-100 text-gray-700";
-		}
-	};
-
-	if (loading) {
-		return <FeedbackPageLoading productId={productId as string} />;
-	}
-
-	if (!data) {
-		return <FeedbackNoDataState productId={productId as string} />;
-	}
 
 	return (
-		<main className="min-h-screen bg-background">
-			<div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-				{/* Header with Back Button */}
-				<div className="mb-8 flex items-center gap-4">
-					<Link href="/products">
-						<Button variant="ghost" size="icon">
-							<ArrowLeft className="h-5 w-5" />
-						</Button>
-					</Link>
-					<div className="flex-1">
-						<h1 className="text-3xl font-bold text-foreground">
-							Feedback
-						</h1>
-						<p className="mt-1 text-muted-foreground">
-							User feedback and feature requests
-						</p>
-					</div>
-					<div className="flex gap-2">
-						<Button
-							variant={timeRange === "7d" ? "default" : "outline"}
-							size="sm"
-							onClick={() => setTimeRange("7d")}
-						>
-							7d
-						</Button>
-						<Button
-							variant={
-								timeRange === "30d" ? "default" : "outline"
-							}
-							size="sm"
-							onClick={() => setTimeRange("30d")}
-						>
-							30d
-						</Button>
-						<Button
-							variant={
-								timeRange === "90d" ? "default" : "outline"
-							}
-							size="sm"
-							onClick={() => setTimeRange("90d")}
-						>
-							90d
-						</Button>
-					</div>
-				</div>
+		<div className="p-4">
+			<h1 className="text-2xl font-bold mb-4">Feedback</h1>
 
-				{/* Key Metrics Grid */}
-				<div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-					<Card>
-						<CardHeader className="pb-3">
-							<CardTitle className="flex items-center gap-2 text-sm font-medium">
-								<MessageSquare className="h-4 w-4 text-chart-1" />
-								Total Feedback
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<p className="text-3xl font-bold">
-								{data.totalFeedback}
-							</p>
-							<p className="mt-1 text-xs text-muted-foreground">
-								Feedback items collected
-							</p>
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader className="pb-3">
-							<CardTitle className="flex items-center gap-2 text-sm font-medium">
-								<Star className="h-4 w-4 text-chart-3" />
-								Average Rating
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<p className="text-3xl font-bold">
-								{data.averageScore.toFixed(1)}
-							</p>
-							<p className="mt-1 text-xs text-muted-foreground">
-								Out of 5 stars
-							</p>
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader className="pb-3">
-							<CardTitle className="flex items-center gap-2 text-sm font-medium">
-								<MessageCircle className="h-4 w-4 text-chart-2" />
-								Total Comments
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<p className="text-3xl font-bold">
-								{data.totalComments}
-							</p>
-							<p className="mt-1 text-xs text-muted-foreground">
-								Discussion threads
-							</p>
-						</CardContent>
-					</Card>
-				</div>
-
-				{/* Charts Grid */}
-				<div className="mb-8 grid gap-6 lg:grid-cols-2">
-					<Card>
-						<CardHeader>
-							<CardTitle>Feedback by Status</CardTitle>
-							<CardDescription>
-								Distribution of feedback items by status
-							</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<div className="h-80 w-full">
-								<ResponsiveContainer width="100%" height="100%">
-									<PieChart>
-										<Pie
-											data={data.feedbackByStatus}
-											cx="50%"
-											cy="50%"
-											labelLine={false}
-											label={({ name, value }) =>
-												`${name}: ${value}`
-											}
-											outerRadius={80}
-											dataKey="value"
-										>
-											<Cell fill="var(--chart-1)" />
-											<Cell fill="var(--chart-3)" />
-											<Cell fill="var(--chart-2)" />
-										</Pie>
-										<Tooltip
-											contentStyle={{
-												backgroundColor: "var(--card)",
-												border: "1px solid var(--border)",
-												borderRadius: "var(--radius)",
-											}}
-										/>
-									</PieChart>
-								</ResponsiveContainer>
-							</div>
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader>
-							<CardTitle>Feedback by Category</CardTitle>
-							<CardDescription>
-								Distribution of feedback items by category
-							</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<div className="h-80 w-full">
-								<ResponsiveContainer width="100%" height="100%">
-									<BarChart data={data.feedbackByCategory}>
-										<CartesianGrid
-											strokeDasharray="3 3"
-											stroke="var(--border)"
-										/>
-										<XAxis
-											dataKey="name"
-											stroke="var(--muted-foreground)"
-										/>
-										<YAxis stroke="var(--muted-foreground)" />
-										<Tooltip
-											contentStyle={{
-												backgroundColor: "var(--card)",
-												border: "1px solid var(--border)",
-												borderRadius: "var(--radius)",
-											}}
-										/>
-										<Bar
-											dataKey="value"
-											fill="var(--chart-1)"
-											name="Count"
-										/>
-									</BarChart>
-								</ResponsiveContainer>
-							</div>
-						</CardContent>
-					</Card>
-				</div>
-
-				{/* Filtering Controls */}
-				<Card className="mb-8">
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<Filter className="h-4 w-4" />
-							Feedback Items
-						</CardTitle>
-						<CardDescription>
-							Filter and view all feedback entries
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div className="mb-6 flex flex-wrap gap-2">
-							<Button
-								variant={
-									selectedStatus === null
-										? "default"
-										: "outline"
-								}
-								size="sm"
-								onClick={() => setSelectedStatus(null)}
-							>
-								All Status
-							</Button>
-							{data.feedbackByStatus.map((status) => (
-								<Button
-									key={status.name}
-									variant={
-										selectedStatus === status.name
-											? "default"
-											: "outline"
-									}
-									size="sm"
-									onClick={() =>
-										setSelectedStatus(status.name)
-									}
-								>
-									{status.name}
-								</Button>
-							))}
-						</div>
-
-						<div className="mb-6 flex flex-wrap gap-2">
-							<Button
-								variant={
-									selectedCategory === null
-										? "default"
-										: "outline"
-								}
-								size="sm"
-								onClick={() => setSelectedCategory(null)}
-							>
-								All Categories
-							</Button>
-							{data.feedbackByCategory.map((category) => (
-								<Button
-									key={category.name}
-									variant={
-										selectedCategory === category.name
-											? "default"
-											: "outline"
-									}
-									size="sm"
-									onClick={() =>
-										setSelectedCategory(category.name)
-									}
-								>
-									{category.name}
-								</Button>
-							))}
-						</div>
-
-						<div className="space-y-4">
-							{filteredFeedback.map((feedback) => (
-								<div
-									key={feedback.id}
-									className="rounded-lg border border-border p-4"
-								>
-									<div className="mb-3 flex items-start justify-between">
-										<div className="flex-1">
-											<h3 className="font-semibold text-foreground">
-												{feedback.title}
-											</h3>
-											<p className="mt-1 text-sm text-muted-foreground">
-												{feedback.description}
-											</p>
-										</div>
-									</div>
-
-									<div className="mb-3 flex flex-wrap gap-2">
-										<Badge
-											className={getCategoryColor(
-												feedback.category
-											)}
-										>
-											{feedback.category}
-										</Badge>
-										<Badge
-											className={getStatusColor(
-												feedback.status
-											)}
-										>
-											{feedback.status}
-										</Badge>
-										{feedback.tags.map((tag: string) => (
-											<Badge key={tag} variant="outline">
-												{tag}
-											</Badge>
-										))}
-									</div>
-
-									<div className="flex items-center justify-between text-xs text-muted-foreground">
-										<div className="flex gap-4">
-											<span>By {feedback.author}</span>
-											<span>
-												{new Date(
-													feedback.date
-												).toLocaleDateString()}
-											</span>
-											<span className="flex items-center gap-1">
-												<Star className="h-3 w-3" />
-												{feedback.score}/5
-											</span>
-											<span className="flex items-center gap-1">
-												<MessageCircle className="h-3 w-3" />
-												{feedback.commentsCount}{" "}
-												comments
-											</span>
-										</div>
-										{feedback.url && (
-											<a
-												href={feedback.url}
-												target="_blank"
-												rel="noopener noreferrer"
-												className="text-primary hover:underline"
-											>
-												View
-											</a>
-										)}
-									</div>
-								</div>
-							))}
-						</div>
-					</CardContent>
-				</Card>
-
-				{/* Insights */}
-				<Card>
-					<CardHeader>
-						<CardTitle>Key Insights</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900">
-							<p className="font-medium">Analysis:</p>
-							<p className="mt-2">{data.insight}</p>
-						</div>
-					</CardContent>
-				</Card>
+			{/* Filters Bar */}
+			<div className="flex flex-wrap gap-4 mb-4">
+				<Select
+					value={selectedSource || "all"}
+					onValueChange={(value) =>
+						setSelectedSource(value === "all" ? null : value)
+					}
+				>
+					<SelectTrigger className="w-[180px]">
+						<SelectValue placeholder="Source" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="all">All</SelectItem>
+						<SelectItem value="zendesk">Support Tickets</SelectItem>
+						<SelectItem value="usertesting">
+							User Testing
+						</SelectItem>
+						<SelectItem value="intercom">
+							In-App Feedback
+						</SelectItem>
+					</SelectContent>
+				</Select>
+				<Select
+					value={selectedType || "all"}
+					onValueChange={(value) =>
+						setSelectedType(value === "all" ? null : value)
+					}
+				>
+					<SelectTrigger className="w-[180px]">
+						<SelectValue placeholder="Type" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="all">All</SelectItem>
+						<SelectItem value="feature_request">
+							Feature Request
+						</SelectItem>
+						<SelectItem value="bug">Bug</SelectItem>
+						<SelectItem value="complaint">Complaint</SelectItem>
+						<SelectItem value="praise">Praise</SelectItem>
+					</SelectContent>
+				</Select>
+				<Select
+					value={selectedStatus || "all"}
+					onValueChange={(value) =>
+						setSelectedStatus(value === "all" ? null : value)
+					}
+				>
+					<SelectTrigger className="w-[180px]">
+						<SelectValue placeholder="Status" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="all">All</SelectItem>
+						<SelectItem value="NEW">New</SelectItem>
+						<SelectItem value="TRIAGED">Triaged</SelectItem>
+						<SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+						<SelectItem value="RESOLVED">Resolved</SelectItem>
+					</SelectContent>
+				</Select>
+				<Select
+					value={selectedSentiment || "all"}
+					onValueChange={(value) =>
+						setSelectedSentiment(value === "all" ? null : value)
+					}
+				>
+					<SelectTrigger className="w-[180px]">
+						<SelectValue placeholder="Sentiment" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="all">All</SelectItem>
+						<SelectItem value="POSITIVE">Positive</SelectItem>
+						<SelectItem value="NEUTRAL">Neutral</SelectItem>
+						<SelectItem value="NEGATIVE">Negative</SelectItem>
+					</SelectContent>
+				</Select>
+				<Select value={timeRange} onValueChange={setTimeRange}>
+					<SelectTrigger className="w-[180px]">
+						<SelectValue placeholder="Time Range" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="7d">Last 7 days</SelectItem>
+						<SelectItem value="30d">Last 30 days</SelectItem>
+						<SelectItem value="custom">Custom</SelectItem>
+					</SelectContent>
+				</Select>
 			</div>
-		</main>
+
+			{/* Tabs */}
+			<Tabs defaultValue="list" className="w-full">
+				<TabsList>
+					<TabsTrigger value="list">Feedback List</TabsTrigger>
+					<TabsTrigger value="feature-requests">
+						Top Feature Requests
+					</TabsTrigger>
+					<TabsTrigger value="sentiment">
+						Sentiment Analysis
+					</TabsTrigger>
+					<TabsTrigger value="user-testing">
+						User Testing Sessions
+					</TabsTrigger>
+				</TabsList>
+
+				<TabsContent value="list">
+					<div className="grid gap-4">
+						{data?.recentFeedback.map((item) => (
+							<Card
+								key={item.id}
+								className="cursor-pointer hover:bg-gray-50"
+								onClick={() => setSelectedFeedback(item)}
+							>
+								<CardContent className="pt-4">
+									<div className="flex justify-between">
+										<div>
+											<h3 className="font-semibold">
+												{item.title}
+											</h3>
+											<p className="text-sm text-gray-500">
+												{item.platform} |{" "}
+												{item.category} |{" "}
+												{formatDistanceToNow(
+													new Date(item.createdAt)
+												)}{" "}
+												ago
+											</p>
+											<p className="text-sm">
+												User: {item.userEmail} |{" "}
+												{item.sentiment}{" "}
+												{item.sentimentScore}
+											</p>
+											{item.votes > 0 && (
+												<Badge variant="secondary">
+													{item.votes} votes
+												</Badge>
+											)}
+										</div>
+										<div className="flex gap-2">
+											<Button
+												size="sm"
+												onClick={(e) => {
+													e.stopPropagation();
+													handleUpdateFeedback(
+														item.id,
+														{ status: "TRIAGED" }
+													);
+												}}
+											>
+												Triage
+											</Button>
+											<Button
+												size="sm"
+												onClick={(e) => {
+													e.stopPropagation();
+													handleReply(
+														item.id,
+														"Thanks for your feedback!"
+													);
+												}}
+											>
+												Reply
+											</Button>
+										</div>
+									</div>
+								</CardContent>
+							</Card>
+						))}
+					</div>
+				</TabsContent>
+
+				<TabsContent value="feature-requests">
+					<div className="grid gap-4">
+						{data?.topFeatureRequests.map((item) => (
+							<Card key={item.id}>
+								<CardContent className="pt-4">
+									<h3 className="font-semibold">
+										{item.title}
+									</h3>
+									<p className="text-sm">
+										{item.votes} votes | Status:{" "}
+										{item.status}
+									</p>
+									<Button
+										size="sm"
+										onClick={() =>
+											handleUpdateFeedback(item.id, {
+												status: "PLANNED",
+											})
+										}
+									>
+										Mark as Planned
+									</Button>
+								</CardContent>
+							</Card>
+						))}
+					</div>
+				</TabsContent>
+
+				<TabsContent value="sentiment">
+					<div className="flex flex-col gap-4">
+						<h3 className="text-lg font-semibold">
+							NPS Score: {data?.npsScore}
+						</h3>
+						{/* Sentiment Trend Chart */}
+						<div className="h-64">
+							{/* 
+                Chart.js rendering placeholder. 
+                The following Chart.js configuration would be rendered here using a custom chart component.
+                {
+                  "type": "line",
+                  "data": {
+                    "labels": ${JSON.stringify(data?.sentimentTrend.map((t) => t.date))},
+                    "datasets": [
+                      {
+                        "label": "Positive",
+                        "data": ${JSON.stringify(data?.sentimentTrend.map((t) => t.positive))},
+                        "borderColor": "#10B981",
+                        "backgroundColor": "rgba(16, 185, 129, 0.2)"
+                      },
+                      {
+                        "label": "Negative",
+                        "data": ${JSON.stringify(data?.sentimentTrend.map((t) => t.negative))},
+                        "borderColor": "#EF4444",
+                        "backgroundColor": "rgba(239, 68, 68, 0.2)"
+                      },
+                      {
+                        "label": "Neutral",
+                        "data": ${JSON.stringify(data?.sentimentTrend.map((t) => t.neutral))},
+                        "borderColor": "#6B7280",
+                        "backgroundColor": "rgba(107, 114, 128, 0.2)"
+                      }
+                    ]
+                  },
+                  "options": {
+                    "scales": {
+                      "y": {
+                        "beginAtZero": true
+                      }
+                    }
+                  }
+                }
+              */}
+						</div>
+						{/* Word Cloud */}
+						<div>
+							<h4 className="text-md font-semibold">
+								Common Terms
+							</h4>
+							<div className="flex gap-2 flex-wrap">
+								{data?.commonTerms.map((term) => (
+									<Badge key={term.term} variant="secondary">
+										{term.term} ({term.count})
+									</Badge>
+								))}
+							</div>
+						</div>
+					</div>
+				</TabsContent>
+
+				<TabsContent value="user-testing">
+					<div className="grid gap-4">
+						<Card>
+							<CardContent className="pt-4">
+								<h3 className="font-semibold">
+									Session: Checkout Flow
+								</h3>
+								<p>Completed: 2 days ago</p>
+								<p>
+									Insights: Users struggled with payment
+									selection
+								</p>
+								<Button size="sm">View Video</Button>
+							</CardContent>
+						</Card>
+					</div>
+				</TabsContent>
+			</Tabs>
+
+			{/* Feedback Detail Panel */}
+			{selectedFeedback && (
+				<div className="fixed right-0 top-0 h-full w-96 bg-white p-4 shadow-lg overflow-auto">
+					<Card>
+						<CardHeader>
+							<CardTitle>{selectedFeedback.title}</CardTitle>
+							<Badge>{selectedFeedback.platform}</Badge>
+						</CardHeader>
+						<CardContent>
+							<p>Sentiment: {selectedFeedback.sentiment}</p>
+							<p>Votes: {selectedFeedback.votes}</p>
+							<Select
+								value={selectedFeedback.status}
+								onValueChange={(value) =>
+									handleUpdateFeedback(selectedFeedback.id, {
+										status: value,
+									})
+								}
+							>
+								<SelectTrigger className="w-full">
+									<SelectValue placeholder="Status" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="NEW">New</SelectItem>
+									<SelectItem value="TRIAGED">
+										Triaged
+									</SelectItem>
+									<SelectItem value="IN_PROGRESS">
+										In Progress
+									</SelectItem>
+									<SelectItem value="RESOLVED">
+										Resolved
+									</SelectItem>
+								</SelectContent>
+							</Select>
+							<Select
+								value={selectedFeedback.priority || ""}
+								onValueChange={(value) =>
+									handleUpdateFeedback(selectedFeedback.id, {
+										priority: value,
+									})
+								}
+							>
+								<SelectTrigger className="w-full mt-2">
+									<SelectValue placeholder="Priority" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="LOW">Low</SelectItem>
+									<SelectItem value="MEDIUM">
+										Medium
+									</SelectItem>
+									<SelectItem value="HIGH">High</SelectItem>
+								</SelectContent>
+							</Select>
+							<div className="mt-4">
+								<h3 className="font-semibold">User Info</h3>
+								<p>Name: {selectedFeedback.userName}</p>
+								<p>Email: {selectedFeedback.userEmail}</p>
+								<p>Segment: {selectedFeedback.userSegment}</p>
+							</div>
+							<div className="mt-4">
+								<h3 className="font-semibold">
+									Feedback Content
+								</h3>
+								<p>{selectedFeedback.description}</p>
+								{selectedFeedback.url && (
+									<Link
+										href={selectedFeedback.url}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="text-blue-600 hover:underline"
+									>
+										View Original
+									</Link>
+								)}
+							</div>
+							<div className="mt-4">
+								<h3 className="font-semibold">Actions</h3>
+								<div className="flex gap-2">
+									<Button
+										onClick={() =>
+											handleReply(
+												selectedFeedback.id,
+												"Thanks for your feedback!"
+											)
+										}
+									>
+										Reply
+									</Button>
+									<Button
+									// onClick={() =>
+									// 	handleUpdateFeedback(
+									// 		selectedFeedback.id,
+									// 		{ linkedFeature: "feature_123" }
+									// 	)
+									// }
+									>
+										Link to Jira
+									</Button>
+								</div>
+							</div>
+							<Button
+								variant="destructive"
+								className="mt-4 w-full"
+								onClick={() => setSelectedFeedback(null)}
+							>
+								Close
+							</Button>
+						</CardContent>
+					</Card>
+				</div>
+			)}
+		</div>
 	);
-}
+};
+
+export default FeedbackPage;
