@@ -1,89 +1,94 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
-import { Metrics } from "@/lib/schemas";
+import type {
+	Task,
+	Message,
+	PullRequest,
+	SupportTicket,
+	User,
+} from "@prisma/client";
 
 export interface DashboardState {
-	data: Metrics | null;
-	loading: boolean;
-	error: string | null;
-	range: "7d" | "30d" | "90d";
-	searchQuery: string;
-
-	setData: (data: Metrics | null) => void;
-	setLoading: (loading: boolean) => void;
-	setError: (error: string | null) => void;
-	setRange: (range: "7d" | "30d" | "90d") => void;
-	setSearchQuery: (query: string) => void;
-	fetchData: (productId: string) => Promise<void>;
+	actionItems: {
+		tasks: Task[];
+		pullRequests: PullRequest[];
+		messages: Message[];
+		supportTickets: SupportTicket[];
+	};
+	notifications: Array<{
+		id: string;
+		type: string;
+		content: string;
+		source: string;
+		timestamp: string;
+	}>;
+	metrics: Array<{
+		name: string;
+		value: number;
+		unit: string;
+		trend: number;
+		health: "good" | "warning" | "critical";
+	}>;
+	sprintStatus: {
+		progress: number;
+		tasks: { done: number; inProgress: number; toDo: number };
+		blockers: Task[];
+	};
+	recentActivity: Array<{
+		id: string;
+		user: User;
+		action: string;
+		item: string;
+		timestamp: string;
+	}>;
+	teamPulse: Array<{
+		user: string;
+		status: "online" | "away" | "offline";
+		currentTask: string;
+	}>;
+	setActionItems: (items: Partial<DashboardState["actionItems"]>) => void;
+	setNotifications: (notifications: DashboardState["notifications"]) => void;
+	setMetrics: (metrics: DashboardState["metrics"]) => void;
+	setSprintStatus: (status: Partial<DashboardState["sprintStatus"]>) => void;
+	setRecentActivity: (activity: DashboardState["recentActivity"]) => void;
+	setTeamPulse: (pulse: DashboardState["teamPulse"]) => void;
 }
 
 export const createDashboardStore = () => {
 	return create<DashboardState>()(
 		persist(
-			immer((set, get) => ({
-				data: null,
-				loading: false,
-				error: null,
-				range: "7d",
-				searchQuery: "",
-
-				setData: (data) =>
-					set((state) => {
-						state.data = data;
-					}),
-
-				setLoading: (loading) =>
-					set((state) => {
-						state.loading = loading;
-					}),
-
-				setError: (error) =>
-					set((state) => {
-						state.error = error;
-					}),
-
-				setRange: (range) =>
-					set((state) => {
-						state.range = range;
-					}),
-
-				setSearchQuery: (query) =>
-					set((state) => {
-						state.searchQuery = query;
-					}),
-
-				fetchData: async (productId) => {
-					const {
-						range,
-						searchQuery,
-						setLoading,
-						setData,
-						setError,
-					} = get();
-					setLoading(true);
-					setError(null);
-					try {
-						const params = new URLSearchParams({ range });
-						if (searchQuery) params.append("q", searchQuery);
-						const res = await fetch(
-							`/api/products/${productId}/metrics?${params}`
-						);
-						if (!res.ok) throw new Error(await res.text());
-						const data: Metrics = await res.json();
-						setData(data);
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					} catch (err: any) {
-						setError(err.message);
-					} finally {
-						setLoading(false);
-					}
+			immer((set) => ({
+				actionItems: {
+					tasks: [],
+					pullRequests: [],
+					messages: [],
+					supportTickets: [],
 				},
+				notifications: [],
+				metrics: [],
+				sprintStatus: {
+					progress: 0,
+					tasks: { done: 0, inProgress: 0, toDo: 0 },
+					blockers: [],
+				},
+				recentActivity: [],
+				teamPulse: [],
+				setActionItems: (items) =>
+					set((state) => ({
+						actionItems: { ...state.actionItems, ...items },
+					})),
+				setNotifications: (notifications) => set({ notifications }),
+				setMetrics: (metrics) => set({ metrics }),
+				setSprintStatus: (status) =>
+					set((state) => ({
+						sprintStatus: { ...state.sprintStatus, ...status },
+					})),
+				setRecentActivity: (activity) =>
+					set({ recentActivity: activity }),
+				setTeamPulse: (pulse) => set({ teamPulse: pulse }),
 			})),
-			{
-				name: "dashboard-store",
-				partialize: (state) => ({ range: state.range }),
-			}
+			{ name: "dashboard-store" }
 		)
 	);
 };

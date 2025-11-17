@@ -51,11 +51,11 @@ export function RepositoryManager({
 								key={integration.id}
 								onClick={() =>
 									router.push(
-										`/products/${productId}/integrations/${integration.toolName}/onboarding`
+										`/products/${productId}/integrations/${integration.platform}/onboarding`
 									)
 								}
 							>
-								<span>{integration.toolName}</span>
+								<span>{integration.platform}</span>
 							</DropdownMenuItem>
 						))}
 					</DropdownMenuContent>

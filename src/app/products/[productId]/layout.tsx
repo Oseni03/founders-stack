@@ -6,7 +6,7 @@ import { useOrganizationStore } from "@/zustand/providers/organization-store-pro
 import { Member, Organization } from "@/types";
 import { useParams, useRouter } from "next/navigation";
 import { useIntegrationsStore } from "@/zustand/providers/integrations-store-provider";
-import { useDashboardStore } from "@/zustand/providers/dashboard-store-provider";
+import { DashboardStoreProvider } from "@/zustand/providers/dashboard-store-provider";
 import { getOrganizationById } from "@/server/organizations";
 import { toast } from "sonner";
 import {
@@ -30,8 +30,6 @@ export default function Page({
 	const fetchIntegrations = useIntegrationsStore(
 		(state) => state.fetchIntegrations
 	);
-	const fetchMetrics = useDashboardStore((state) => state.fetchData);
-	const searchQuery = useDashboardStore((state) => state.searchQuery);
 
 	// Handle authentication redirect
 	useEffect(() => {
@@ -88,17 +86,10 @@ export default function Page({
 		const fetchData = async () => {
 			if (!session?.user.id) return;
 			await fetchIntegrations();
-			await fetchMetrics(productId);
 		};
 
 		fetchData();
-	}, [
-		fetchIntegrations,
-		searchQuery,
-		fetchMetrics,
-		session?.user.id,
-		productId,
-	]);
+	}, [fetchIntegrations, session?.user.id, productId]);
 
 	// Show loading state while checking auth or redirecting
 	if (isPending || !session?.user.id) {
@@ -123,7 +114,7 @@ export default function Page({
 					</div>
 				</header>
 				<div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-					{children}
+					<DashboardStoreProvider>{children}</DashboardStoreProvider>
 				</div>
 			</SidebarInset>
 		</SidebarProvider>
