@@ -1,4 +1,4 @@
-// app/analytics/page.tsx
+// app/products/[productId]/analytics/page.tsx
 import { Skeleton } from "@/components/ui/skeleton";
 import { Suspense } from "react";
 import { getAnalyticsData } from "@/server/categories/analytics";
@@ -10,19 +10,21 @@ async function AnalyticsPageServer({
 }: {
 	organizationId: string;
 }) {
-	const metrics = await getAnalyticsData(organizationId); // Use server action to fetch
+	const metrics = await getAnalyticsData(organizationId);
 
 	return <AnalyticsClientPage initialMetrics={metrics} />;
 }
 
-export default function AnalyticsPage({
+export default async function AnalyticsPage({
 	params,
 }: {
-	params: { productId: string };
+	params: Promise<{ productId: string }>;
 }) {
+	const { productId } = await params;
+
 	return (
 		<Suspense fallback={<Skeleton className="w-full h-[500px]" />}>
-			<AnalyticsPageServer organizationId={params.productId} />
+			<AnalyticsPageServer organizationId={productId} />
 		</Suspense>
 	);
 }

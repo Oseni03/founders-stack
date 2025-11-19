@@ -1,9 +1,6 @@
 import { disconnectJiraIntegration } from "@/server/platforms/jira";
 import { withAuth } from "@/lib/middleware";
 import { prisma } from "@/lib/prisma";
-import { disconnectAsanaIntegration } from "@/server/platforms/asana";
-import { disconnectPostHogIntegration } from "@/server/platforms/posthog";
-import { disconnectStripeIntegration } from "@/server/platforms/stripe";
 import { NextRequest, NextResponse } from "next/server";
 import { disconnectGitHubIntegration } from "@/server/platforms/github";
 
@@ -15,15 +12,6 @@ export async function POST(
 		const { toolName } = await params;
 		try {
 			switch (toolName) {
-				case "asana":
-					await disconnectAsanaIntegration(user.organizationId);
-
-				case "stripe":
-					await disconnectStripeIntegration(user.organizationId);
-
-				case "posthog":
-					await disconnectPostHogIntegration(user.organizationId);
-
 				case "jira":
 					await disconnectJiraIntegration(user.organizationId);
 
@@ -33,9 +21,9 @@ export async function POST(
 				default:
 					await prisma.integration.update({
 						where: {
-							organizationId_toolName: {
+							organizationId_platform: {
 								organizationId: user.organizationId,
-								toolName: "asana",
+								platform: toolName,
 							},
 						},
 						data: {

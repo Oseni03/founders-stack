@@ -111,7 +111,8 @@ export async function PATCH(
 		const userRole = organization.members?.find(
 			(org) => org.userId === session.user?.id
 		)?.role;
-		if (userRole !== "owner" && userRole !== "admin") {
+
+		if (!userRole || (userRole !== "OWNER" && userRole !== "ADMIN")) {
 			return NextResponse.json(
 				{ error: "Forbidden - Insufficient permissions" },
 				{ status: 403 }
@@ -220,7 +221,7 @@ export async function DELETE(
 		const userRole = organization.members?.find(
 			(org) => org.userId === session.user?.id
 		)?.role;
-		if (userRole !== "owner") {
+		if (userRole !== "OWNER") {
 			return NextResponse.json(
 				{ error: "Forbidden - Only owners can delete products" },
 				{ status: 403 }

@@ -62,6 +62,7 @@ export function CreateOrganizationForm() {
 				...data,
 				toolCount: 0,
 				activeTasks: 0,
+				subscription: null, // or whatever the default should be
 			} as Organization);
 			toast.dismiss();
 			toast.success("Product added successfully");

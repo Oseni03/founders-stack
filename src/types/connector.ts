@@ -24,7 +24,10 @@ export interface ProjectData {
 	externalId: string;
 	name: string;
 	description?: string;
-	attributes: Record<string, any>;
+	avatarUrl?: string;
+	url?: string;
+	status?: string;
+	attributes?: Record<string, any>;
 }
 
 export interface ConnectionHandlerResult {

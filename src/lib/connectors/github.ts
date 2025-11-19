@@ -103,6 +103,7 @@ export class GitHubConnector {
 				totalCount = data.total_count;
 				repositories = data.items.map((repo) => ({
 					externalId: repo.id.toString(),
+					platform: "github", // Added
 					name: repo.name,
 					fullName: repo.full_name,
 					owner: repo.owner?.login || "",
@@ -112,9 +113,13 @@ export class GitHubConnector {
 					language: repo.language || null,
 					isPrivate: repo.private || false,
 					isArchived: repo.archived || false,
-					openIssuesCount: repo.open_issues_count || 0,
-					forksCount: repo.forks_count || 0,
-					stargazersCount: repo.stargazers_count || 0,
+					stars: repo.stargazers_count || 0, // Renamed
+					forks: repo.forks_count || 0, // Added
+					openIssues: repo.open_issues_count || 0, // Renamed
+					openPRs: 0, // Added - GitHub API doesn't provide this directly
+					watchers: repo.watchers_count || 0, // Added if needed
+					createdAt: new Date(repo.created_at), // Added if needed
+					updatedAt: new Date(repo.updated_at), // Added if needed
 					attributes: {
 						visibility: repo.visibility,
 						size: repo.size,
@@ -153,6 +158,7 @@ export class GitHubConnector {
 
 				repositories = data.map((repo) => ({
 					externalId: repo.id.toString(),
+					platform: "github", // Added
 					name: repo.name,
 					fullName: repo.full_name,
 					owner: repo.owner?.login || "",
@@ -162,9 +168,13 @@ export class GitHubConnector {
 					language: repo.language || null,
 					isPrivate: repo.private || false,
 					isArchived: repo.archived || false,
-					openIssuesCount: repo.open_issues_count || 0,
-					forksCount: repo.forks_count || 0,
-					stargazersCount: repo.stargazers_count || 0,
+					stars: repo.stargazers_count || 0, // Renamed
+					forks: repo.forks_count || 0, // Added
+					openIssues: repo.open_issues_count || 0, // Renamed
+					openPRs: 0, // Added - GitHub API doesn't provide this directly
+					watchers: repo.watchers_count || 0, // Added if needed
+					createdAt: new Date(repo.created_at || Date.now()),
+					updatedAt: new Date(repo.updated_at || Date.now()),
 					attributes: {
 						visibility: repo.visibility,
 						size: repo.size,
@@ -205,6 +215,7 @@ export class GitHubConnector {
 
 			return {
 				externalId: data.id.toString(),
+				platform: "github",
 				name: data.name,
 				fullName: data.full_name,
 				owner: data.owner?.login || "",
@@ -213,15 +224,16 @@ export class GitHubConnector {
 				defaultBranch: data.default_branch || "main",
 				language: data.language || null,
 				isPrivate: data.private || false,
-				isArchived: data.archived || false,
-				openIssuesCount: data.open_issues_count || 0,
-				forksCount: data.forks_count || 0,
-				stargazersCount: data.stargazers_count || 0,
-				attributes: {
+				stars: data.stargazers_count || 0,
+				openIssues: data.open_issues_count || 0,
+				openPRs: 0, // GitHub API doesn't provide this in repo.get()
+				createdAt: new Date(data.created_at),
+				updatedAt: new Date(data.updated_at),
+				metadata: {
 					visibility: data.visibility,
 					size: data.size,
-					created_at: data.created_at,
-					updated_at: data.updated_at,
+					isArchived: data.archived || false,
+					forksCount: data.forks_count || 0,
 					pushed_at: data.pushed_at,
 					has_issues: data.has_issues,
 					has_projects: data.has_projects,

@@ -27,10 +27,11 @@ import { DialogFooter } from "../ui/dialog";
 import { authClient } from "@/lib/auth-client";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { Invitation } from "better-auth/plugins";
+import { roleToAuth } from "@/lib/utils";
 
 const formSchema = z.object({
-	email: z.string().email(),
-	role: z.enum(["owner", "admin", "member", "viewer", "guest"]),
+	email: z.email(),
+	role: z.enum(["OWNER", "ADMIN", "MEMBER", "VIEWER", "GUEST"]),
 });
 
 export function InvitationForm({ onSuccess }: { onSuccess: () => void }) {
@@ -42,7 +43,7 @@ export function InvitationForm({ onSuccess }: { onSuccess: () => void }) {
 		resolver: zodResolver(formSchema),
 		defaultValues: {
 			email: "",
-			role: "member",
+			role: "MEMBER",
 		},
 	});
 
@@ -55,7 +56,7 @@ export function InvitationForm({ onSuccess }: { onSuccess: () => void }) {
 
 			const { error, data } = await authClient.organization.inviteMember({
 				email: values.email,
-				role: values.role,
+				role: roleToAuth(values.role), // Convert to lowercase
 				organizationId: organization.id,
 				resend: true,
 			});

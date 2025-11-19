@@ -275,7 +275,7 @@ export async function createOrganization(
 				members: {
 					create: {
 						userId: userId,
-						role: "admin",
+						role: "ADMIN",
 					},
 				},
 				subscription: {
@@ -347,72 +347,4 @@ export async function findAvailableSlug(baseSlug: string): Promise<string> {
 			throw new Error("Could not generate unique slug");
 		}
 	}
-}
-
-export async function getProductStats() {
-	// Fetch organizations with related counts we care about
-	const organizations = await prisma.organization.findMany({
-		include: {
-			financeSubscriptions: {
-				where: {
-					status: { in: ["active", "trialing"] },
-				},
-				select: {
-					amount: true,
-					billingCycle: true,
-					startDate: true,
-				},
-			},
-			projects: { select: { id: true } },
-			integrations: { select: { id: true } },
-			members: { select: { id: true } },
-			repositories: { select: { id: true } },
-		},
-		orderBy: { createdAt: "desc" },
-	});
-
-	const now = new Date();
-	const thirtyDaysAgo = new Date(now.getTime() - 1000 * 60 * 60 * 24 * 30);
-
-	let totalRevenue = 0;
-	let last30DaysRevenue = 0;
-	let totalMRR = 0;
-
-	for (const org of organizations) {
-		const subscriptions = org.financeSubscriptions;
-
-		for (const sub of subscriptions) {
-			if (sub.amount && typeof sub.amount === "number") {
-				totalRevenue += sub.amount;
-
-				const createdAt = sub.startDate
-					? new Date(sub.startDate)
-					: null;
-				if (createdAt && createdAt >= thirtyDaysAgo) {
-					last30DaysRevenue += sub.amount;
-				}
-
-				const interval = (sub.billingCycle || "").toLowerCase();
-				if (
-					interval.includes("month") ||
-					interval.includes("monthly")
-				) {
-					totalMRR += sub.amount;
-				} else if (
-					interval.includes("year") ||
-					interval.includes("yearly")
-				) {
-					totalMRR += sub.amount / 12;
-				}
-			}
-		}
-	}
-
-	return {
-		organizations,
-		totalRevenue: Math.round(totalRevenue),
-		last30DaysRevenue: Math.round(last30DaysRevenue),
-		totalMRR: Math.round(totalMRR),
-		totalStartups: organizations.length,
-	};
 }

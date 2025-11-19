@@ -53,7 +53,7 @@ export default function Page({
 				const isAdmin = !!data?.members?.find(
 					(member) =>
 						member.userId == session?.user?.id &&
-						member.role == "admin"
+						member.role == "ADMIN"
 				);
 				setOrganizationData(
 					data as Organization,

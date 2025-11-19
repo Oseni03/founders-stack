@@ -24,7 +24,7 @@ export async function syncGitHub(
 		repositories = await prisma.repository.findMany({
 			where: {
 				organizationId,
-				sourceTool: "github",
+				platform: "github",
 			},
 		});
 	} else {
@@ -92,7 +92,7 @@ export async function syncGitHub(
 						authorEmail: commit.authorEmail,
 						attributes: commit.attributes,
 						organizationId,
-						sourceTool: "github",
+						platform: "github",
 						repositoryId: repo.id,
 					}));
 				}
@@ -118,7 +118,7 @@ export async function syncGitHub(
 							createdAt: pr.createdAt,
 							closedAt: pr.closedAt,
 							organizationId,
-							sourceTool: "github",
+							platform: "github",
 							repositoryId: repo.id,
 						})
 					);
@@ -126,7 +126,7 @@ export async function syncGitHub(
 
 				// Upsert issues in batches
 				if (issues.length > 0) {
-					await batchUpsert(tx.issue, issues, 500, (issue) => ({
+					await batchUpsert(tx.task, issues, 500, (issue) => ({
 						externalId: issue.externalId,
 						title: issue.title,
 						status: issue.status,
@@ -141,50 +141,9 @@ export async function syncGitHub(
 						createdAt: issue.createdAt,
 						closedAt: issue.closedAt,
 						organizationId,
-						sourceTool: "github",
+						platform: "github",
 						repositoryId: repo.id,
 					}));
-				}
-
-				// Upsert branches in batches
-				if (branches.length > 0) {
-					await batchUpsert(tx.branch, branches, 500, (branch) => ({
-						externalId: branch.externalId,
-						name: branch.name,
-						status: branch.status,
-						lastCommitAt: branch.lastCommitAt,
-						commitsAhead: branch.commitsAhead,
-						commitsBehind: branch.commitsBehind,
-						sha: branch.sha,
-						isProtected: branch.isProtected,
-						attributes: branch.attributes,
-						createdBy: branch.createdBy,
-						organizationId,
-						sourceTool: "github",
-						repositoryId: repo.id,
-					}));
-				}
-
-				// Upsert contributors in batches
-				if (contributors.length > 0) {
-					await batchUpsert(
-						tx.contributor,
-						contributors,
-						500,
-						(contributor) => ({
-							externalId: contributor.externalId,
-							login: contributor.login,
-							contributions: contributor.contributions,
-							attributes: contributor.attributes,
-							name: contributor.name,
-							email: contributor.email,
-							avatarUrl: contributor.avatarUrl,
-							lastContributedAt: contributor.lastContributedAt,
-							organizationId,
-							sourceTool: "github",
-							repositoryId: repo.id,
-						})
-					);
 				}
 
 				// ✅ Upsert deployment events in batches
@@ -195,9 +154,9 @@ export async function syncGitHub(
 							// Try to find the commit for this deployment
 							const commit = await tx.commit.findFirst({
 								where: {
-									sha: deployment.commitHash,
+									externalId: deployment.commitHash,
 									repositoryId: repo.id,
-									organizationId,
+									// organizationId,
 								},
 								select: { id: true },
 							});
@@ -206,26 +165,6 @@ export async function syncGitHub(
 								...deployment,
 								commitId: commit?.id || null,
 							};
-						})
-					);
-
-					await batchUpsert(
-						tx.deploymentEvent,
-						deploymentsWithCommits,
-						500,
-						(deployment) => ({
-							externalId: deployment.externalId,
-							commitHash: deployment.commitHash,
-							status: deployment.status,
-							environment: deployment.environment,
-							errorLogSummary: deployment.errorLogSummary,
-							buildDuration: deployment.buildDuration,
-							deployedAt: deployment.deployedAt,
-							attributes: deployment.attributes,
-							commitId: deployment.commitId,
-							lastSyncedAt: new Date(),
-							organizationId,
-							sourceTool: "github",
 						})
 					);
 				}
@@ -268,14 +207,14 @@ export async function disconnectGitHubIntegration(
 		);
 		const integration = await prisma.integration.findUnique({
 			where: {
-				organizationId_toolName: {
+				organizationId_platform: {
 					organizationId,
-					toolName: "github",
+					platform: "github",
 				},
 			},
 		});
 
-		if (!integration || integration.toolName !== "github") {
+		if (!integration || integration.platform !== "github") {
 			const errorMsg = "GitHub integration not found";
 			console.error(
 				`[${new Date().toISOString()}] ${errorMsg} for organization ${organizationId}`
@@ -301,7 +240,7 @@ export async function disconnectGitHubIntegration(
 			const repos = await prisma.repository.findMany({
 				where: {
 					organizationId,
-					sourceTool: "github",
+					platform: "github",
 					owner,
 				},
 			});
@@ -325,9 +264,9 @@ export async function disconnectGitHubIntegration(
 					for (const webhook of webhooks.resources) {
 						const repoWebhook = await prisma.webhook.findUnique({
 							where: {
-								externalId_sourceTool: {
+								externalId_platform: {
 									externalId: webhook.id.toString(),
-									sourceTool: "github",
+									platform: "github",
 								},
 							},
 						});
@@ -349,7 +288,7 @@ export async function disconnectGitHubIntegration(
 								where: {
 									repositoryId: repo.id,
 									externalId: webhook.id.toString(),
-									sourceTool: "github",
+									platform: "github",
 								},
 							});
 							const dbWebhookDeleteDuration =
@@ -383,9 +322,9 @@ export async function disconnectGitHubIntegration(
 		const dbStart = Date.now();
 		await prisma.integration.update({
 			where: {
-				organizationId_toolName: {
+				organizationId_platform: {
 					organizationId,
-					toolName: "github",
+					platform: "github",
 				},
 			},
 			data: {
@@ -492,10 +431,6 @@ export async function processGitHubEvent(
 			await handleCreateEvent(payload, repository);
 			break;
 
-		case "delete":
-			await handleDeleteEvent(payload, repository);
-			break;
-
 		// Push events (commits)
 		case "push":
 			await handlePushEvent(payload, repository);
@@ -504,11 +439,6 @@ export async function processGitHubEvent(
 		// Pull request events
 		case "pull_request":
 			await handlePullRequestEvent(payload, repository);
-			break;
-
-		// Issue events
-		case "issues":
-			await handleIssuesEvent(payload, repository);
 			break;
 
 		// Status events (for CI/CD status updates)
@@ -524,11 +454,6 @@ export async function processGitHubEvent(
 		// Deployment status events
 		case "deployment_status":
 			await handleDeploymentStatusEvent(payload, repository);
-			break;
-
-		// Member/Contributor events
-		case "member":
-			await handleMemberEvent(payload, repository);
 			break;
 
 		default:
@@ -602,9 +527,9 @@ async function handleRepositoryEvent(payload: any, repo: Repository) {
 			await prisma.repository.update({
 				where: { id: repo.id },
 				data: {
-					isArchived: true,
-					attributes: {
-						...jsonToObject(repo.attributes),
+					// isArchived: true,
+					metadata: {
+						...jsonToObject(repo.metadata),
 						archived_at: new Date().toISOString(),
 					},
 				},
@@ -618,9 +543,9 @@ async function handleRepositoryEvent(payload: any, repo: Repository) {
 			await prisma.repository.update({
 				where: { id: repo.id },
 				data: {
-					isArchived: false,
-					attributes: {
-						...jsonToObject(repo.attributes),
+					// isArchived: false,
+					metadata: {
+						...jsonToObject(repo.metadata),
 						unarchived_at: new Date().toISOString(),
 					},
 				},
@@ -640,8 +565,8 @@ async function handleRepositoryEvent(payload: any, repo: Repository) {
 					isPrivate: repository.private,
 					language: repository.language || null,
 					defaultBranch: repository.default_branch || null,
-					attributes: {
-						...jsonToObject(repo.attributes),
+					metadata: {
+						...jsonToObject(repo.metadata),
 						edited_at: new Date().toISOString(),
 					},
 				},
@@ -656,8 +581,8 @@ async function handleRepositoryEvent(payload: any, repo: Repository) {
 				where: { id: repo.id },
 				data: {
 					owner: repository.owner.login,
-					attributes: {
-						...jsonToObject(repo.attributes),
+					metadata: {
+						...jsonToObject(repo.metadata),
 						transferred: true,
 						transferred_at: new Date().toISOString(),
 						previous_owner: payload.changes?.owner?.from?.login,
@@ -675,8 +600,8 @@ async function handleRepositoryEvent(payload: any, repo: Repository) {
 				data: {
 					name: repository.name,
 					fullName: repository.full_name,
-					attributes: {
-						...jsonToObject(repo.attributes),
+					metadata: {
+						...jsonToObject(repo.metadata),
 						renamed_at: new Date().toISOString(),
 						previous_name: payload.changes?.repository?.name?.from,
 					},
@@ -711,7 +636,7 @@ async function handleCreateEvent(payload: any, repo: Repository) {
 	// 			organizationId: repo.organizationId,
 	// 			repositoryId: repo.id,
 	// 			externalId: ref,
-	// 			sourceTool: "github",
+	// 			platform: "github",
 	// 			name: ref,
 	// 			status: "active",
 	// 			lastCommitAt: new Date(),
@@ -732,42 +657,6 @@ async function handleCreateEvent(payload: any, repo: Repository) {
 	// }
 }
 
-async function handleDeleteEvent(payload: any, repo: Repository) {
-	const refType = payload.ref_type;
-	const ref = payload.ref;
-
-	logger.info(
-		`[${new Date().toISOString()}] Handling delete event: ${refType} ${ref}`,
-		{
-			repositoryId: repo.id,
-			repository: repo.fullName,
-		}
-	);
-
-	if (refType === "branch") {
-		const branch = await prisma.branch.findFirst({
-			where: {
-				repositoryId: repo.id,
-				name: ref,
-				sourceTool: "github",
-			},
-		});
-
-		if (branch) {
-			await prisma.branch.delete({
-				where: { id: branch.id },
-			});
-			logger.info(
-				`[${new Date().toISOString()}] Branch deleted: ${ref} in ${repo.fullName}`
-			);
-		} else {
-			logger.warn(
-				`[${new Date().toISOString()}] Branch not found: ${ref} in ${repo.fullName}`
-			);
-		}
-	}
-}
-
 // ============================================================================
 // PUSH EVENTS (COMMITS)
 // ============================================================================
@@ -785,55 +674,13 @@ async function handlePushEvent(payload: any, repo: Repository) {
 		}
 	);
 
-	// Update or create branch
-	const existingBranch = await prisma.branch.findFirst({
-		where: {
-			repositoryId: repo.id,
-			name: branch,
-			sourceTool: "github",
-		},
-	});
-
-	if (existingBranch) {
-		await prisma.branch.update({
-			where: { id: existingBranch.id },
-			data: {
-				lastCommitAt: new Date(),
-				status: "active",
-				sha: payload.head_commit?.id,
-			},
-		});
-		logger.info(
-			`[${new Date().toISOString()}] Updated branch: ${branch} in ${repo.fullName}`
-		);
-	} else {
-		await prisma.branch.create({
-			data: {
-				organizationId: repo.organizationId,
-				repositoryId: repo.id,
-				externalId: branch,
-				sourceTool: "github",
-				name: branch,
-				status: "active",
-				lastCommitAt: new Date(),
-				sha: payload.head_commit?.id,
-				isProtected: false,
-				commitsAhead: 0,
-				commitsBehind: 0,
-			},
-		});
-		logger.info(
-			`[${new Date().toISOString()}] Created branch: ${branch} in ${repo.fullName}`
-		);
-	}
-
 	// Create commits
 	for (const commit of commits) {
 		const existingCommit = await prisma.commit.findUnique({
 			where: {
-				externalId_sourceTool: {
+				repositoryId_externalId: {
 					externalId: commit.id,
-					sourceTool: "github",
+					repositoryId: repo.id,
 				},
 			},
 		});
@@ -841,55 +688,31 @@ async function handlePushEvent(payload: any, repo: Repository) {
 		if (!existingCommit) {
 			await prisma.commit.create({
 				data: {
-					organizationId: repo.organizationId,
 					repositoryId: repo.id,
 					externalId: commit.id,
-					sourceTool: "github",
-					sha: commit.id,
+					platform: "github",
 					branch,
-					authorName: commit.author?.name || commit.author?.username,
-					authorEmail: commit.author?.email,
-					committerName:
-						commit.committer?.name || commit.committer?.username,
+					authorName:
+						commit.author?.name ||
+						commit.author?.username ||
+						"Unknown",
+					authorEmail: commit.author?.email || "",
+					authorId: commit.author?.username || null,
 					message: commit.message,
-					committedAt: new Date(commit.timestamp),
-					url: commit.url,
-					additions: commit.added?.length,
-					deletions: commit.removed?.length,
-					total:
+					timestamp: new Date(commit.timestamp),
+					additions: commit.added?.length || 0,
+					deletions: commit.removed?.length || 0,
+					filesChanged:
 						(commit.added?.length || 0) +
 						(commit.removed?.length || 0) +
 						(commit.modified?.length || 0),
-					avatarUrl: payload.sender?.avatar_url || null,
-					attributes: {
-						added_files: commit.added,
-						removed_files: commit.removed,
-						modified_files: commit.modified,
-						distinct: commit.distinct,
-					},
+					url: commit.url,
+					syncedAt: new Date(),
 				},
 			});
 			logger.info(
 				`[${new Date().toISOString()}] Created commit: ${commit.id} in ${repo.fullName}`
 			);
-
-			if (commit.author?.username) {
-				await upsertContributor({
-					organizationId: repo.organizationId,
-					repositoryId: repo.id,
-					externalId: commit.author.username,
-					sourceTool: "github",
-					login: commit.author.username,
-					name: commit.author.name,
-					email: commit.author.email,
-					avatarUrl: payload.sender?.avatar_url,
-					contributions: 1,
-					lastContributedAt: new Date(commit.timestamp),
-				});
-				logger.info(
-					`[${new Date().toISOString()}] Updated contributor: ${commit.author.username} for ${repo.fullName}`
-				);
-			}
 		}
 	}
 }
@@ -910,71 +733,63 @@ async function handlePullRequestEvent(payload: any, repo: Repository) {
 		}
 	);
 
-	const getStatus = () => {
+	const getState = () => {
 		if (pullRequest.merged) return "merged";
 		if (pullRequest.draft) return "draft";
-		return pullRequest.state;
+		return pullRequest.state; // "open" or "closed"
 	};
 
-	const getReviewStatus = () => {
+	const getApprovalStatus = () => {
 		if (pullRequest.draft) return "draft";
+		if (pullRequest.merged) return "approved";
 		if (pullRequest.requested_reviewers?.length > 0) {
 			return "awaiting_review";
 		}
 		if (pullRequest.state === "open") return "in_review";
-		return null;
+		return "pending";
 	};
 
 	const prExternalId = pullRequest.id.toString();
 	const existingPR = await prisma.pullRequest.findUnique({
 		where: {
-			externalId_sourceTool: {
+			repositoryId_externalId: {
 				externalId: prExternalId,
-				sourceTool: "github",
+				repositoryId: repo.id,
 			},
 		},
 	});
 
-	let avgReviewTime = null;
-	if (pullRequest.merged_at && pullRequest.created_at) {
-		const created = new Date(pullRequest.created_at).getTime();
-		const merged = new Date(pullRequest.merged_at).getTime();
-		avgReviewTime = (merged - created) / (1000 * 60 * 60); // Convert to hours
-	}
-
 	const prData = {
-		title: pullRequest.title,
 		number: pullRequest.number,
-		body: pullRequest.body || null,
+		title: pullRequest.title,
+		description: pullRequest.body || null,
 		url: pullRequest.html_url,
-		status: getStatus(),
-		reviewStatus: getReviewStatus(),
-		isDraft: pullRequest.draft || false,
-		baseBranch: pullRequest.base?.ref || null,
-		headBranch: pullRequest.head?.ref || null,
-		authorId: pullRequest.user?.id || null,
-		authorLogin: pullRequest.user?.login || null,
-		reviewerIds:
-			pullRequest.requested_reviewers?.map((r: any) => r.login) || [],
-		avgReviewTime,
+		state: getState(),
+		approvalStatus: getApprovalStatus(),
+		sourceBranch: pullRequest.head?.ref || "",
+		targetBranch: pullRequest.base?.ref || "",
+		authorId: pullRequest.user?.id?.toString() || null,
+		authorName: pullRequest.user?.login || "Unknown",
+		authorAvatar: pullRequest.user?.avatar_url || null,
+		reviewers:
+			pullRequest.requested_reviewers?.map((r: any) => ({
+				id: r.id,
+				login: r.login,
+				avatar_url: r.avatar_url,
+			})) || [],
+		labels: pullRequest.labels?.map((l: any) => l.name) || [],
+		additions: pullRequest.additions || 0,
+		deletions: pullRequest.deletions || 0,
+		changedFiles: pullRequest.changed_files || 0,
 		closedAt: pullRequest.closed_at
 			? new Date(pullRequest.closed_at)
 			: null,
 		mergedAt: pullRequest.merged_at
 			? new Date(pullRequest.merged_at)
 			: null,
-		attributes: {
-			state: pullRequest.state,
-			merged: pullRequest.merged,
-			mergeable: pullRequest.mergeable,
-			mergeable_state: pullRequest.mergeable_state,
-			assignees: pullRequest.assignees?.map((a: any) => a.login),
-			labels: pullRequest.labels?.map((l: any) => l.name),
-			milestone: pullRequest.milestone?.title,
-			comments: pullRequest.comments,
-			review_comments: pullRequest.review_comments,
-			maintainer_can_modify: pullRequest.maintainer_can_modify,
-		},
+		createdAt: new Date(pullRequest.created_at),
+		updatedAt: new Date(pullRequest.updated_at),
+		syncedAt: new Date(),
 	};
 
 	if (existingPR) {
@@ -988,10 +803,8 @@ async function handlePullRequestEvent(payload: any, repo: Repository) {
 	} else {
 		await prisma.pullRequest.create({
 			data: {
-				organizationId: repo.organizationId,
 				repositoryId: repo.id,
 				externalId: prExternalId,
-				sourceTool: "github",
 				...prData,
 			},
 		});
@@ -999,27 +812,8 @@ async function handlePullRequestEvent(payload: any, repo: Repository) {
 			`[${new Date().toISOString()}] Created pull request: #${pullRequest.number} in ${repo.fullName}`
 		);
 	}
-
-	if (pullRequest.user?.login) {
-		await upsertContributor({
-			organizationId: repo.organizationId,
-			repositoryId: repo.id,
-			externalId:
-				pullRequest.user.id?.toString() || pullRequest.user.login,
-			sourceTool: "github",
-			login: pullRequest.user.login,
-			name: pullRequest.user.name,
-			avatarUrl: pullRequest.user.avatar_url,
-			contributions: 1,
-			lastContributedAt: new Date(),
-		});
-		logger.info(
-			`[${new Date().toISOString()}] Updated contributor: ${pullRequest.user.login} for ${repo.fullName}`
-		);
-	}
 }
 
-// Note: Not called in processGitHubEvent, included for completeness
 async function handlePullRequestReviewEvent(payload: any, repo: Repository) {
 	const review = payload.review;
 	const pullRequest = payload.pull_request;
@@ -1032,21 +826,31 @@ async function handlePullRequestReviewEvent(payload: any, repo: Repository) {
 		}
 	);
 
-	if (review.user?.login) {
-		await upsertContributor({
-			organizationId: repo.organizationId,
-			repositoryId: repo.id,
-			externalId: review.user.id?.toString() || review.user.login,
-			sourceTool: "github",
-			login: review.user.login,
-			name: review.user.name,
-			avatarUrl: review.user.avatar_url,
-			contributions: 1,
-			lastContributedAt: new Date(),
+	// Update the PR approval status based on review
+	const existingPR = await prisma.pullRequest.findUnique({
+		where: {
+			repositoryId_externalId: {
+				externalId: pullRequest.id.toString(),
+				repositoryId: repo.id,
+			},
+		},
+	});
+
+	if (existingPR) {
+		const newApprovalStatus =
+			review.state === "approved"
+				? "approved"
+				: review.state === "changes_requested"
+					? "changes_requested"
+					: "in_review";
+
+		await prisma.pullRequest.update({
+			where: { id: existingPR.id },
+			data: {
+				approvalStatus: newApprovalStatus,
+				syncedAt: new Date(),
+			},
 		});
-		logger.info(
-			`[${new Date().toISOString()}] Updated contributor: ${review.user.login} for ${repo.fullName}`
-		);
 	}
 }
 
@@ -1064,162 +868,16 @@ async function handlePullRequestReviewCommentEvent(
 			repository: repo.fullName,
 		}
 	);
-
-	if (comment.user?.login) {
-		await upsertContributor({
-			organizationId: repo.organizationId,
-			repositoryId: repo.id,
-			externalId: comment.user.id?.toString() || comment.user.login,
-			sourceTool: "github",
-			login: comment.user.login,
-			name: comment.user.name,
-			avatarUrl: comment.user.avatar_url,
-			contributions: 1,
-			lastContributedAt: new Date(),
-		});
-		logger.info(
-			`[${new Date().toISOString()}] Updated contributor: ${comment.user.login} for ${repo.fullName}`
-		);
-	}
 }
 
 // ============================================================================
-// ISSUE EVENTS
-// ============================================================================
-
-async function handleIssuesEvent(payload: any, repo: Repository) {
-	const action = payload.action;
-	const issue = payload.issue;
-
-	logger.info(
-		`[${new Date().toISOString()}] Handling issue event: ${action} issue #${issue.number}`,
-		{
-			repositoryId: repo.id,
-			repository: repo.fullName,
-		}
-	);
-
-	const getStatus = () => {
-		if (issue.state === "closed") {
-			return issue.state_reason === "completed" ? "closed" : "cancelled";
-		}
-		return "open";
-	};
-
-	const issueExternalId = issue.id.toString();
-	const existingIssue = await prisma.issue.findUnique({
-		where: {
-			externalId_sourceTool: {
-				externalId: issueExternalId,
-				sourceTool: "github",
-			},
-		},
-	});
-
-	const issueData = {
-		title: issue.title,
-		number: issue.number,
-		body: issue.body || null,
-		url: issue.html_url,
-		status: getStatus(),
-		authorId: issue.user?.login || null,
-		authorLogin: issue.user?.login || null,
-		assigneeIds: issue.assignees?.map((a: any) => a.login) || [],
-		labels:
-			issue.labels?.map((l: any) =>
-				typeof l === "string" ? l : l.name
-			) || [],
-		commentsCount: issue.comments || 0,
-		closedAt: issue.closed_at ? new Date(issue.closed_at) : null,
-		attributes: {
-			state: issue.state,
-			state_reason: issue.state_reason,
-			milestone: issue.milestone?.title,
-			locked: issue.locked,
-			reactions: issue.reactions,
-		},
-	};
-
-	if (existingIssue) {
-		await prisma.issue.update({
-			where: { id: existingIssue.id },
-			data: issueData,
-		});
-		logger.info(
-			`[${new Date().toISOString()}] Updated issue: #${issue.number} in ${repo.fullName}`
-		);
-	} else {
-		await prisma.issue.create({
-			data: {
-				organizationId: repo.organizationId,
-				repositoryId: repo.id,
-				externalId: issueExternalId,
-				sourceTool: "github",
-				...issueData,
-			},
-		});
-		logger.info(
-			`[${new Date().toISOString()}] Created issue: #${issue.number} in ${repo.fullName}`
-		);
-	}
-
-	if (issue.user?.login) {
-		await upsertContributor({
-			organizationId: repo.organizationId,
-			repositoryId: repo.id,
-			externalId: issue.user.id?.toString() || issue.user.login,
-			sourceTool: "github",
-			login: issue.user.login,
-			name: issue.user.name,
-			avatarUrl: issue.user.avatar_url,
-			contributions: 1,
-			lastContributedAt: new Date(),
-		});
-		logger.info(
-			`[${new Date().toISOString()}] Updated contributor: ${issue.user.login} for ${repo.fullName}`
-		);
-	}
-}
-
-async function handleIssueCommentEvent(payload: any, repo: Repository) {
-	const action = payload.action;
-	const comment = payload.comment;
-	const issue = payload.issue;
-
-	logger.info(
-		`[${new Date().toISOString()}] Handling issue comment event: ${action} for issue #${issue.number}`,
-		{
-			repositoryId: repo.id,
-			repository: repo.fullName,
-		}
-	);
-
-	if (comment.user?.login) {
-		await upsertContributor({
-			organizationId: repo.organizationId,
-			repositoryId: repo.id,
-			externalId: comment.user.id?.toString() || comment.user.login,
-			sourceTool: "github",
-			login: comment.user.login,
-			name: comment.user.name,
-			avatarUrl: comment.user.avatar_url,
-			contributions: 1,
-			lastContributedAt: new Date(),
-		});
-		logger.info(
-			`[${new Date().toISOString()}] Updated contributor: ${comment.user.login} for ${repo.fullName}`
-		);
-	}
-}
-
-// ============================================================================
-// STATUS EVENTS
+// STATUS EVENTS (Now mapped to Build model)
 // ============================================================================
 
 async function handleStatusEvent(payload: any, repo: Repository) {
 	const commitSha = payload.sha;
 	const state = payload.state; // e.g., "pending", "success", "failure"
-	const context = payload.context; // e.g., "Vercel"
+	const context = payload.context; // e.g., "Vercel", "CI"
 	const description = payload.description;
 	const targetUrl = payload.target_url;
 
@@ -1232,77 +890,70 @@ async function handleStatusEvent(payload: any, repo: Repository) {
 		}
 	);
 
-	// Find the corresponding commit
-	const commit = await prisma.commit.findFirst({
+	// Map GitHub status to build status
+	const buildStatus =
+		state === "success"
+			? "success"
+			: state === "failure"
+				? "failed"
+				: state === "error"
+					? "error"
+					: "pending";
+
+	const externalId = `${commitSha}-${context}`;
+
+	const existingBuild = await prisma.build.findUnique({
 		where: {
-			repositoryId: repo.id,
-			sha: commitSha,
-			sourceTool: "github",
+			repositoryId_externalId: {
+				externalId,
+				repositoryId: repo.id,
+			},
 		},
 	});
 
-	// Update or create a deployment event
-	const existingEvent = await prisma.deploymentEvent.findFirst({
-		where: {
-			commitHash: commitSha,
-			sourceTool: "github",
-		},
-	});
-
-	const eventData = {
-		organizationId: repo.organizationId,
-		repositoryId: repo.id,
-		externalId: `${commitSha}-${context}`, // Unique per commit and context
-		sourceTool: "github",
-		commitHash: commitSha,
-		commitId: commit?.id || null,
-		status: state,
-		environment: context || null,
-		errorLogSummary: state === "failure" ? description : null,
-		buildDuration: null, // Not provided in status payload
-		deployedAt: new Date(),
-		lastSyncedAt: new Date(),
-		attributes: {
-			context,
-			description,
-			target_url: targetUrl,
-			updated_at: new Date().toISOString(),
-		},
+	const buildData = {
+		status: buildStatus,
+		commitSha,
+		branch: payload.branches?.[0]?.name || null,
+		triggeredBy: payload.sender?.login || null,
+		url: targetUrl,
+		startedAt: existingBuild?.startedAt || new Date(),
+		completedAt:
+			state === "success" || state === "failure" ? new Date() : null,
+		duration:
+			existingBuild?.startedAt &&
+			(state === "success" || state === "failure")
+				? Math.floor(
+						(Date.now() - existingBuild.startedAt.getTime()) / 1000
+					)
+				: null,
+		syncedAt: new Date(),
 	};
 
-	if (existingEvent) {
-		await prisma.deploymentEvent.update({
-			where: { id: existingEvent.id },
-			data: {
-				status: state,
-				errorLogSummary: state === "failure" ? description : null,
-				lastSyncedAt: new Date(),
-				attributes: {
-					...jsonToObject(existingEvent.attributes),
-					context,
-					description,
-					target_url: targetUrl,
-					updated_at: new Date().toISOString(),
-				},
-			},
+	if (existingBuild) {
+		await prisma.build.update({
+			where: { id: existingBuild.id },
+			data: buildData,
 		});
 		logger.info(
-			`[${new Date().toISOString()}] Updated deployment event for commit ${commitSha} in ${repo.fullName}`
+			`[${new Date().toISOString()}] Updated build for commit ${commitSha} in ${repo.fullName}`
 		);
 	} else {
-		await prisma.deploymentEvent.create({
+		await prisma.build.create({
 			data: {
-				...eventData,
+				repositoryId: repo.id,
+				externalId,
+				...buildData,
 			},
 		});
 		logger.info(
-			`[${new Date().toISOString()}] Created deployment event for commit ${commitSha} in ${repo.fullName}`
+			`[${new Date().toISOString()}] Created build for commit ${commitSha} in ${repo.fullName}`
 		);
 	}
 }
 
 // ============================================================================
-// DEPLOYMENT EVENTS
+// DEPLOYMENT EVENTS (Mapped to Build model)
 // ============================================================================
 
 async function handleDeploymentEvent(payload: any, repo: Repository) {
@@ -1316,46 +967,23 @@ async function handleDeploymentEvent(payload: any, repo: Repository) {
 		}
 	);
 
-	// Find the corresponding commit
-	const commit = await prisma.commit.findFirst({
-		where: {
-			repositoryId: repo.id,
-			sha: deployment.sha,
-			sourceTool: "github",
-		},
-	});
-
-	await prisma.deploymentEvent.create({
+	await prisma.build.create({
 		data: {
-			organizationId: repo.organizationId,
+			repositoryId: repo.id,
 			externalId: deployment.id.toString(),
-			sourceTool: "github",
-			commitHash: deployment.sha || null,
-			commitId: commit?.id || null,
-			environment: deployment.environment || null,
 			status: "pending",
-			deployedAt: new Date(deployment.created_at),
-			lastSyncedAt: new Date(),
-			attributes: {
-				deployment_id: deployment.id,
-				ref: deployment.ref,
-				sha: deployment.sha,
-				creator: deployment.creator?.login,
-				description: deployment.description,
-				task: deployment.task,
-				payload: deployment.payload,
-				url: deployment.url,
-			},
+			commitSha: deployment.sha || null,
+			branch: deployment.ref || null,
+			triggeredBy: deployment.creator?.login || null,
+			url: deployment.url || null,
+			startedAt: new Date(deployment.created_at),
+			syncedAt: new Date(),
 		},
 	});
 	logger.info(
-		`[${new Date().toISOString()}] Created deployment event: ${deployment.id} in ${repo.fullName}`
+		`[${new Date().toISOString()}] Created deployment build: ${deployment.id} in ${repo.fullName}`
 	);
 }
-
-// ============================================================================
-// DEPLOYMENT STATUS EVENTS
-// ============================================================================
 
 async function handleDeploymentStatusEvent(payload: any, repo: Repository) {
 	const deploymentStatus = payload.deployment_status;
@@ -1369,218 +997,71 @@ async function handleDeploymentStatusEvent(payload: any, repo: Repository) {
 		}
 	);
 
-	const deploymentEvent = await prisma.deploymentEvent.findUnique({
+	const buildStatus =
+		deploymentStatus.state === "success"
+			? "success"
+			: deploymentStatus.state === "failure"
+				? "failed"
+				: deploymentStatus.state === "error"
+					? "error"
+					: "pending";
+
+	const existingBuild = await prisma.build.findUnique({
 		where: {
-			externalId_sourceTool: {
+			repositoryId_externalId: {
 				externalId: deployment.id.toString(),
-				sourceTool: "github",
+				repositoryId: repo.id,
 			},
 		},
 	});
 
-	if (deploymentEvent) {
-		await prisma.deploymentEvent.update({
-			where: { id: deploymentEvent.id },
+	if (existingBuild) {
+		const isCompleted =
+			buildStatus === "success" ||
+			buildStatus === "failed" ||
+			buildStatus === "error";
+
+		await prisma.build.update({
+			where: { id: existingBuild.id },
 			data: {
-				status: deploymentStatus.state,
-				errorLogSummary:
-					deploymentStatus.state === "failure"
-						? deploymentStatus.description
+				status: buildStatus,
+				completedAt: isCompleted ? new Date() : null,
+				duration:
+					isCompleted && existingBuild.startedAt
+						? Math.floor(
+								(Date.now() -
+									existingBuild.startedAt.getTime()) /
+									1000
+							)
 						: null,
-				lastSyncedAt: new Date(),
-				attributes: {
-					...jsonToObject(deploymentEvent.attributes),
-					deployment_status: deploymentStatus.state,
-					deployment_description: deploymentStatus.description,
-					deployment_url: deploymentStatus.target_url,
-					updated_at: new Date().toISOString(),
-				},
+				url: deploymentStatus.target_url || existingBuild.url,
+				syncedAt: new Date(),
 			},
 		});
 		logger.info(
-			`[${new Date().toISOString()}] Updated deployment event: ${deployment.id} in ${repo.fullName}`
+			`[${new Date().toISOString()}] Updated deployment build: ${deployment.id} in ${repo.fullName}`
 		);
 	} else {
-		// Create a new event if not found (fallback)
-		const commit = await prisma.commit.findFirst({
-			where: {
-				repositoryId: repo.id,
-				sha: deployment.sha,
-				sourceTool: "github",
-			},
-		});
-
-		await prisma.deploymentEvent.create({
+		// Create a new build if not found (fallback)
+		await prisma.build.create({
 			data: {
-				organizationId: repo.organizationId,
-				externalId: deployment.id.toString(),
-				sourceTool: "github",
-				commitHash: deployment.sha || null,
-				commitId: commit?.id || null,
-				environment: deployment.environment || null,
-				status: deploymentStatus.state,
-				errorLogSummary:
-					deploymentStatus.state === "failure"
-						? deploymentStatus.description
-						: null,
-				deployedAt: new Date(),
-				lastSyncedAt: new Date(),
-				attributes: {
-					deployment_id: deployment.id,
-					deployment_status: deploymentStatus.state,
-					deployment_description: deploymentStatus.description,
-					deployment_url: deploymentStatus.target_url,
-					ref: deployment.ref,
-					sha: deployment.sha,
-					creator: deployment.creator?.login,
-					updated_at: new Date().toISOString(),
-				},
-			},
-		});
-		logger.info(
-			`[${new Date().toISOString()}] Created deployment event: ${deployment.id} in ${repo.fullName}`
-		);
-	}
-}
-
-// ============================================================================
-// MEMBER/CONTRIBUTOR EVENTS
-// ============================================================================
-
-async function handleMemberEvent(payload: any, repo: Repository) {
-	const action = payload.action;
-	const member = payload.member;
-
-	logger.info(
-		`[${new Date().toISOString()}] Handling member event: ${action} for ${member.login}`,
-		{
-			repositoryId: repo.id,
-			repository: repo.fullName,
-		}
-	);
-
-	if (action === "added") {
-		await upsertContributor({
-			organizationId: repo.organizationId,
-			repositoryId: repo.id,
-			externalId: member.id?.toString() || member.login,
-			sourceTool: "github",
-			login: member.login,
-			name: member.name,
-			avatarUrl: member.avatar_url,
-			contributions: 0,
-		});
-		logger.info(
-			`[${new Date().toISOString()}] Added contributor: ${member.login} in ${repo.fullName}`
-		);
-	} else if (action === "removed") {
-		const contributor = await prisma.contributor.findFirst({
-			where: {
 				repositoryId: repo.id,
-				login: member.login,
-				sourceTool: "github",
+				externalId: deployment.id.toString(),
+				status: buildStatus,
+				commitSha: deployment.sha || null,
+				branch: deployment.ref || null,
+				triggeredBy: deployment.creator?.login || null,
+				url: deploymentStatus.target_url || null,
+				startedAt: new Date(),
+				completedAt:
+					buildStatus === "success" || buildStatus === "failed"
+						? new Date()
+						: null,
+				syncedAt: new Date(),
 			},
 		});
-
-		if (contributor) {
-			await prisma.contributor.delete({
-				where: { id: contributor.id },
-			});
-			logger.info(
-				`[${new Date().toISOString()}] Removed contributor: ${member.login} from ${repo.fullName}`
-			);
-		} else {
-			logger.warn(
-				`[${new Date().toISOString()}] Contributor not found: ${member.login} in ${repo.fullName}`
-			);
-		}
-	}
-}
-
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
-
-interface UpsertContributorParams {
-	organizationId: string;
-	repositoryId: string;
-	externalId: string;
-	sourceTool: string;
-	login: string;
-	name?: string;
-	email?: string;
-	avatarUrl?: string;
-	contributions?: number;
-	lastContributedAt?: Date;
-}
-
-async function upsertContributor(params: UpsertContributorParams) {
-	const {
-		organizationId,
-		repositoryId,
-		externalId,
-		sourceTool,
-		login,
-		name,
-		email,
-		avatarUrl,
-		contributions = 1,
-		lastContributedAt,
-	} = params;
-
-	try {
-		const contributor = await prisma.contributor.upsert({
-			where: {
-				externalId_sourceTool: {
-					externalId,
-					sourceTool,
-				},
-			},
-			update: {
-				login,
-				name: name || undefined,
-				email: email || undefined,
-				avatarUrl: avatarUrl || undefined,
-				contributions: {
-					increment: contributions,
-				},
-				lastContributedAt: lastContributedAt || new Date(),
-			},
-			create: {
-				externalId,
-				sourceTool,
-				login,
-				name: name || undefined,
-				email: email || undefined,
-				avatarUrl: avatarUrl || undefined,
-				contributions,
-				lastContributedAt: lastContributedAt || new Date(),
-				repositoryId,
-				organizationId,
-			},
-		});
-
 		logger.info(
-			`[${new Date().toISOString()}] Upserted contributor: ${login}`,
-			{
-				repositoryId,
-				contributions: contributor.contributions,
-			}
-		);
-
-		return contributor;
-	} catch (error) {
-		const errorMsg =
-			error instanceof Error ? error.message : "Internal server error";
-		logger.error(
-			`[${new Date().toISOString()}] Failed to upsert contributor: ${login}`,
-			{
-				repositoryId,
-				error: errorMsg,
-			}
-		);
-		throw new Error(
-			"Failed to upsert contributor due to an internal error"
+			`[${new Date().toISOString()}] Created deployment build: ${deployment.id} in ${repo.fullName}`
 		);
 	}
 }
@@ -1589,14 +1070,10 @@ async function upsertContributor(params: UpsertContributorParams) {
 export {
 	handleRepositoryEvent,
 	handleCreateEvent,
-	handleDeleteEvent,
 	handlePushEvent,
 	handlePullRequestEvent,
 	handlePullRequestReviewEvent,
 	handlePullRequestReviewCommentEvent,
-	handleIssuesEvent,
-	handleIssueCommentEvent,
 	handleDeploymentEvent,
 	handleDeploymentStatusEvent,
-	handleMemberEvent,
 };

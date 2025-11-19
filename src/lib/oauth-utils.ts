@@ -58,8 +58,8 @@ export const OAUTH_CONFIG: Record<string, OAuthConfig> = {
 			"read:user",
 			"user:email",
 		],
-		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/github`,
-		category: "DEVELOPMENT",
+		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/github/callback`,
+		category: "CODE",
 	},
 	jira: {
 		providerId: "jira",
@@ -76,8 +76,8 @@ export const OAUTH_CONFIG: Record<string, OAuthConfig> = {
 			"manage:jira-configuration",
 			"manage:jira-data-provider",
 		],
-		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/jira`,
-		category: "PROJECT_MGMT",
+		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/jira/callback`,
+		category: "PROJECT_TRACKING",
 	},
 	slack: {
 		providerId: "slack",
@@ -97,8 +97,18 @@ export const OAUTH_CONFIG: Record<string, OAuthConfig> = {
 			"users:read",
 			"users:read.email",
 		],
-		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/oauth2/callback/slack`,
+		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/slack/callback`,
 		category: "COMMUNICATION",
+	},
+	google_analytics: {
+		providerId: "google-analytics",
+		clientId: process.env.GOOGLE_CLIENT_ID!,
+		clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+		authorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+		tokenUrl: "https://slack.com/api/oauth.v2.access",
+		userScopes: ["https://www.googleapis.com/auth/analytics.readonly"],
+		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/google-analytics/callback`,
+		category: "ANALYTICS",
 	},
 };
 
@@ -120,7 +130,7 @@ export const INTEGRATIONS: Integration[] = [
 		id: "github",
 		name: "GitHub",
 		description: "Integrate to track commits and pull requests",
-		category: "DEVELOPMENT",
+		category: "CODE",
 		logo: "/github-logo.png",
 		status: "DISCONNECTED",
 		authType: "oauth2",
@@ -128,21 +138,10 @@ export const INTEGRATIONS: Integration[] = [
 		docsUrl: "https://docs.github.com/",
 	},
 	{
-		id: "asana",
-		name: "Asana",
-		description: "Sync tasks and project updates",
-		category: "PROJECT_MGMT",
-		logo: "/asana-logo.png",
-		status: "DISCONNECTED",
-		authType: "api_key",
-		lastSyncAt: new Date(),
-		docsUrl: "https://developers.asana.com/docs",
-	},
-	{
 		id: "jira",
 		name: "Jira",
 		description: "Sync tasks and project updates",
-		category: "PROJECT_MGMT",
+		category: "PROJECT_TRACKING",
 		logo: "/jira-logo.png",
 		status: "DISCONNECTED",
 		authType: "oauth2",
@@ -187,51 +186,6 @@ Your webhook will now receive real-time notifications when these events occur in
 			},
 		},
 	},
-	{
-		id: "posthog",
-		name: "PostHog",
-		description:
-			"Track product and web analytics like page views and funnels",
-		category: "ANALYTICS",
-		logo: "/posthog-logo.png",
-		status: "CONNECTED",
-		authType: "api_key",
-		lastSyncAt: new Date(),
-		docsUrl: "https://posthog.com/docs/api",
-		metadata: {
-			webhook: {
-				instructions: `
-### Setting up PostHog Webhooks
-
-1. Log in to your **PostHog account**
-2. Navigate to **Data Pipelines** in the left sidebar
-3. Click **+ New → Destination** in the top-right corner
-4. Search for **"Webhook"** and click **+ Create**
-5. On the configuration page:
-   - Enter your **Webhook URL** (provided below)
-   - The default is a POST request with JSON body
-6. Click **Create & Enable**
-7. Test your webhook by clicking **Start testing → Test function**
-
-**Note:** PostHog webhooks require either PostHog Cloud with the data pipelines add-on, or a self-hosted instance.
-            `,
-				confirmLabel:
-					"I have configured the webhook destination in PostHog",
-			},
-		},
-	},
-	{
-		id: "stripe",
-		name: "Stripe",
-		description:
-			"Track product and web analytics like page views and funnels",
-		category: "PAYMENT",
-		logo: "/stripe-logo.png",
-		status: "CONNECTED",
-		authType: "api_key",
-		lastSyncAt: new Date(),
-		docsUrl: "https://doc.stripe.com/api",
-	},
 ];
 
 export const getProviderLogo = (providerId: string) => {
@@ -240,10 +194,6 @@ export const getProviderLogo = (providerId: string) => {
 			return "/slack-logo.png";
 		case "github":
 			return "/github-logo.png";
-		case "posthog":
-			return "/posthog-logo.png";
-		case "stripe":
-			return "/stripe-logo.png";
 		case "jira":
 			return "/jira-logo.png";
 		case "linear":
@@ -259,20 +209,14 @@ export const getIntegrationCategory = (
 	providerId: string
 ): IntegrationCategory => {
 	switch (providerId) {
-		case "asana":
-			return IntegrationCategory.PROJECT_MGMT;
 		case "slack":
 			return IntegrationCategory.COMMUNICATION;
 		case "github":
-			return IntegrationCategory.DEVELOPMENT;
-		case "posthog":
-			return IntegrationCategory.ANALYTICS;
-		case "stripe":
-			return IntegrationCategory.PAYMENT;
+			return IntegrationCategory.CODE;
 		case "canny":
 			return IntegrationCategory.FEEDBACK;
 		case "jira":
-			return IntegrationCategory.PROJECT_MGMT;
+			return IntegrationCategory.PROJECT_TRACKING;
 		default:
 			return IntegrationCategory.OTHER;
 	}
@@ -282,9 +226,6 @@ export const taskSourceColors = {
 	github: "bg-gray-900 text-white dark:bg-gray-700",
 	jira: "bg-blue-600 text-white",
 	linear: "bg-purple-600 text-white",
-	asana: "bg-pink-600 text-white",
-	posthog: "bg-green-600 text-white",
-	stripe: "bg-amber-600 text-white",
 };
 
 export function mergeIntegrations(
@@ -294,7 +235,7 @@ export function mergeIntegrations(
 	// Create a map of user integrations by toolName for quick lookup
 	const userIntegrationMap = new Map(
 		userIntegrations.map((integration) => [
-			integration.toolName.toLowerCase(),
+			integration.platform.toLowerCase(),
 			integration,
 		])
 	);

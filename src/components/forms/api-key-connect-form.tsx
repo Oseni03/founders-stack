@@ -35,12 +35,12 @@ interface FormValues {
 // Define dynamic schema with explicit string types
 const createFormSchema = (integrationId: string) => {
 	switch (integrationId) {
-		case "posthog":
-			return z.object({
-				apiKey: z.string().min(2),
-				projectId: z.string().min(2),
-				projectName: z.string().min(2),
-			});
+		// case "posthog":
+		// 	return z.object({
+		// 		apiKey: z.string().min(2),
+		// 		projectId: z.string().min(2),
+		// 		projectName: z.string().min(2),
+		// 	});
 
 		default:
 			return z.object({
@@ -71,10 +71,6 @@ export const APIKeyConnectForm = ({
 		resolver: zodResolver(createFormSchema(integrationId)),
 		defaultValues: {
 			apiKey: "",
-			...(integrationId === "posthog" && {
-				projectId: "",
-				projectName: "",
-			}),
 		},
 	});
 
@@ -95,7 +91,7 @@ export const APIKeyConnectForm = ({
 			return;
 		}
 
-		await connect(integrationId, {
+		await connect(organization!.id, integrationId, {
 			...values,
 			...(webhook ? { webhookConfirmed } : {}),
 		});
@@ -139,48 +135,6 @@ export const APIKeyConnectForm = ({
 										</FormItem>
 									)}
 								/>
-
-								{/* PostHog extra fields */}
-								{integrationId === "posthog" && (
-									<>
-										<FormField
-											control={form.control}
-											name="projectId"
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel>
-														Project ID
-													</FormLabel>
-													<FormControl>
-														<Input
-															placeholder="Project ID"
-															{...field}
-														/>
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-										<FormField
-											control={form.control}
-											name="projectName"
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel>
-														Project Name
-													</FormLabel>
-													<FormControl>
-														<Input
-															placeholder="Project Name"
-															{...field}
-														/>
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-									</>
-								)}
 							</>
 						)}
 

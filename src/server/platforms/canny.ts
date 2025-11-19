@@ -54,9 +54,9 @@ export async function connectCannyIntegration(input: {
 		const dbStart = Date.now();
 		const integration = await prisma.integration.upsert({
 			where: {
-				organizationId_toolName: {
+				organizationId_platform: {
 					organizationId,
-					toolName: "canny",
+					platform: "canny",
 				},
 			},
 			update: {
@@ -69,7 +69,7 @@ export async function connectCannyIntegration(input: {
 			},
 			create: {
 				organizationId,
-				toolName: "canny",
+				platform: "canny",
 				category: "FEEDBACK",
 				displayName: displayName || `Canny-${organizationId}`,
 				status: "CONNECTED",
@@ -146,7 +146,7 @@ export async function syncCanny(organizationId: string, projs: Project[] = []) {
 		);
 		const projectFetchStart = Date.now();
 		projects = await prisma.project.findMany({
-			where: { organizationId, sourceTool: "canny" },
+			where: { organizationId, platform: "canny" },
 		});
 		const projectFetchDuration = Date.now() - projectFetchStart;
 		console.log(
@@ -199,7 +199,7 @@ export async function syncCanny(organizationId: string, projs: Project[] = []) {
 					`[${new Date().toISOString()}] Creating ${posts.length} posts for project ${project.name}`
 				);
 				const postCreateStart = Date.now();
-				await prisma.feed.createMany({
+				await prisma.feedbackItem.createMany({
 					data: posts.map((post) => ({
 						...post,
 						organizationId,

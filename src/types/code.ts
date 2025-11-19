@@ -54,16 +54,18 @@ export interface RepoData {
 	name: string;
 	fullName: string;
 	owner: string;
-	url: string;
 	description: string | null;
-	defaultBranch: string;
+	platform: string;
+	url: string | null;
 	language: string | null;
 	isPrivate: boolean;
-	isArchived: boolean;
-	openIssuesCount: number;
-	forksCount: number;
-	stargazersCount: number;
-	attributes?: Record<string, any>;
+	defaultBranch: string;
+	stars: number;
+	openIssues: number;
+	openPRs: number;
+	metadata?: Record<string, any>;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
 export interface PullRequestData {

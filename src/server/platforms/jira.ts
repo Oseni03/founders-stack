@@ -116,9 +116,9 @@ export async function createWebhook(
 		const webhookUpdateStart = Date.now();
 		await prisma.integration.update({
 			where: {
-				organizationId_toolName: {
+				organizationId_platform: {
 					organizationId,
-					toolName: "jira",
+					platform: "jira",
 				},
 			},
 			data: {
@@ -201,9 +201,9 @@ export async function connectJiraIntegration(input: {
 		const dbStart = Date.now();
 		const integration = await prisma.integration.upsert({
 			where: {
-				organizationId_toolName: {
+				organizationId_platform: {
 					organizationId,
-					toolName: "jira",
+					platform: "jira",
 				},
 			},
 			update: {
@@ -211,13 +211,13 @@ export async function connectJiraIntegration(input: {
 				type: "oauth2",
 				accessToken,
 				refreshToken: refreshToken || null,
-				category: "PROJECT_MGMT",
+				category: "PROJECT_TRACKING",
 				tokenExpiresAt: expiresAt,
 			},
 			create: {
-				category: "PROJECT_MGMT",
+				category: "PROJECT_TRACKING",
 				status: "CONNECTED",
-				toolName: "jira",
+				platform: "jira",
 				type: "oauth2",
 				accessToken,
 				refreshToken: refreshToken || null,
@@ -309,7 +309,7 @@ export async function syncJira(organizationId: string, projs: Project[] = []) {
 		);
 		const projectFetchStart = Date.now();
 		projects = await prisma.project.findMany({
-			where: { organizationId, sourceTool: "jira" },
+			where: { organizationId, platform: "jira" },
 		});
 		const projectFetchDuration = Date.now() - projectFetchStart;
 		console.log(
@@ -370,6 +370,7 @@ export async function syncJira(organizationId: string, projs: Project[] = []) {
 						organizationId,
 						projectId: project.id,
 						sourceTool: "jira",
+						integrationId: integration.id,
 					})),
 					skipDuplicates: true,
 				});
@@ -437,14 +438,14 @@ export async function disconnectJiraIntegration(
 		console.log(`[${new Date().toISOString()}] Fetching Jira integration`);
 		const integration = await prisma.integration.findUnique({
 			where: {
-				organizationId_toolName: {
+				organizationId_platform: {
 					organizationId,
-					toolName: "jira",
+					platform: "jira",
 				},
 			},
 		});
 
-		if (!integration || integration.toolName !== "jira") {
+		if (!integration || integration.platform !== "jira") {
 			const errorMsg = "Jira integration not found";
 			console.error(
 				`[${new Date().toISOString()}] ${errorMsg} for organization ${organizationId}`
@@ -494,9 +495,9 @@ export async function disconnectJiraIntegration(
 		const dbStart = Date.now();
 		await prisma.integration.update({
 			where: {
-				organizationId_toolName: {
+				organizationId_platform: {
 					organizationId,
-					toolName: "jira",
+					platform: "jira",
 				},
 			},
 			data: {

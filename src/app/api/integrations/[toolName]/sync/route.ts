@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/middleware";
 import { syncGitHub } from "@/server/platforms/github";
-import { syncAsana } from "@/server/platforms/asana";
-import { syncPostHog } from "@/server/platforms/posthog";
-import { syncStripe } from "@/server/platforms/stripe";
 import { syncSlack } from "@/server/platforms/slack";
 import { syncCanny } from "@/server/platforms/canny";
 
@@ -18,12 +15,6 @@ export async function POST(
 			switch (toolName) {
 				case "github":
 					await syncGitHub(user.organizationId);
-				case "asana":
-					await syncAsana(user.organizationId);
-				case "posthog":
-					await syncPostHog(user.organizationId);
-				case "stripe":
-					await syncStripe(user.organizationId);
 				case "slack":
 					await syncSlack(user.organizationId);
 				case "canny":

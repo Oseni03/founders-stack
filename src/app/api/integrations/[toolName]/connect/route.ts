@@ -1,58 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { withAuth } from "@/lib/middleware";
-import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { OAUTH_CONFIG, OAuthConfig, ToolName } from "@/lib/oauth-utils";
 import { z } from "zod";
-import { connectPostHogIntegration } from "@/server/platforms/posthog";
-import { connectStripeIntegration } from "@/server/platforms/stripe";
-import { connectAsanaIntegration } from "@/server/platforms/asana";
 import { connectCannyIntegration } from "@/server/platforms/canny";
 import { ConnectionHandlerResult } from "@/types/connector";
+import { cookies } from "next/headers";
 
 // Configuration for API-key based integrations
 const API_KEY_INTEGRATIONS = {
-	posthog: {
-		handler: connectPostHogIntegration as (
-			params: any
-		) => Promise<ConnectionHandlerResult>,
-		redirectPath: (organizationId: string) =>
-			`/products/${organizationId}/analytics`,
-		requiredFields: ["apiKey", "projectId"] as const,
-		mapParams: (body: any, user: any) => ({
-			projectId: body.projectId,
-			organizationId: user.organizationId,
-			apiKey: body.apiKey,
-			displayName: body.projectName,
-			userId: user.id,
-			webhookConfirmed: body.webhookConfirmed || false,
-		}),
-	},
-	stripe: {
-		handler: connectStripeIntegration as (
-			params: any
-		) => Promise<ConnectionHandlerResult>,
-		redirectPath: (organizationId: string) =>
-			`/products/${organizationId}/financials`,
-		requiredFields: ["apiKey"] as const,
-		mapParams: (body: any, user: any) => ({
-			userId: user.id,
-			organizationId: user.organizationId,
-			apiKey: body.apiKey,
-		}),
-	},
-	asana: {
-		handler: connectAsanaIntegration as (
-			params: any
-		) => Promise<ConnectionHandlerResult>,
-		redirectPath: (organizationId: string, toolName: string) =>
-			`/products/${organizationId}/integrations/${toolName}/onboarding`,
-		requiredFields: ["apiKey"] as const,
-		mapParams: (body: any, user: any) => ({
-			organizationId: user.organizationId,
-			apiKey: body.apiKey,
-		}),
-	},
 	canny: {
 		handler: connectCannyIntegration as (
 			params: any
@@ -97,67 +53,66 @@ export async function GET(
 	request: NextRequest,
 	{ params }: { params: Promise<{ toolName: string }> }
 ) {
-	return withAuth(request, async (request, user) => {
-		const { toolName } = await params;
+	const { searchParams } = new URL(request.url);
+	const organizationId = searchParams.get("organizationId");
+	if (!organizationId)
+		return new NextResponse("Missing organizationId", { status: 400 });
 
-		try {
-			// Check if the tool is supported
-			if (!(toolName in OAUTH_CONFIG)) {
+	return withAuth(
+		request,
+		async () => {
+			const { toolName } = await params;
+
+			try {
+				// Check if the tool is supported
+				if (!(toolName in OAUTH_CONFIG)) {
+					return NextResponse.json(
+						{ error: `Unsupported integration: ${toolName}` },
+						{ status: 400 }
+					);
+				}
+
+				const config = OAUTH_CONFIG[toolName as ToolName];
+
+				// Generate a state parameter for CSRF protection
+				const state =
+					crypto.randomUUID().toString() + `|${organizationId}`;
+				const cookieStore = await cookies();
+				cookieStore.set(`${toolName}_oauth_state`, state, {
+					httpOnly: true,
+					secure: true,
+					path: "/",
+				});
+
+				// Build authorization URL
+				const authUrl = new URL(config.authorizationUrl);
+				authUrl.searchParams.set("client_id", config.clientId);
+				authUrl.searchParams.set("redirect_uri", config.redirectURI);
+				authUrl.searchParams.set("state", state);
+				authUrl.searchParams.set("response_type", "code");
+				authUrl.searchParams.set("prompt", "consent");
+
+				// Apply tool-specific OAuth parameters
+				const paramBuilder =
+					OAUTH_PARAM_BUILDERS[
+						toolName as keyof typeof OAUTH_PARAM_BUILDERS
+					] || OAUTH_PARAM_BUILDERS.default;
+				paramBuilder(authUrl, config);
+
+				return NextResponse.json({ url: authUrl.toString() });
+			} catch (error) {
+				console.error(
+					`Failed to initiate OAuth for ${toolName}:`,
+					error
+				);
 				return NextResponse.json(
-					{ error: `Unsupported integration: ${toolName}` },
-					{ status: 400 }
+					{ error: `Failed to connect ${toolName}` },
+					{ status: 500 }
 				);
 			}
-
-			const config = OAUTH_CONFIG[toolName as ToolName];
-
-			// Generate a state parameter for CSRF protection
-			const state = crypto.randomUUID();
-
-			// Store state in database associated with userId
-			await prisma.oAuthTemp.upsert({
-				where: {
-					userId_provider: {
-						userId: user.id,
-						provider: toolName,
-					},
-				},
-				update: {
-					state,
-					expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
-				},
-				create: {
-					userId: user.id,
-					provider: toolName,
-					state,
-					expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
-				},
-			});
-
-			// Build authorization URL
-			const authUrl = new URL(config.authorizationUrl);
-			authUrl.searchParams.set("client_id", config.clientId);
-			authUrl.searchParams.set("redirect_uri", config.redirectURI);
-			authUrl.searchParams.set("state", state);
-			authUrl.searchParams.set("response_type", "code");
-			authUrl.searchParams.set("prompt", "consent");
-
-			// Apply tool-specific OAuth parameters
-			const paramBuilder =
-				OAUTH_PARAM_BUILDERS[
-					toolName as keyof typeof OAUTH_PARAM_BUILDERS
-				] || OAUTH_PARAM_BUILDERS.default;
-			paramBuilder(authUrl, config);
-
-			return NextResponse.json({ url: authUrl.toString() });
-		} catch (error) {
-			console.error(`Failed to initiate OAuth for ${toolName}:`, error);
-			return NextResponse.json(
-				{ error: `Failed to connect ${toolName}` },
-				{ status: 500 }
-			);
-		}
-	});
+		},
+		organizationId
+	);
 }
 
 export async function POST(
@@ -194,10 +149,7 @@ export async function POST(
 			// Validate required fields
 			for (const field of integration.requiredFields) {
 				if (!body[field]) {
-					const fieldName =
-						field === "apiKey"
-							? "API key"
-							: field.replace(/([A-Z])/g, " $1").toLowerCase();
+					const fieldName = field === "apiKey" ? "API key" : field; //.replace(/([A-Z])/g, " $1").toLowerCase();
 					return NextResponse.json(
 						{
 							error: `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} is required`,

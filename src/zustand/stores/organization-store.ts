@@ -118,12 +118,12 @@ export const createOrganizationStore = (
 						const isAdmin = !!data?.members?.find(
 							(member) =>
 								member.userId == session?.user?.id &&
-								member.role == "admin"
+								member.role == "ADMIN"
 						);
 						const isOwner = !!data?.members?.find(
 							(member) =>
 								member.userId == session?.user?.id &&
-								member.role == "owner"
+								member.role == "OWNER"
 						);
 						if (success && data) {
 							get().setOrganizationData(

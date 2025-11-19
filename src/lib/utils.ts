@@ -2,6 +2,7 @@ import slugify from "@sindresorhus/slugify";
 import { clsx, type ClassValue } from "clsx";
 import { Building2, Zap } from "lucide-react";
 import { twMerge } from "tailwind-merge";
+import { Role } from "@prisma/client";
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
@@ -83,3 +84,25 @@ export const formatCurrency = (value: number) => {
 		return `$${(value ?? 0).toLocaleString()}`;
 	}
 };
+
+// Convert from Prisma enum to BetterAuth format
+export function roleToAuth(role: Role): "owner" | "admin" | "member" {
+	const roleMap: Record<Role, "owner" | "admin" | "member"> = {
+		OWNER: "owner",
+		ADMIN: "admin",
+		MEMBER: "member",
+		VIEWER: "member", // Map VIEWER to member for BetterAuth
+		GUEST: "member", // Map GUEST to member for BetterAuth
+	};
+	return roleMap[role];
+}
+
+// Convert from BetterAuth to Prisma enum
+export function authToRole(role: "owner" | "admin" | "member"): Role {
+	const roleMap: Record<"owner" | "admin" | "member", Role> = {
+		owner: "OWNER",
+		admin: "ADMIN",
+		member: "MEMBER",
+	};
+	return roleMap[role];
+}

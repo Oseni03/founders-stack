@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Repository } from "@/types/code";
-import { useCodeStore } from "@/zustand/providers/code-store-provider";
+// import { useCodeStore } from "@/zustand/providers/code-store-provider";
 
 interface DeleteRepositoryDialogProps {
 	repository: Repository;
@@ -28,7 +28,7 @@ export function DeleteRepositoryDialog({
 	repository,
 	productId,
 }: DeleteRepositoryDialogProps) {
-	const removeRepository = useCodeStore((state) => state.removeRepository);
+	// const removeRepository = useCodeStore((state) => state.removeRepository);
 
 	const [open, setOpen] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
@@ -50,7 +50,7 @@ export function DeleteRepositoryDialog({
 
 			if (!response.ok) throw new Error("Failed to delete repository");
 
-			removeRepository(repository.id);
+			// removeRepository(repository.id);
 			toast.success("Repository deleted successfully");
 			setOpen(false);
 		} catch (error) {

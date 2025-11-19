@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/middleware";
-import { deleteRepository, getRepositories } from "@/server/categories/code";
+import { getRepositories } from "@/server/categories/code";
 
 export async function GET(
 	request: NextRequest,
@@ -43,7 +43,7 @@ export async function POST(
 
 				switch (action) {
 					case "deleteRepository":
-						await deleteRepository(data.repositoryId);
+						// await deleteRepository(data.repositoryId);
 						return NextResponse.json({
 							success: true,
 						});

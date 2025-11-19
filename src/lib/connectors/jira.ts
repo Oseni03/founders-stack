@@ -10,16 +10,46 @@ interface IssueData {
 	externalId: string;
 	title: string;
 	description?: string;
-	status: TaskStatus;
-	priority?: TaskPriority;
-	assignee?: string;
+	status: string;
+	priority?: string;
+	type?: string;
+	platform: string;
+
+	// Assignment
 	assigneeId?: string;
+	assigneeName?: string;
+	assigneeAvatar?: string;
+
+	// Reporter
+	reporterId?: string;
+	reporterName?: string;
+
+	// Dates
 	url?: string;
 	dueDate?: Date;
+	startDate?: Date;
+	completedAt?: Date;
 	createdAt: Date;
 	updatedAt: Date;
+
+	// Estimation
+	estimatedHours?: number;
+	actualHours?: number;
+	storyPoints?: number;
+
+	// Organization
 	labels?: string[];
-	attributes: Record<string, any>;
+	sprintId?: string;
+	sprintName?: string;
+	epicId?: string;
+	epicName?: string;
+	parentTaskId?: string;
+
+	// Relationships
+	dependencies?: string[];
+
+	// Metadata
+	attributes?: Record<string, any>;
 }
 
 export function mapIssueToTaskData(issue: any): IssueData {
@@ -32,37 +62,102 @@ export function mapIssueToTaskData(issue: any): IssueData {
 		description: extractDescription(issue.fields.description),
 		status: normalizeStatus(statusName),
 		priority: normalizePriority(priorityName),
-		assignee: issue.fields.assignee?.displayName,
+		type: issue.fields.issuetype?.name,
+		platform: "jira",
+
+		// Assignment
 		assigneeId: issue.fields.assignee?.accountId,
+		assigneeName: issue.fields.assignee?.displayName,
+		assigneeAvatar: issue.fields.assignee?.avatarUrls?.["48x48"],
+
+		// Reporter
+		reporterId: issue.fields.reporter?.accountId,
+		reporterName: issue.fields.reporter?.displayName,
+
+		// Dates
 		url: `${issue.self.split("/rest/api")[0]}/browse/${issue.key}`,
 		dueDate: issue.fields.duedate
 			? new Date(issue.fields.duedate)
 			: undefined,
+		startDate: issue.fields.customfield_10015 // Sprint start date (common custom field)
+			? new Date(issue.fields.customfield_10015)
+			: undefined,
+		completedAt: issue.fields.resolutiondate
+			? new Date(issue.fields.resolutiondate)
+			: undefined,
 		createdAt: new Date(issue.fields.created),
 		updatedAt: new Date(issue.fields.updated),
+
+		// Estimation
+		estimatedHours: issue.fields.timeoriginalestimate
+			? issue.fields.timeoriginalestimate / 3600 // Convert seconds to hours
+			: undefined,
+		actualHours: issue.fields.timespent
+			? issue.fields.timespent / 3600 // Convert seconds to hours
+			: undefined,
+		storyPoints: issue.fields.customfield_10016 || undefined, // Story points (common custom field)
+
+		// Organization
 		labels: issue.fields.labels || [],
+		sprintId: issue.fields.sprint?.id?.toString(),
+		sprintName: issue.fields.sprint?.name,
+		epicId: issue.fields.epic?.id,
+		epicName: issue.fields.epic?.name || issue.fields.customfield_10014, // Epic name (common custom field)
+		parentTaskId: issue.fields.parent?.id,
+
+		// Relationships
+		dependencies:
+			issue.fields.issuelinks
+				?.filter(
+					(link: any) =>
+						link.type.name === "Blocks" ||
+						link.type.name === "Depends" ||
+						link.type.name === "Relates"
+				)
+				.map(
+					(link: any) => link.outwardIssue?.id || link.inwardIssue?.id
+				)
+				.filter(Boolean) || [],
+
+		// Metadata
 		attributes: {
 			issueKey: issue.key,
 			issueType: issue.fields.issuetype?.name,
 			issueTypeId: issue.fields.issuetype?.id,
+			issueTypeIconUrl: issue.fields.issuetype?.iconUrl,
 			jiraPriority: issue.fields.priority?.name,
 			jiraPriorityId: issue.fields.priority?.id,
+			jiraPriorityIconUrl: issue.fields.priority?.iconUrl,
 			jiraStatus: issue.fields.status?.name,
 			jiraStatusId: issue.fields.status?.id,
+			statusCategory: issue.fields.status?.statusCategory?.key,
+			statusCategoryColor: issue.fields.status?.statusCategory?.colorName,
 			projectKey: issue.fields.project?.key,
 			projectName: issue.fields.project?.name,
-			assignee: issue.fields.assignee
-				? {
-						accountId: issue.fields.assignee.accountId,
-						displayName: issue.fields.assignee.displayName,
-						email: issue.fields.assignee.emailAddress,
-					}
-				: null,
-			created: issue.fields.created,
+			projectId: issue.fields.project?.id,
+			resolution: issue.fields.resolution?.name,
+			resolutionDate: issue.fields.resolutiondate,
 			commentCount: issue.fields.comment?.total || 0,
-			reporter: issue.fields.reporter?.displayName,
-			reporterId: issue.fields.reporter?.accountId,
-			statusCategory: issue.fields.status?.statusCategory?.key,
+			attachmentCount: issue.fields.attachment?.length || 0,
+			subtaskCount: issue.fields.subtasks?.length || 0,
+			votes: issue.fields.votes?.votes || 0,
+			watches: issue.fields.watches?.watchCount || 0,
+			environment: issue.fields.environment,
+			components:
+				issue.fields.components?.map((c: any) => ({
+					id: c.id,
+					name: c.name,
+				})) || [],
+			fixVersions:
+				issue.fields.fixVersions?.map((v: any) => ({
+					id: v.id,
+					name: v.name,
+				})) || [],
+			affectedVersions:
+				issue.fields.versions?.map((v: any) => ({
+					id: v.id,
+					name: v.name,
+				})) || [],
 		},
 	};
 }

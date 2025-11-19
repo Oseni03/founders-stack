@@ -27,7 +27,6 @@ export async function getFeedbackItems(organizationId: string, filters = {}) {
 			},
 			include: {
 				project: true,
-				integration: true,
 				comments: {
 					include: {
 						author: true,

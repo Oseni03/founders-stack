@@ -38,6 +38,7 @@ model User {
   linkedItems      LinkedItem[]   @relation("UserLinks")
   ownedCustomViews CustomView[]
   notifications    Notification[]
+  AuditLog         AuditLog[]
 
   @@unique([email])
   @@map("user")
@@ -123,8 +124,10 @@ model Organization {
   supportTickets SupportTicket[]
 
   // Team activity
-  activityLogs  ActivityLog[]
-  notifications Notification[]
+  activityLogs        ActivityLog[]
+  notifications       Notification[]
+  integrationRequests IntegrationRequest[]
+  auditLogs           AuditLog[]
 
   // Settings
   settings OrganizationSettings?
@@ -134,13 +137,21 @@ model Organization {
   @@map("organization")
 }
 
+enum Role {
+  OWNER // Full access, billing, delete organization
+  ADMIN // Manage members, integrations, settings
+  MEMBER // Standard access, create/edit content
+  VIEWER // Read-only access
+  GUEST // Limited access to specific projects
+}
+
 model Member {
   id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   userId         String
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role           String
+  role           Role
   createdAt      DateTime     @default(now())
 
   @@map("member")
@@ -191,14 +202,6 @@ model Subscription {
   @@map("subscription")
 }
 
-enum Role {
-  OWNER // Full access, billing, delete organization
-  ADMIN // Manage members, integrations, settings
-  MEMBER // Standard access, create/edit content
-  VIEWER // Read-only access
-  GUEST // Limited access to specific projects
-}
-
 model OrganizationSettings {
   id String @id @default(cuid())
 
@@ -240,19 +243,14 @@ model UserPreference {
 enum IntegrationCategory {
   PAYMENT // Stripe, PayPal, Square, etc.
   ANALYTICS // Mixpanel, Amplitude, Google Analytics
-  CRM // HubSpot, Salesforce, Pipedrive
+  DESIGN // Figma
   SUPPORT // Zendesk, Intercom, Freshdesk
-  PROJECT_MGMT // Asana, Trello, Jira, Linear
+  PROJECT_TRACKING // Asana, Trello, Jira, Linear
   COMMUNICATION // Slack, Discord, Microsoft Teams
-  EMAIL_MARKETING // Mailchimp, SendGrid, ActiveCampaign
-  DEVELOPMENT // GitHub, GitLab, CircleCI
-  ACCOUNTING // QuickBooks, Xero, Wave
-  SOCIAL_MEDIA // Buffer, Hootsuite, Later
-  SEO // Ahrefs, SEMrush
+  CODE // GitHub, GitLab, CircleCI
   FEEDBACK // Typeform, SurveyMonkey
   SCHEDULING // Calendly, Cal.com
   DEVOPS // Datadog, Sentry
-  AI // OpenAI, Anthropic
   OTHER
 }
 
@@ -302,6 +300,7 @@ model Integration {
   attributes       Json?
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
+
   // OAuth & API Credentials (encrypted)
   accessToken      String? // Encrypted OAuth access token
   refreshToken     String? // Encrypted OAuth refresh token
@@ -309,33 +308,81 @@ model Integration {
   apiKey           String? // Encrypted API key (for non-OAuth)
   apiSecret        String? // Encrypted API secret
   webhookSecret    String? // For webhook signature verification
+
   // Webhook Configuration
   webhookUrl       String? // The webhook URL we provide to user
   webhookId        String? // Platform's webhook ID (if created via API)
   webhookEvents    String[] // Events subscribed to
   webhookSetupType WebhookSetupType    @default(AUTOMATIC)
   webhookConfirmed Boolean             @default(false) // For MANUAL webhook Configuration
+
   // Platform-specific metadata
   metadata         Json? // Store platform-specific IDs, settings
+
   // Multi-tenant field
   organizationId   String
-  // Related data (all shared across team)
-  tasks            Task[]
-  messages         Message[]
-  documents        Document[]
-  analyticsData    AnalyticsData[]
-  feedbackItems    FeedbackItem[]
-  designFiles      DesignFile[]
-  repos            Repository[]
-  supportTickets   SupportTicket[]
-  // Relations
   organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   User             User?               @relation(fields: [userId], references: [id])
   userId           String?
+  SyncLog          SyncLog[]
 
   @@unique([organizationId, platform])
   @@index([organizationId, status])
   @@index([organizationId, category])
+}
+
+model IntegrationRequest {
+  id             String    @id @default(cuid())
+  organizationId String
+  platform       String
+  requestedById  String
+  reason         String?
+  config         Json      @default("{}")
+  status         String    @default("pending") // pending | approved | rejected
+  requestedAt    DateTime  @default(now())
+  reviewedById   String?
+  reviewedAt     DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("integration_requests")
+}
+
+// ──────────────────────────────────────────────────────────────
+// SYNC LOGS & AUDIT
+// ──────────────────────────────────────────────────────────────
+
+model SyncLog {
+  id            String    @id @default(cuid())
+  integrationId String
+  status        String // success | failed | partial
+  message       String?
+  recordsSynced Int?
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+
+  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@map("sync_logs")
+}
+
+model AuditLog {
+  id             String      @id @default(cuid())
+  organizationId String
+  actorId        String
+  action         String // e.g., "integration.connected", "member.role_changed", "data.exported"
+  targetId       String? // optional target (userId, integrationId)
+  targetType     EntityType? // "User", "Integration", "Task"
+  details        Json?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime    @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [actorId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@map("audit_logs")
 }
 
 model Webhook {
@@ -376,11 +423,13 @@ model OAuthTemp {
 model Project {
   id             String  @id @default(cuid())
   organizationId String
+  externalId     String? // External PM tool project/board ID (e.g., Asana project ID)
   name           String
   description    String?
-  externalId     String? // External PM tool project/board ID (e.g., Asana project ID)
+  avatarUrl      String?
+  url            String?
   platform       String? // e.g., "jira", "asana" if linked to one tool
-  attributes     Json? // Tool-specific: { boardId: string, workspaceId: string }, Slack-specific metadata (e.g., { is_private: boolean, num_members: number })
+  attributes     Json? // Tool-specific: { boardId: string, organizationId: string }, Slack-specific metadata (e.g., { is_private: boolean, num_members: number })
   status         String  @default("active") // e.g., "active", "archived"
 
   organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -388,12 +437,13 @@ model Project {
   messages     Message[]
   analytics    AnalyticsData[]
   feeds        FeedbackItem[]
+  DesignFile   DesignFile[]
 
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  DesignFile DesignFile[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([externalId, platform])
+  @@unique([organizationId, platform])
   @@index([organizationId, status])
 }
 
@@ -406,6 +456,7 @@ model Task {
   status      String
   priority    String?
   type        String?
+  platform    String
 
   // Assignment (can be any user, not just organization members)
   assigneeId     String?
@@ -438,8 +489,8 @@ model Task {
   dependencies String[] // External IDs
 
   // Metadata
-  url      String?
-  metadata Json?
+  url        String?
+  attributes Json?
 
   createdAt DateTime
   updatedAt DateTime
@@ -453,16 +504,12 @@ model Task {
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  // Came from which integration
-  integrationId String
-  integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
-
   // Team collaboration
   comments    Comment[]     @relation("TaskComments")
   linkedItems LinkedItem[]  @relation("TaskLinks")
   watchers    TaskWatcher[]
 
-  @@unique([organizationId, externalId, integrationId])
+  @@unique([organizationId, externalId])
   @@index([organizationId, status])
   @@index([organizationId, assigneeId])
   @@index([organizationId, dueDate])
@@ -497,22 +544,21 @@ model Message {
   isImportant Boolean @default(false)
 
   url            String?
+  metadata       Json?
   timestamp      DateTime
   syncedAt       DateTime     @default(now())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   platform      String
-  integrationId String
-  integration   Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
   comments      Comment[]    @relation("MessageComments")
   linkedItems   LinkedItem[] @relation("MessageLinks")
   Project       Project      @relation(fields: [projectId], references: [id])
   projectId     String
 
   @@unique([externalId, platform])
-  @@unique([organizationId, externalId, integrationId])
-  @@index([externalId, platform, organizationId])
+  @@unique([organizationId, externalId])
+  @@unique([externalId, platform, organizationId])
   @@index([organizationId, channelId])
   @@index([organizationId, timestamp])
   @@index([channelId, timestamp])
@@ -569,12 +615,10 @@ model Document {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  integrationId String
-  integration   Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
   comments      Comment[]    @relation("DocumentComments")
   linkedItems   LinkedItem[] @relation("DocumentLinks")
 
-  @@unique([organizationId, externalId, integrationId])
+  @@unique([organizationId, externalId])
   @@index([organizationId, title])
   @@index([organizationId, updatedAt])
 }
@@ -619,14 +663,11 @@ model FeedbackItem {
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  integrationId String
-  integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
-
   comments    Comment[]    @relation("FeedbackComments")
   linkedItems LinkedItem[] @relation("FeedbackLinks")
 
   @@unique([externalId, platform])
-  @@unique([organizationId, externalId, integrationId])
+  @@unique([organizationId, externalId])
   @@index([organizationId, type, status])
   @@index([organizationId])
   @@index([status])
@@ -668,13 +709,11 @@ model DesignFile {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  integrationId String
-  integration   Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
   comments      Comment[]    @relation("DesignComments")
   linkedItems   LinkedItem[] @relation("DesignLinks")
 
   @@unique([externalId, platform])
-  @@unique([organizationId, externalId, integrationId])
+  @@unique([organizationId, externalId])
   @@index([organizationId, status])
   @@index([organizationId, updatedAt])
 }
@@ -700,12 +739,10 @@ model AnalyticsData {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  integrationId String
-  integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
   Project       Project?    @relation(fields: [projectId], references: [id])
   projectId     String?
 
-  @@unique([organizationId, integrationId, metricName, dimension, dimensionValue, timestamp])
+  @@unique([organizationId, metricName, dimension, dimensionValue, timestamp])
   @@index([organizationId, metricName, timestamp])
 }
 
@@ -721,6 +758,7 @@ model Repository {
   description String? @db.Text
   platform    String
 
+  owner         String
   url           String?
   language      String?
   isPrivate     Boolean @default(true)
@@ -738,8 +776,6 @@ model Repository {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  integrationId String
-  integration   Integration   @relation(fields: [integrationId], references: [id], onDelete: Cascade)
   pullRequests  PullRequest[]
   commits       Commit[]
   builds        Build[]
@@ -799,6 +835,7 @@ model Commit {
   authorEmail String
   authorId    String?
 
+  platform     String
   branch       String?
   additions    Int     @default(0)
   deletions    Int     @default(0)
@@ -877,12 +914,10 @@ model SupportTicket {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  integrationId String
-  integration   Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
   comments      Comment[]    @relation("TicketComments")
   linkedItems   LinkedItem[] @relation("TicketLinks")
 
-  @@unique([organizationId, externalId, integrationId])
+  @@unique([organizationId, externalId])
   @@index([organizationId, status, priority])
   @@index([organizationId, slaStatus])
 }
@@ -898,8 +933,6 @@ enum EntityType {
   DESIGN
   PR
   TICKET
-  INTEGRATION
-  MEMBER
 }
 
 model Comment {
@@ -950,20 +983,11 @@ model Comment {
 // ============================================
 // CROSS-TOOL LINKING
 // ============================================
-enum SourceType {
-  TASK
-  MESSAGE
-  DOCUMENT
-  FEEDBACK
-  DESIGN
-  PR
-  TICKET
-}
 
 model LinkedItem {
   id String @id @default(cuid())
 
-  sourceType SourceType
+  sourceType EntityType
   sourceId   String
   targetType String
   targetId   String

@@ -7,18 +7,27 @@ import {
 
 interface FeedItem {
 	externalId: string;
+	type: string;
 	title: string;
-	description?: string;
+	description: string;
+	platform: string;
 	status: string;
-	score: number;
-	commentCount: number;
-	author?: string;
-	authorId?: string;
-	owner?: string;
-	ownerId?: string;
-	createdAt: Date;
-	url: string;
+	priority?: string;
+	sentiment?: string;
+	sentimentScore?: number;
+	category?: string;
 	tags: string[];
+	votes: number;
+	userId?: string;
+	userName?: string;
+	userEmail?: string;
+	userSegment?: string;
+	assignedTo?: string;
+	linkedFeature?: string;
+	url?: string;
+	metadata?: Record<string, any>;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
 export class CannyConnector {
@@ -89,7 +98,7 @@ export class CannyConnector {
 	}
 
 	// ========================================================================
-	// POST METHODS (Projects/Issues)
+	// POST METHODS (Feedback Items)
 	// ========================================================================
 
 	/**
@@ -130,19 +139,38 @@ export class CannyConnector {
 
 			const posts: FeedItem[] = data.posts.map((post: any) => ({
 				externalId: post.id,
+				type: "feedback", // Default type for Canny posts
 				title: post.title,
-				description: post?.details || undefined,
-				category: post?.category?.name || "",
-				status: post.status?.toLowerCase(),
-				score: post.score,
-				commentCount: post.commentCount,
-				author: post.author?.name,
-				authorId: post.author?.id,
-				owner: post.owner?.name,
-				ownerId: post.owner?.id,
-				createdAt: new Date(post.created),
-				url: post.url,
+				description: post.details || "",
+				platform: "canny",
+				status: post.status?.toLowerCase() || "new",
+				priority: undefined, // Canny doesn't have priority
+				sentiment: undefined, // Can be analyzed separately
+				sentimentScore: undefined,
+				category: post.category?.name,
 				tags: post.tags?.map((tag: any) => tag.name) || [],
+				votes: post.score || 0,
+				userId: post.author?.id,
+				userName: post.author?.name,
+				userEmail: post.author?.email,
+				userSegment: undefined, // Not available in Canny API
+				assignedTo: post.owner?.name,
+				linkedFeature: undefined, // Can be added via custom fields
+				url: post.url,
+				metadata: {
+					boardId: post.board?.id,
+					boardName: post.board?.name,
+					commentCount: post.commentCount,
+					imageURLs: post.imageURLs || [],
+					authorAvatarURL: post.author?.avatarURL,
+					ownerEmail: post.owner?.email,
+					ownerId: post.owner?.id,
+					clickup: post.clickup,
+					jira: post.jira,
+					customFields: post.customFields,
+				},
+				createdAt: new Date(post.created),
+				updatedAt: new Date(post.created), // Canny doesn't provide updated date
 			}));
 
 			// Canny doesn't return total count, so we estimate

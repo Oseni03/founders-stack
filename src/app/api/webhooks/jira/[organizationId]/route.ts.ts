@@ -106,23 +106,13 @@ async function handleJiraEvent(
 			// Create new Task entry
 			await prisma.task.create({
 				data: {
+					...issue,
 					organizationId,
 					externalId: issue.externalId,
-					sourceTool: "jira",
+					platform: "jira",
 					title: issue.title,
-					description: issue.description,
-					status: issue.status,
-					assignee: issue.assignee,
-					assigneeId: issue.assigneeId,
-					priority: issue.priority,
-					url: issue.url,
-					dueDate: issue.dueDate,
-					labels: issue.labels || [],
-					createdAt: issue.createdAt,
-					updatedAt: issue.updatedAt,
-					attributes: issue.attributes,
 					projectId,
-					lastSyncedAt: new Date(),
+					syncedAt: new Date(),
 				},
 			});
 			break;
@@ -134,7 +124,7 @@ async function handleJiraEvent(
 			const existingTask = await prisma.task.findFirst({
 				where: {
 					externalId: issue.externalId,
-					sourceTool: "jira",
+					platform: "jira",
 					organizationId,
 				},
 			});
@@ -154,7 +144,7 @@ async function handleJiraEvent(
 			await prisma.task.deleteMany({
 				where: {
 					externalId: issue.externalId,
-					sourceTool: "jira",
+					platform: "jira",
 					organizationId,
 				},
 			});
@@ -167,7 +157,7 @@ async function handleJiraEvent(
 			const taskForComment = await prisma.task.findFirst({
 				where: {
 					externalId: issue.externalId,
-					sourceTool: "jira",
+					platform: "jira",
 					organizationId,
 				},
 			});
@@ -197,7 +187,7 @@ async function handleJiraEvent(
 			const taskForDeletedComment = await prisma.task.findFirst({
 				where: {
 					externalId: issue.externalId,
-					sourceTool: "jira",
+					platform: "jira",
 					organizationId,
 				},
 			});
@@ -257,7 +247,7 @@ export async function POST(
 		const integration = await prisma.integration.findFirst({
 			where: {
 				organizationId,
-				toolName: "jira",
+				platform: "jira",
 				status: { in: ["CONNECTED", "SYNCING"] },
 			},
 		});
@@ -295,9 +285,9 @@ export async function POST(
 		// Look up the project by Jira project ID
 		const project = await prisma.project.findUnique({
 			where: {
-				externalId_sourceTool: {
+				externalId_platform: {
 					externalId: jiraProjectId,
-					sourceTool: "jira",
+					platform: "jira",
 				},
 			},
 			select: {

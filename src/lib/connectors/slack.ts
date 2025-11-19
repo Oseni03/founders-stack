@@ -5,16 +5,35 @@ import { z } from "zod";
 export interface ChannelData {
 	externalId: string;
 	name: string;
-	description: string;
-	attributes: Record<string, any>;
+	description?: string;
+	avatarUrl?: string;
+	url?: string;
+	platform: string;
+	status: string;
+	metadata: Record<string, any>;
 }
 
 export interface MessageData {
 	externalId: string;
-	text: string;
-	user: string;
+	channelId: string;
+	channelName: string;
+	channelType: string;
+	content: string;
+	authorId?: string;
+	authorName: string;
+	authorAvatar?: string;
+	mentions: string[];
+	reactions?: any;
+	threadId?: string;
+	parentMessageId?: string;
+	hasAttachments: boolean;
+	attachments?: any;
+	isPinned: boolean;
+	isImportant: boolean;
+	url?: string;
 	timestamp: Date;
-	attributes: Record<string, any>;
+	platform: string;
+	metadata?: Record<string, any>;
 }
 
 const paramsSchema = z.object({
@@ -61,6 +80,24 @@ export class SlackConnector {
 		return data;
 	}
 
+	/**
+	 * Fetch user info for a given user ID
+	 */
+	private async getUserInfo(userId: string): Promise<any> {
+		try {
+			const response = await this.apiRequest("users.info", {
+				user: userId,
+			});
+			return response.user;
+		} catch (error) {
+			console.error(`Failed to fetch user info for ${userId}:`, error);
+			return null;
+		}
+	}
+
+	/**
+	 * Fetch channels (public and private)
+	 */
 	async fetchChannels(
 		params: PaginationOptions
 	): Promise<PaginatedResponse<ChannelData>> {
@@ -74,12 +111,12 @@ export class SlackConnector {
 
 			const { page, limit, search } = parsedParams.data;
 			const cursor =
-				page > 1 ? "next_cursor_from_previous_call" : undefined; // Use Slack's cursor for pagination
+				page > 1 ? "next_cursor_from_previous_call" : undefined;
 
 			const apiParams: Record<string, any> = {
 				limit,
 				cursor,
-				types: "public_channel,private_channel", // Fetch both public and private channels
+				types: "public_channel,private_channel",
 				exclude_archived: true,
 			};
 
@@ -100,18 +137,35 @@ export class SlackConnector {
 				(channel: any) => ({
 					externalId: channel.id,
 					name: channel.name,
-					description: channel.purpose?.value || "",
-					attributes: {
+					description:
+						channel.purpose?.value ||
+						channel.topic?.value ||
+						undefined,
+					avatarUrl: undefined, // Slack channels don't have avatars
+					url: undefined, // Can be constructed if needed
+					platform: "slack",
+					status: channel.is_archived ? "archived" : "active",
+					metadata: {
 						is_private: channel.is_private,
 						is_channel: channel.is_channel,
+						is_group: channel.is_group,
+						is_im: channel.is_im,
+						is_mpim: channel.is_mpim,
 						topic: channel.topic?.value || "",
+						purpose: channel.purpose?.value || "",
 						num_members: channel.num_members,
 						created: channel.created,
+						creator: channel.creator,
+						is_shared: channel.is_shared,
+						is_org_shared: channel.is_org_shared,
+						is_ext_shared: channel.is_ext_shared,
+						is_general: channel.is_general,
+						unlinked: channel.unlinked,
 					},
 				})
 			);
 
-			const total = channels.length; // Approximate; Slack doesn't provide total_count
+			const total = channels.length;
 			const totalPages = Math.ceil(total / limit);
 			const hasMore =
 				!!response.response_metadata?.next_cursor ||
@@ -133,6 +187,9 @@ export class SlackConnector {
 		}
 	}
 
+	/**
+	 * Fetch messages from a channel
+	 */
 	async fetchMessages(
 		channelId: string,
 		params: PaginationOptions
@@ -147,7 +204,7 @@ export class SlackConnector {
 
 			const { page, limit } = parsedParams.data;
 			const latest =
-				page > 1 ? "timestamp_from_previous_call" : undefined; // Use timestamps for pagination
+				page > 1 ? "timestamp_from_previous_call" : undefined;
 
 			const apiParams: Record<string, any> = {
 				channel: channelId,
@@ -155,30 +212,122 @@ export class SlackConnector {
 				latest,
 			};
 
-			const response = await this.apiRequest(
-				"conversations.history",
-				apiParams
-			);
+			const [messagesResponse, channelInfo] = await Promise.all([
+				this.apiRequest("conversations.history", apiParams),
+				this.apiRequest("conversations.info", { channel: channelId }),
+			]);
 
-			const messages: any[] = response.messages || [];
+			const messages: any[] = messagesResponse.messages || [];
+			const channel = channelInfo.channel;
 
-			const mappedMessages: MessageData[] = messages.map(
-				(message: any) => ({
-					externalId: message.ts,
-					text: message.text,
-					user: message.user,
-					timestamp: new Date(parseFloat(message.ts) * 1000),
-					attributes: {
-						subtype: message.subtype,
-						attachments: message.attachments || [],
-						reactions: message.reactions || [],
-					},
+			// Determine channel type
+			const getChannelType = (channel: any): string => {
+				if (channel.is_im) return "DM";
+				if (channel.is_mpim) return "DM";
+				if (channel.is_group) return "CHANNEL"; // Private channel
+				return "CHANNEL";
+			};
+
+			const channelType = getChannelType(channel);
+
+			// Fetch user info for messages (batch if possible)
+			const uniqueUserIds = [
+				...new Set(
+					messages.map((m) => m.user).filter(Boolean) as string[]
+				),
+			];
+
+			const userInfoMap = new Map<string, any>();
+			await Promise.all(
+				uniqueUserIds.map(async (userId) => {
+					const userInfo = await this.getUserInfo(userId);
+					if (userInfo) {
+						userInfoMap.set(userId, userInfo);
+					}
 				})
 			);
 
+			const mappedMessages: MessageData[] = messages
+				.filter(
+					(message: any) =>
+						!message.subtype ||
+						message.subtype === "thread_broadcast"
+				)
+				.map((message: any) => {
+					const userInfo = message.user
+						? userInfoMap.get(message.user)
+						: null;
+
+					// Extract mentions from text
+					const mentions =
+						message.text
+							?.match(/<@([A-Z0-9]+)>/g)
+							?.map((m: string) => m.replace(/<@|>/g, "")) || [];
+
+					// Check if message has attachments
+					const hasAttachments =
+						(message.files && message.files.length > 0) ||
+						(message.attachments && message.attachments.length > 0);
+
+					return {
+						externalId: message.ts,
+						channelId: channelId,
+						channelName: channel.name || "Unknown",
+						channelType: channelType,
+						content: message.text || "",
+						authorId: message.user,
+						authorName:
+							userInfo?.real_name ||
+							userInfo?.name ||
+							message.user ||
+							"Unknown",
+						authorAvatar: userInfo?.profile?.image_72,
+						mentions: mentions,
+						reactions: message.reactions
+							? message.reactions.map((r: any) => ({
+									name: r.name,
+									count: r.count,
+									users: r.users,
+								}))
+							: undefined,
+						threadId: message.thread_ts,
+						parentMessageId:
+							message.thread_ts !== message.ts
+								? message.thread_ts
+								: undefined,
+						hasAttachments: hasAttachments,
+						attachments: hasAttachments
+							? {
+									files: message.files || [],
+									attachments: message.attachments || [],
+								}
+							: undefined,
+						isPinned:
+							message.pinned_to?.includes(channelId) || false,
+						isImportant: false, // Can be determined by custom logic
+						url: message.permalink,
+						timestamp: new Date(parseFloat(message.ts) * 1000),
+						platform: "slack",
+						metadata: {
+							subtype: message.subtype,
+							edited: message.edited,
+							client_msg_id: message.client_msg_id,
+							team: message.team,
+							bot_id: message.bot_id,
+							bot_profile: message.bot_profile,
+							blocks: message.blocks,
+							is_starred: message.is_starred,
+							reply_count: message.reply_count,
+							reply_users_count: message.reply_users_count,
+							latest_reply: message.latest_reply,
+						},
+					};
+				});
+
 			const total = messages.length;
 			const totalPages = Math.ceil(total / limit);
-			const hasMore = response.has_more || messages.length === limit;
+			const hasMore =
+				messagesResponse.has_more || messages.length === limit;
 
 			return {
 				resources: mappedMessages,
@@ -193,6 +342,156 @@ export class SlackConnector {
 			throw new Error(
 				`Failed to fetch Slack messages: ${error instanceof Error ? error.message : "Unknown error"}`
 			);
+		}
+	}
+
+	/**
+	 * Fetch messages in a thread
+	 */
+	async fetchThreadMessages(
+		channelId: string,
+		threadTs: string,
+		params: PaginationOptions
+	): Promise<PaginatedResponse<MessageData>> {
+		try {
+			const parsedParams = paramsSchema.safeParse(params);
+			if (!parsedParams.success) {
+				throw new Error(
+					`Invalid parameters: ${parsedParams.error.message}`
+				);
+			}
+
+			const { page, limit } = parsedParams.data;
+			const cursor = page > 1 ? "cursor_from_previous_call" : undefined;
+
+			const apiParams: Record<string, any> = {
+				channel: channelId,
+				ts: threadTs,
+				limit,
+				cursor,
+			};
+
+			const [repliesResponse, channelInfo] = await Promise.all([
+				this.apiRequest("conversations.replies", apiParams),
+				this.apiRequest("conversations.info", { channel: channelId }),
+			]);
+
+			const messages: any[] = repliesResponse.messages || [];
+			const channel = channelInfo.channel;
+
+			const getChannelType = (channel: any): string => {
+				if (channel.is_im) return "DM";
+				if (channel.is_mpim) return "DM";
+				if (channel.is_group) return "CHANNEL";
+				return "CHANNEL";
+			};
+
+			const channelType = getChannelType(channel);
+
+			// Get unique user IDs
+			const uniqueUserIds = [
+				...new Set(
+					messages.map((m) => m.user).filter(Boolean) as string[]
+				),
+			];
+
+			const userInfoMap = new Map<string, any>();
+			await Promise.all(
+				uniqueUserIds.map(async (userId) => {
+					const userInfo = await this.getUserInfo(userId);
+					if (userInfo) {
+						userInfoMap.set(userId, userInfo);
+					}
+				})
+			);
+
+			const mappedMessages: MessageData[] = messages.map(
+				(message: any) => {
+					const userInfo = message.user
+						? userInfoMap.get(message.user)
+						: null;
+
+					const mentions =
+						message.text
+							?.match(/<@([A-Z0-9]+)>/g)
+							?.map((m: string) => m.replace(/<@|>/g, "")) || [];
+
+					const hasAttachments =
+						(message.files && message.files.length > 0) ||
+						(message.attachments && message.attachments.length > 0);
+
+					return {
+						externalId: message.ts,
+						channelId: channelId,
+						channelName: channel.name || "Unknown",
+						channelType: "THREAD",
+						content: message.text || "",
+						authorId: message.user,
+						authorName:
+							userInfo?.real_name ||
+							userInfo?.name ||
+							message.user ||
+							"Unknown",
+						authorAvatar: userInfo?.profile?.image_72,
+						mentions: mentions,
+						reactions: message.reactions,
+						threadId: threadTs,
+						parentMessageId:
+							message.ts !== threadTs ? threadTs : undefined,
+						hasAttachments: hasAttachments,
+						attachments: hasAttachments
+							? {
+									files: message.files || [],
+									attachments: message.attachments || [],
+								}
+							: undefined,
+						isPinned: false,
+						isImportant: false,
+						url: message.permalink,
+						timestamp: new Date(parseFloat(message.ts) * 1000),
+						platform: "slack",
+						metadata: {
+							subtype: message.subtype,
+							edited: message.edited,
+							client_msg_id: message.client_msg_id,
+							team: message.team,
+						},
+					};
+				}
+			);
+
+			const total = messages.length;
+			const totalPages = Math.ceil(total / limit);
+			const hasMore =
+				!!repliesResponse.response_metadata?.next_cursor ||
+				messages.length === limit;
+
+			return {
+				resources: mappedMessages,
+				page,
+				limit,
+				total,
+				totalPages,
+				hasMore,
+			};
+		} catch (error) {
+			console.error("[SLACK_FETCH_THREAD_MESSAGES_ERROR]", error);
+			throw new Error(
+				`Failed to fetch Slack thread messages: ${error instanceof Error ? error.message : "Unknown error"}`
+			);
+		}
+	}
+
+	/**
+	 * Test the Slack connection
+	 */
+	async testConnection(): Promise<boolean> {
+		try {
+			const response = await this.apiRequest("auth.test");
+			return response.ok;
+		} catch (error) {
+			console.error("[SLACK_TEST_CONNECTION_ERROR]", error);
+			return false;
 		}
 	}
 }

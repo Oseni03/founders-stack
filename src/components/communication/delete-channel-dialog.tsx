@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useCommunicationStore } from "@/zustand/providers/communication-store-provider";
+// import { useCommunicationStore } from "@/zustand/providers/communication-store-provider";
 import { Channel } from "@/types/communication";
 
 interface DeleteChannelDialogProps {
@@ -28,7 +28,7 @@ export function DeleteChannelDialog({
 	productId,
 	channel,
 }: DeleteChannelDialogProps) {
-	const removeChannel = useCommunicationStore((state) => state.removeChannel);
+	// const removeChannel = useCommunicationStore((state) => state.removeChannel);
 
 	const [open, setOpen] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
@@ -48,7 +48,7 @@ export function DeleteChannelDialog({
 			if (!response.ok) throw new Error("Failed to delete channel");
 
 			toast.success("Channel deleted successfully");
-			removeChannel(channel.id);
+			// removeChannel(channel.id);
 			setOpen(false);
 		} catch (err) {
 			console.error("[Communication] Delete channel error:", err);
