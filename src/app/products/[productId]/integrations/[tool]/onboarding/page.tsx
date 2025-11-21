@@ -44,12 +44,8 @@ export default function IntegrationOnboardingPage() {
 		switch (tool) {
 			case "github":
 				return "Select GitHub Repositories";
-			case "jira":
-				return "Select Jira Projects";
 			case "linear":
 				return "Select Linear Projects";
-			case "asana":
-				return "Select Asana Projects";
 			case "slack":
 				return "Select Slack Channels";
 			default:

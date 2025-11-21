@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/middleware";
 import { syncGitHub } from "@/server/platforms/github";
 import { syncSlack } from "@/server/platforms/slack";
-import { syncCanny } from "@/server/platforms/canny";
 
 export async function POST(
 	req: NextRequest,
@@ -17,8 +16,6 @@ export async function POST(
 					await syncGitHub(user.organizationId);
 				case "slack":
 					await syncSlack(user.organizationId);
-				case "canny":
-					await syncCanny(user.organizationId);
 
 				default:
 					break;

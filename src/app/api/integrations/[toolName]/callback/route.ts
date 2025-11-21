@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { connectJiraIntegration } from "@/server/platforms/jira";
 import { withAuth } from "@/lib/middleware";
 import { OAUTH_CONFIG, OAuthConfig } from "@/lib/oauth-utils";
 import { prisma } from "@/lib/prisma";
@@ -82,44 +81,35 @@ export async function GET(
 			}
 
 			// Extract tokens based on provider
-			const { accessToken, refreshToken, expiresIn } = extractTokens(
+			const { accessToken, refreshToken } = extractTokens(
 				provider,
 				tokenResponse
 			);
 
-			if (provider === "jira") {
-				await connectJiraIntegration({
-					organizationId: user.organizationId,
-					accessToken,
-					refreshToken,
-					expiresIn,
-				});
-			} else {
-				await prisma.integration.upsert({
-					where: {
-						organizationId_platform: {
-							organizationId: user.organizationId,
-							platform: provider,
-						},
-					},
-					update: {
-						status: "CONNECTED",
-						type: "oauth2",
-						accessToken,
-						refreshToken: refreshToken || null,
-						category: config.category,
-					},
-					create: {
-						category: config.category,
-						status: "CONNECTED",
-						platform: provider,
-						type: "oauth2",
-						accessToken,
-						refreshToken: refreshToken || null,
+			await prisma.integration.upsert({
+				where: {
+					organizationId_platform: {
 						organizationId: user.organizationId,
+						platform: provider,
 					},
-				});
-			}
+				},
+				update: {
+					status: "CONNECTED",
+					type: "oauth2",
+					accessToken,
+					refreshToken: refreshToken || null,
+					category: config.category,
+				},
+				create: {
+					category: config.category,
+					status: "CONNECTED",
+					platform: provider,
+					type: "oauth2",
+					accessToken,
+					refreshToken: refreshToken || null,
+					organizationId: user.organizationId,
+				},
+			});
 
 			logger.debug(`${provider} integration saved`);
 
@@ -167,7 +157,7 @@ async function exchangeCodeForTokens(
 		method: "POST",
 		headers: {
 			"Content-Type": "application/x-www-form-urlencoded",
-			...((provider === "github" || provider === "jira") && {
+			...(provider === "github" && {
 				Accept: "application/json",
 			}),
 		},
@@ -186,13 +176,6 @@ function extractTokens(provider: string, tokenResponse: any) {
 				refreshToken: tokenResponse.authed_user.refresh_token,
 				scope: tokenResponse.authed_user.scope,
 				ok: tokenResponse.ok,
-			};
-		case "jira":
-			return {
-				accessToken: tokenResponse.access_token,
-				scope: tokenResponse.scope,
-				expiresIn: tokenResponse.expires_in,
-				ok: !!tokenResponse.access_token,
 			};
 
 		default:

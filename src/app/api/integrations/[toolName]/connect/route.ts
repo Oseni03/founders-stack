@@ -2,42 +2,33 @@
 import { withAuth } from "@/lib/middleware";
 import { NextRequest, NextResponse } from "next/server";
 import { OAUTH_CONFIG, OAuthConfig, ToolName } from "@/lib/oauth-utils";
-import { z } from "zod";
-import { connectCannyIntegration } from "@/server/platforms/canny";
-import { ConnectionHandlerResult } from "@/types/connector";
+// import { z } from "zod";
 import { cookies } from "next/headers";
 
 // Configuration for API-key based integrations
-const API_KEY_INTEGRATIONS = {
-	canny: {
-		handler: connectCannyIntegration as (
-			params: any
-		) => Promise<ConnectionHandlerResult>,
-		redirectPath: (organizationId: string, toolName: string) =>
-			`/products/${organizationId}/integrations/${toolName}/onboarding`,
-		requiredFields: ["apiKey"] as const,
-		mapParams: (body: any, user: any) => ({
-			organizationId: user.organizationId,
-			apiKey: body.apiKey,
-		}),
-	},
-} as const;
+// const API_KEY_INTEGRATIONS = {
+// 	canny: {
+// 		handler: connectCannyIntegration as (
+// 			params: any
+// 		) => Promise<ConnectionHandlerResult>,
+// 		redirectPath: (organizationId: string, toolName: string) =>
+// 			`/products/${organizationId}/integrations/${toolName}/onboarding`,
+// 		requiredFields: ["apiKey"] as const,
+// 		mapParams: (body: any, user: any) => ({
+// 			organizationId: user.organizationId,
+// 			apiKey: body.apiKey,
+// 		}),
+// 	},
+// } as const;
 
-type ApiKeyToolName = keyof typeof API_KEY_INTEGRATIONS;
+// type ApiKeyToolName = keyof typeof API_KEY_INTEGRATIONS;
 
-function isApiKeyIntegration(toolName: string): toolName is ApiKeyToolName {
-	return toolName in API_KEY_INTEGRATIONS;
-}
+// function isApiKeyIntegration(toolName: string): toolName is ApiKeyToolName {
+// 	return toolName in API_KEY_INTEGRATIONS;
+// }
 
 // OAuth URL builders for special cases
 const OAUTH_PARAM_BUILDERS = {
-	jira: (authUrl: URL, config: OAuthConfig) => {
-		// Jira requires the audience and the requested scopes
-		authUrl.searchParams.set("audience", "api.atlassian.com");
-		if (config && "scopes" in config) {
-			authUrl.searchParams.set("scope", config.scopes.join(" "));
-		}
-	},
 	slack: (authUrl: URL, config: any) => {
 		authUrl.searchParams.set("scope", ""); // Bot scopes
 		authUrl.searchParams.set("user_scope", config.userScopes.join(","));
@@ -115,118 +106,118 @@ export async function GET(
 	);
 }
 
-export async function POST(
-	request: NextRequest,
-	{ params }: { params: Promise<{ toolName: string }> }
-) {
-	return withAuth(request, async (request, user) => {
-		const { toolName } = await params;
+// export async function POST(
+// 	request: NextRequest,
+// 	{ params }: { params: Promise<{ toolName: string }> }
+// ) {
+// 	return withAuth(request, async (request, user) => {
+// 		const { toolName } = await params;
 
-		try {
-			// Parse the credentials from request body
-			const body = await request.json();
+// 		try {
+// 			// Parse the credentials from request body
+// 			const body = await request.json();
 
-			// Validate that credentials exist
-			if (!body || Object.keys(body).length === 0) {
-				return NextResponse.json(
-					{ error: "Credentials are required" },
-					{ status: 400 }
-				);
-			}
+// 			// Validate that credentials exist
+// 			if (!body || Object.keys(body).length === 0) {
+// 				return NextResponse.json(
+// 					{ error: "Credentials are required" },
+// 					{ status: 400 }
+// 				);
+// 			}
 
-			// Check if this is an API-key based integration
-			if (!isApiKeyIntegration(toolName)) {
-				return NextResponse.json(
-					{
-						error: `Integration for ${toolName} is not implemented yet.`,
-					},
-					{ status: 400 }
-				);
-			}
+// 			// Check if this is an API-key based integration
+// 			if (!isApiKeyIntegration(toolName)) {
+// 				return NextResponse.json(
+// 					{
+// 						error: `Integration for ${toolName} is not implemented yet.`,
+// 					},
+// 					{ status: 400 }
+// 				);
+// 			}
 
-			const integration = API_KEY_INTEGRATIONS[toolName];
+// 			const integration = API_KEY_INTEGRATIONS[toolName];
 
-			// Validate required fields
-			for (const field of integration.requiredFields) {
-				if (!body[field]) {
-					const fieldName = field === "apiKey" ? "API key" : field; //.replace(/([A-Z])/g, " $1").toLowerCase();
-					return NextResponse.json(
-						{
-							error: `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} is required`,
-						},
-						{ status: 400 }
-					);
-				}
-			}
+// 			// Validate required fields
+// 			for (const field of integration.requiredFields) {
+// 				if (!body[field]) {
+// 					const fieldName = field === "apiKey" ? "API key" : field; //.replace(/([A-Z])/g, " $1").toLowerCase();
+// 					return NextResponse.json(
+// 						{
+// 							error: `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} is required`,
+// 						},
+// 						{ status: 400 }
+// 					);
+// 				}
+// 			}
 
-			// Map parameters and call the handler
-			const params = integration.mapParams(body, user);
-			const response = await integration.handler(params);
+// 			// Map parameters and call the handler
+// 			const params = integration.mapParams(body, user);
+// 			const response = await integration.handler(params);
 
-			// Handle successful connection with redirect
-			if (response.status === "CONNECTED") {
-				const redirectPath =
-					typeof integration.redirectPath === "function"
-						? integration.redirectPath(
-								user.organizationId,
-								toolName
-							)
-						: integration.redirectPath;
+// 			// Handle successful connection with redirect
+// 			if (response.status === "CONNECTED") {
+// 				const redirectPath =
+// 					typeof integration.redirectPath === "function"
+// 						? integration.redirectPath(
+// 								user.organizationId,
+// 								toolName
+// 							)
+// 						: integration.redirectPath;
 
-				const redirectUrl = new URL(redirectPath, request.url);
-				return NextResponse.json({
-					status: response.status,
-					message: response.message,
-					redirectUrl,
-				});
-			}
+// 				const redirectUrl = new URL(redirectPath, request.url);
+// 				return NextResponse.json({
+// 					status: response.status,
+// 					message: response.message,
+// 					redirectUrl,
+// 				});
+// 			}
 
-			// Return success response without redirect
-			return NextResponse.json({
-				status: response.status,
-				message:
-					response.message || `${toolName} connected successfully`,
-			});
-		} catch (error) {
-			console.error(`Failed to connect ${toolName} with API key:`, error);
+// 			// Return success response without redirect
+// 			return NextResponse.json({
+// 				status: response.status,
+// 				message:
+// 					response.message || `${toolName} connected successfully`,
+// 			});
+// 		} catch (error) {
+// 			console.error(`Failed to connect ${toolName} with API key:`, error);
 
-			// Enhanced error handling
-			if (error instanceof z.ZodError) {
-				return NextResponse.json(
-					{
-						error: "Validation failed",
-						details: error.issues.map((e) => ({
-							field: e.path.join("."),
-							message: e.message,
-						})),
-					},
-					{ status: 400 }
-				);
-			}
+// 			// Enhanced error handling
+// 			if (error instanceof z.ZodError) {
+// 				return NextResponse.json(
+// 					{
+// 						error: "Validation failed",
+// 						details: error.issues.map((e) => ({
+// 							field: e.path.join("."),
+// 							message: e.message,
+// 						})),
+// 					},
+// 					{ status: 400 }
+// 				);
+// 			}
 
-			// Handle Prisma unique constraint violations
-			if (
-				error instanceof Error &&
-				error.message.includes("Unique constraint")
-			) {
-				return NextResponse.json(
-					{
-						error: "Integration already exists for this organization",
-					},
-					{ status: 409 }
-				);
-			}
+// 			// Handle Prisma unique constraint violations
+// 			if (
+// 				error instanceof Error &&
+// 				error.message.includes("Unique constraint")
+// 			) {
+// 				return NextResponse.json(
+// 					{
+// 						error: "Integration already exists for this organization",
+// 					},
+// 					{ status: 409 }
+// 				);
+// 			}
 
-			return NextResponse.json(
-				{
-					error: `Failed to connect ${toolName}`,
-					details:
-						error instanceof Error
-							? error.message
-							: "Unknown error",
-				},
-				{ status: 500 }
-			);
-		}
-	});
-}
+// 			return NextResponse.json(
+// 				{
+// 					error: `Failed to connect ${toolName}`,
+// 					details:
+// 						error instanceof Error
+// 							? error.message
+// 							: "Unknown error",
+// 				},
+// 				{ status: 500 }
+// 			);
+// 		}
+// 	});
+// }

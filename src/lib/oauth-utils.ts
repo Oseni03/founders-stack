@@ -61,24 +61,6 @@ export const OAUTH_CONFIG: Record<string, OAuthConfig> = {
 		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/github/callback`,
 		category: "CODE",
 	},
-	jira: {
-		providerId: "jira",
-		clientId: process.env.JIRA_CLIENT_ID!,
-		clientSecret: process.env.JIRA_CLIENT_SECRET!,
-		authorizationUrl: "https://auth.atlassian.com/authorize",
-		tokenUrl: "https://auth.atlassian.com/oauth/token",
-		scopes: [
-			"read:jira-work",
-			"manage:jira-project",
-			"write:jira-work",
-			"manage:jira-webhook",
-			"read:jira-user",
-			"manage:jira-configuration",
-			"manage:jira-data-provider",
-		],
-		redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/jira/callback`,
-		category: "PROJECT_TRACKING",
-	},
 	slack: {
 		providerId: "slack",
 		clientId: process.env.SLACK_CLIENT_ID!,
@@ -137,55 +119,6 @@ export const INTEGRATIONS: Integration[] = [
 		lastSyncAt: new Date(),
 		docsUrl: "https://docs.github.com/",
 	},
-	{
-		id: "jira",
-		name: "Jira",
-		description: "Sync tasks and project updates",
-		category: "PROJECT_TRACKING",
-		logo: "/jira-logo.png",
-		status: "DISCONNECTED",
-		authType: "oauth2",
-		lastSyncAt: new Date(),
-		docsUrl: "https://developers.jira.com/docs",
-	},
-	{
-		id: "canny",
-		name: "Canny",
-		description:
-			"Track product and web analytics like page views and funnels",
-		category: "FEEDBACK",
-		logo: "/canny-logo.png",
-		status: "CONNECTED",
-		authType: "api_key",
-		lastSyncAt: new Date(),
-		docsUrl: "https://developers.canny.io/api-reference",
-		metadata: {
-			webhook: {
-				instructions: `
-### Setting up Canny Webhooks
-
-1. Log in to your **Canny account**
-2. Click your **profile** in the top-right corner
-3. Navigate to **Settings → API & Webhooks**
-4. In the Webhooks section, click **Add Webhook**
-5. Paste your webhook URL (provided below)
-6. Select the events you want to receive:
-   - **post.created** - When a new post is created
-   - **post.deleted** - When a post is deleted
-   - **post.status_changed** - When a post's status changes
-   - **post.jira_issue_linked** - When a post is linked to a Jira issue
-   - **comment.created** - When a new comment is added
-   - **comment.deleted** - When a comment is removed
-   - **vote.created** - When a user votes on a post
-   - **vote.deleted** - When a user removes a vote from a post
-7. Click **Save** to activate the webhook
-
-Your webhook will now receive real-time notifications when these events occur in Canny.
-            `,
-				confirmLabel: "I have added the webhook URL in Canny",
-			},
-		},
-	},
 ];
 
 export const getProviderLogo = (providerId: string) => {
@@ -194,12 +127,8 @@ export const getProviderLogo = (providerId: string) => {
 			return "/slack-logo.png";
 		case "github":
 			return "/github-logo.png";
-		case "jira":
-			return "/jira-logo.png";
 		case "linear":
 			return "/linear-logo.png";
-		case "canny":
-			return "/canny-logo.png";
 		default:
 			return "/placeholder.svg";
 	}
@@ -213,19 +142,9 @@ export const getIntegrationCategory = (
 			return IntegrationCategory.COMMUNICATION;
 		case "github":
 			return IntegrationCategory.CODE;
-		case "canny":
-			return IntegrationCategory.FEEDBACK;
-		case "jira":
-			return IntegrationCategory.PROJECT_TRACKING;
 		default:
 			return IntegrationCategory.OTHER;
 	}
-};
-
-export const taskSourceColors = {
-	github: "bg-gray-900 text-white dark:bg-gray-700",
-	jira: "bg-blue-600 text-white",
-	linear: "bg-purple-600 text-white",
 };
 
 export function mergeIntegrations(

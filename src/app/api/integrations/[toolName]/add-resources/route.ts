@@ -7,7 +7,6 @@ import { RepoData } from "@/types/code";
 import { saveProjects } from "@/server/categories/tasks";
 import { ChannelData } from "@/lib/connectors/slack";
 import { ProjectData } from "@/types/connector";
-import { createWebhook } from "@/server/platforms/jira";
 
 // Base resource schema
 const BaseResourceSchema = z.object({
@@ -57,25 +56,6 @@ const TOOL_CONFIG = {
 			saveProjects(orgId, "slack", data as ChannelData[]),
 		validationLabel: "SLACK_VALIDATION",
 		errorMessage: "Failed to save Slack channels",
-	},
-	jira: {
-		schema: z.array(BaseResourceSchema),
-		handler: async (orgId: string, data: any[]) => (
-			saveProjects(orgId, "jira", data as ProjectData[]),
-			createWebhook(
-				orgId,
-				data.map((i) => i.externalId)
-			)
-		),
-		validationLabel: "JIRA_VALIDATION",
-		errorMessage: "Failed to save Jira projects",
-	},
-	canny: {
-		schema: z.array(BaseResourceSchema),
-		handler: async (orgId: string, data: any[]) =>
-			saveProjects(orgId, "canny", data as ProjectData[]),
-		validationLabel: "CANNY_VALIDATION",
-		errorMessage: "Failed to save Canny projects",
 	},
 } as const;
 

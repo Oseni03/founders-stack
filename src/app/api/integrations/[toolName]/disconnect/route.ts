@@ -1,4 +1,3 @@
-import { disconnectJiraIntegration } from "@/server/platforms/jira";
 import { withAuth } from "@/lib/middleware";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
@@ -12,9 +11,6 @@ export async function POST(
 		const { toolName } = await params;
 		try {
 			switch (toolName) {
-				case "jira":
-					await disconnectJiraIntegration(user.organizationId);
-
 				case "github":
 					await disconnectGitHubIntegration(user.organizationId);
 
