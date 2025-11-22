@@ -1,10 +1,3 @@
-### Modifications Overview
-
-The original README and homepage are designed for **Builder's Stack**, a unified dashboard targeting indie founders and early-stage startups, focusing on SaaS tools like Jira, GitHub, and Stripe. The new target audience is **product managers (PMs)**, and the functionalities align with the previously defined MVP dashboard integrating 8 tools (Jira, Slack, Notion, Mixpanel, Intercom, Figma, GitHub, Zendesk) to reduce context-switching and provide cross-tool insights. Below, I’ve revised the README and homepage to reflect the new audience, functionalities, and branding as **ProductStack**, ensuring consistency with the provided Prisma schema and MVP dashboard requirements.
-
-### Revised README
-
-````markdown
 # ProductStack
 
 A unified dashboard for product managers to monitor and manage their entire product workflow in one place. Built with Next.js, ProductStack aggregates data from tools like Jira, Slack, Notion, Mixpanel, Intercom, Figma, GitHub, and Zendesk, providing real-time insights, cross-tool analytics, and quick actions to streamline PM workflows.
