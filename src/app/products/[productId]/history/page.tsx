@@ -1,17 +1,22 @@
+"use client";
+
 import { useState } from "react";
 import { GlassCard } from "@/components/dashboard/glass-card";
-import { DayPicker } from "react-day-picker";
 import { motion, AnimatePresence } from "framer-motion";
 import {
 	Calendar as CalendarIcon,
 	ArrowRight,
 	History as HistoryIcon,
+	Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import "react-day-picker/dist/style.css";
 import { useProductStore } from "@/zustand/providers/product-store-provider";
+import { Calendar } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
-export function HistoryPage() {
+export default function HistoryPage() {
 	const snapshots = useProductStore((state) => state.snapshots);
 	const [selectedDate, setSelectedDate] = useState<Date | undefined>(
 		new Date()
@@ -19,6 +24,17 @@ export function HistoryPage() {
 
 	const dateKey = selectedDate?.toISOString().split("T")[0] || "";
 	const snapshot = snapshots[dateKey];
+
+	// Get all dates that have snapshots
+	const snapshotDates = Object.keys(snapshots).map(
+		(key) => new Date(key + "T00:00:00")
+	);
+
+	// Custom matcher for days with snapshots
+	const hasSnapshot = (date: Date) => {
+		const dateKey = date.toISOString().split("T")[0];
+		return !!snapshots[dateKey];
+	};
 
 	return (
 		<>
@@ -34,51 +50,72 @@ export function HistoryPage() {
 			</header>
 
 			<div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+				{/* Calendar Section */}
 				<div className="lg:col-span-4 space-y-6">
 					<GlassCard className="p-6">
-						<style>{`
-              .rdp { margin: 0; --rdp-cell-size: 40px; --rdp-accent-color: hsl(var(--primary)); }
-              .rdp-day_selected:not([disabled]) { background-color: hsl(var(--primary)); color: white; font-weight: bold; }
-              .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: rgba(255,255,255,0.1); }
-              .rdp-caption_label { color: white; font-family: var(--font-display); font-size: 1.1rem; }
-              .rdp-head_cell { color: #888; font-weight: 500; }
-              .rdp-day { color: #ccc; }
-              .rdp-day_today { color: hsl(var(--primary)); font-weight: bold; }
-            `}</style>
-						<DayPicker
+						<Calendar
 							mode="single"
 							selected={selectedDate}
 							onSelect={setSelectedDate}
-							className="bg-transparent"
+							className="rounded-md"
 							modifiers={{
-								hasSnapshot: (date) =>
-									!!snapshots[
-										date.toISOString().split("T")[0]
-									],
+								hasSnapshot: snapshotDates,
 							}}
-							modifiersStyles={{
-								hasSnapshot: {
-									borderBottom:
-										"2px solid hsl(var(--primary))",
-								},
+							modifiersClassNames={{
+								hasSnapshot:
+									"relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:rounded-full after:bg-primary",
+							}}
+							classNames={{
+								months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+								month: "space-y-4",
+								caption:
+									"flex justify-center pt-1 relative items-center",
+								caption_label: "text-sm font-medium text-white",
+								nav: "space-x-1 flex items-center",
+								nav_button: cn(
+									"h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
+									"text-white hover:bg-white/10 rounded-md transition-colors"
+								),
+								nav_button_previous: "absolute left-1",
+								nav_button_next: "absolute right-1",
+								table: "w-full border-collapse space-y-1",
+								head_row: "flex",
+								head_cell:
+									"text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
+								row: "flex w-full mt-2",
+								cell: cn(
+									"relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-accent",
+									"first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md"
+								),
+								day: cn(
+									"h-9 w-9 p-0 font-normal aria-selected:opacity-100",
+									"text-white hover:bg-white/10 rounded-md transition-colors"
+								),
+								day_selected:
+									"bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+								day_today:
+									"bg-accent text-accent-foreground font-bold",
+								day_outside: "text-muted-foreground opacity-50",
+								day_disabled:
+									"text-muted-foreground opacity-50",
+								day_range_middle:
+									"aria-selected:bg-accent aria-selected:text-accent-foreground",
+								day_hidden: "invisible",
 							}}
 						/>
 					</GlassCard>
 
-					<div className="bg-white/5 border border-white/5 rounded-xl p-4 text-sm text-muted-foreground">
-						<div className="flex items-center gap-2 mb-2">
-							<CalendarIcon size={16} />
-							<span className="font-medium text-white">
-								Pro Tip
-							</span>
-						</div>
-						<p>
-							Dates with an underline have detailed snapshots
+					<Alert className="bg-white/5 border-white/10">
+						<Info className="h-4 w-4 text-primary" />
+						<AlertTitle className="text-white">Pro Tip</AlertTitle>
+						<AlertDescription className="text-muted-foreground">
+							Dates with a dot indicator have detailed snapshots
 							available. Click to freeze the dashboard in time.
-						</p>
-					</div>
+						</AlertDescription>
+					</Alert>
 				</div>
 
+				{/* Snapshot Preview Section */}
 				<div className="lg:col-span-8">
 					<AnimatePresence mode="wait">
 						{snapshot ? (
@@ -89,23 +126,27 @@ export function HistoryPage() {
 								exit={{ opacity: 0, x: -20 }}
 								className="space-y-6"
 							>
-								<div className="flex items-center justify-between">
-									<h2 className="text-2xl font-display font-bold text-white">
-										Snapshot:{" "}
-										{selectedDate?.toLocaleDateString(
-											"en-US",
-											{
-												weekday: "long",
-												year: "numeric",
-												month: "long",
-												day: "numeric",
-											}
-										)}
-									</h2>
-									<button className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+								<div className="flex items-center justify-between flex-wrap gap-4">
+									<div>
+										<h2 className="text-2xl font-display font-bold text-white">
+											Snapshot
+										</h2>
+										<p className="text-muted-foreground text-sm mt-1">
+											{selectedDate?.toLocaleDateString(
+												"en-US",
+												{
+													weekday: "long",
+													year: "numeric",
+													month: "long",
+													day: "numeric",
+												}
+											)}
+										</p>
+									</div>
+									<Button className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
 										Load Full Dashboard{" "}
 										<ArrowRight size={16} />
-									</button>
+									</Button>
 								</div>
 
 								<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -116,19 +157,22 @@ export function HistoryPage() {
 										<div className="text-3xl font-bold text-white mb-2">
 											{snapshot.velocity} points
 										</div>
-										<div className="text-xs text-purple-300 bg-purple-500/20 px-2 py-1 rounded w-fit">
+										<Badge
+											variant="secondary"
+											className="bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30"
+										>
 											{snapshot.velocity > 25
 												? "High Velocity"
 												: "Normal Pace"}
-										</div>
+										</Badge>
 									</GlassCard>
 
 									<GlassCard
 										className={cn(
-											"bg-gradient-to-br border-opacity-20",
+											"bg-gradient-to-br",
 											snapshot.blockers > 0
-												? "from-red-500/10 border-red-500"
-												: "from-green-500/10 border-green-500"
+												? "from-red-500/10 border-red-500/20"
+												: "from-green-500/10 border-green-500/20"
 										)}
 									>
 										<div className="text-muted-foreground text-sm mb-1">
@@ -137,18 +181,18 @@ export function HistoryPage() {
 										<div className="text-3xl font-bold text-white mb-2">
 											{snapshot.blockers}
 										</div>
-										<div
+										<Badge
+											variant="secondary"
 											className={cn(
-												"text-xs px-2 py-1 rounded w-fit",
 												snapshot.blockers > 0
-													? "text-red-300 bg-red-500/20"
-													: "text-green-300 bg-green-500/20"
+													? "bg-red-500/20 text-red-300 border-red-500/30 hover:bg-red-500/30"
+													: "bg-green-500/20 text-green-300 border-green-500/30 hover:bg-green-500/30"
 											)}
 										>
 											{snapshot.blockers > 0
 												? "Needs Attention"
 												: "All Clear"}
-										</div>
+										</Badge>
 									</GlassCard>
 
 									<GlassCard className="bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/20">
@@ -158,9 +202,12 @@ export function HistoryPage() {
 										<div className="text-lg font-bold text-white mb-2 line-clamp-2 leading-snug">
 											{snapshot.topPain}
 										</div>
-										<div className="text-xs text-blue-300 bg-blue-500/20 px-2 py-1 rounded w-fit">
+										<Badge
+											variant="secondary"
+											className="bg-blue-500/20 text-blue-300 border-blue-500/30 hover:bg-blue-500/30"
+										>
 											Critical Issue
-										</div>
+										</Badge>
 									</GlassCard>
 								</div>
 
@@ -176,16 +223,18 @@ export function HistoryPage() {
 											<div className="space-y-1">
 												<p className="text-gray-300 leading-relaxed">
 													{snapshot.summary}
-													{snapshot.blockers > 0 && (
-														<span className="block mt-2 text-red-300 bg-red-500/10 p-2 rounded border border-red-500/20">
+												</p>
+												{snapshot.blockers > 0 && (
+													<Alert className="mt-3 bg-red-500/10 border-red-500/20">
+														<AlertDescription className="text-red-300">
 															⚠️{" "}
 															{snapshot.blockers}{" "}
 															critical blockers
 															identified in system
 															flow.
-														</span>
-													)}
-												</p>
+														</AlertDescription>
+													</Alert>
+												)}
 											</div>
 										</div>
 									</div>

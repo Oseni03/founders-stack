@@ -8,11 +8,17 @@ import { useParams, useRouter } from "next/navigation";
 import { useIntegrationsStore } from "@/zustand/providers/integrations-store-provider";
 import { getOrganizationById } from "@/server/organizations";
 import { toast } from "sonner";
+import {
+	SidebarInset,
+	SidebarProvider,
+	SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { ProductSidebar } from "@/components/product-sidebar";
+import { Separator } from "@/components/ui/separator";
 import { ProductStoreProvider } from "@/zustand/providers/product-store-provider";
-import { Sidebar } from "@/components/sidebar";
 import { AIChatOrb } from "@/components/ai-chat-orb";
 
-export default function Page({
+export default function ProductLayout({
 	children,
 }: Readonly<{
 	children: React.ReactNode;
@@ -96,14 +102,25 @@ export default function Page({
 	}
 
 	return (
-		<div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
-			<Sidebar />
-			<main className="pl-[80px] md:pl-[240px] transition-all duration-300 min-h-screen relative z-0">
-				<div className="p-8 max-w-[1600px] mx-auto space-y-8">
-					<ProductStoreProvider>{children}</ProductStoreProvider>
+		<SidebarProvider>
+			<ProductSidebar />
+			<SidebarInset>
+				<header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+					<div className="flex items-center gap-2 px-4">
+						<SidebarTrigger className="-ml-1" />
+						<Separator
+							orientation="vertical"
+							className="mr-2 data-[orientation=vertical]:h-4"
+						/>
+					</div>
+				</header>
+				<div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+					<ProductStoreProvider>
+						{children}
+						<AIChatOrb />
+					</ProductStoreProvider>
 				</div>
-			</main>
-			<AIChatOrb />
-		</div>
+			</SidebarInset>
+		</SidebarProvider>
 	);
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowLeft, GitFork, Home, Settings } from "lucide-react";
+import { ArrowLeft, History, LayoutDashboard, Settings } from "lucide-react";
 import { NavUser } from "@/components/nav-user";
 import { TeamSwitcher } from "@/components/team-switcher";
 import {
@@ -25,7 +25,7 @@ const getNavs = (productId: string) => {
 	return {
 		navMain: [
 			{
-				title: "OVERVIEW",
+				title: "MAIN",
 				url: "#",
 				items: [
 					{
@@ -35,58 +35,16 @@ const getNavs = (productId: string) => {
 						url: `/products`,
 					},
 					{
-						id: "dashboard",
-						label: "Dashboard",
-						icon: Home,
+						id: "today",
+						label: "Today",
+						icon: LayoutDashboard,
 						url: `/products/${productId}`,
 					},
-				],
-			},
-			{
-				title: "CATEGORIES",
-				url: "#",
-				items: [
 					{
-						id: "project-tracking",
-						label: "Project Tracking",
-						icon: GitFork,
-						url: `/products/${productId}/project-tracking`,
-					},
-					{
-						id: "communication",
-						label: "Communication",
-						icon: GitFork,
-						url: `/products/${productId}/communication`,
-					},
-					{
-						id: "design",
-						label: "Design",
-						icon: GitFork,
-						url: `/products/${productId}/design`,
-					},
-					{
-						id: "analytics",
-						label: "Analytics",
-						icon: GitFork,
-						url: `/products/${productId}/analytics`,
-					},
-					{
-						id: "development",
-						label: "Development",
-						icon: GitFork,
-						url: `/products/${productId}/development`,
-					},
-					{
-						id: "feedback",
-						label: "Support/Feedback",
-						icon: GitFork,
-						url: `/products/${productId}/feedback`,
-					},
-					{
-						id: "documentation",
-						label: "Documentation",
-						icon: GitFork,
-						url: `/products/${productId}/documentation`,
+						id: "history",
+						icon: History,
+						label: "History",
+						url: `/products/${productId}/history`,
 					},
 				],
 			},

@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { GlassCard } from "@/components/dashboard/glass-card";
 import {
@@ -36,7 +38,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-export function Settings() {
+export default function Settings() {
 	const [activeTab, setActiveTab] = useState<
 		"integrations" | "team" | "weights" | "billing"
 	>("integrations");
@@ -165,7 +167,7 @@ function IntegrationRow({
 					</p>
 				</div>
 			</div>
-			<button
+			<Button
 				className={cn(
 					"px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2",
 					connected
@@ -181,7 +183,7 @@ function IntegrationRow({
 				) : (
 					"Connect"
 				)}
-			</button>
+			</Button>
 		</div>
 	);
 }
@@ -499,19 +501,19 @@ function BillingSettings() {
 								</div>
 							</div>
 						</div>
-						<button className="text-sm text-white hover:underline">
+						<Button className="text-sm text-white hover:underline">
 							Update
-						</button>
+						</Button>
 					</div>
 				</div>
 
 				<div className="mt-8 flex gap-4">
-					<button className="bg-white text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors flex items-center gap-2">
+					<Button className="bg-white text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors flex items-center gap-2">
 						<ExternalLink size={16} /> Manage in Stripe
-					</button>
-					<button className="bg-white/5 text-white border border-white/10 px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/10 transition-colors">
+					</Button>
+					<Button className="bg-white/5 text-white border border-white/10 px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/10 transition-colors">
 						Download Invoices
-					</button>
+					</Button>
 				</div>
 			</GlassCard>
 		</div>

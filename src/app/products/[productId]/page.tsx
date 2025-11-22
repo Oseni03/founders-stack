@@ -1,3 +1,5 @@
+"use client";
+
 import { GlassCard } from "@/components/dashboard/glass-card";
 import { CustomerPains } from "@/components/dashboard/customer-pains";
 import { SprintHealth } from "@/components/dashboard/sprint-health";
@@ -7,7 +9,7 @@ import { Zap, RefreshCw, FileText, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useProductStore } from "@/zustand/providers/product-store-provider";
 
-export function Dashboard() {
+export default function Dashboard() {
 	const { refreshDashboard, isRefreshing, generateDiagnosis, lastSyncTime } =
 		useProductStore((state) => state);
 	const [showDiagnosisModal, setShowDiagnosisModal] = useState(false);

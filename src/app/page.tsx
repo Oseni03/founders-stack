@@ -16,6 +16,7 @@ import {
 	BarChart3,
 } from "lucide-react";
 import Image from "next/image";
+import { Footer } from "@/components/homepage/footer";
 
 const Page = () => {
 	const { data: session } = authClient.useSession();
@@ -45,23 +46,30 @@ const Page = () => {
 			<nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/50 backdrop-blur-xl">
 				<div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
 					<div className="flex items-center gap-2 font-display font-bold text-xl tracking-tight">
-						<div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/50 flex items-center justify-center text-primary">
-							A
-						</div>
+						<Logo className="w-4 h-4 text-primary-foreground" />
 						<span className="text-white">Apex</span>
 					</div>
 
 					<div className="flex items-center gap-6">
-						<Link href="/dashboard">
-							<button className="text-sm font-medium text-muted-foreground hover:text-white transition-colors">
-								Log In
-							</button>
-						</Link>
-						<Link href="/dashboard">
-							<button className="bg-white text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 transition-colors">
-								Get Started
-							</button>
-						</Link>
+						{session?.user ? (
+							<>
+								<Button onClick={handleSignOut} variant="ghost">
+									Sign Out
+								</Button>
+								<Button asChild className="font-medium">
+									<Link href="/products">Dashboard</Link>
+								</Button>
+							</>
+						) : (
+							<>
+								<Button variant="ghost" asChild>
+									<Link href="/login">Sign In</Link>
+								</Button>
+								<Button asChild className="font-medium">
+									<Link href="/signup">Get Started</Link>
+								</Button>
+							</>
+						)}
 					</div>
 				</div>
 			</nav>
@@ -101,14 +109,14 @@ const Page = () => {
 						</p>
 
 						<div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-							<Link href="/dashboard">
-								<button className="w-full sm:w-auto h-12 px-8 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/25">
+							<Link href="/products">
+								<Button className="w-full sm:w-auto h-12 px-8 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/25">
 									Start Free Trial <ArrowRight size={18} />
-								</button>
+								</Button>
 							</Link>
-							<button className="w-full sm:w-auto h-12 px-8 rounded-xl bg-white/5 text-white font-medium border border-white/10 hover:bg-white/10 transition-all">
+							<Button className="w-full sm:w-auto h-12 px-8 rounded-xl bg-white/5 text-white font-medium border border-white/10 hover:bg-white/10 transition-all">
 								View Demo
-							</button>
+							</Button>
 						</div>
 
 						<div className="mt-8 flex items-center justify-center gap-6 text-sm text-muted-foreground">
@@ -171,10 +179,10 @@ const Page = () => {
 									Experience the full power of Apex with our
 									interactive demo environment.
 								</p>
-								<Link href="/dashboard">
-									<button className="px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold transition-colors w-full">
+								<Link href="/products">
+									<Button className="px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold transition-colors w-full">
 										Enter Live Demo
-									</button>
+									</Button>
 								</Link>
 							</div>
 						</div>
@@ -244,11 +252,11 @@ const Page = () => {
 									<CheckItem text="Cancel anytime" />
 								</div>
 
-								<Link href="/dashboard">
-									<button className="w-full lg:w-auto px-8 py-4 bg-white text-black font-bold rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center gap-2">
+								<Link href="/products">
+									<Button className="w-full lg:w-auto px-8 py-4 bg-white text-black font-bold rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center gap-2">
 										Get Started for $299/mo{" "}
 										<ArrowRight size={18} />
-									</button>
+									</Button>
 								</Link>
 							</div>
 
@@ -279,39 +287,7 @@ const Page = () => {
 				</div>
 			</section>
 
-			<footer className="py-12 px-6 border-t border-white/10 bg-black">
-				<div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-					<div className="flex items-center gap-2 font-display font-bold text-lg text-white">
-						<div className="w-6 h-6 rounded bg-primary/20 border border-primary/50 flex items-center justify-center text-primary text-xs">
-							A
-						</div>
-						Apex
-					</div>
-					<div className="text-sm text-muted-foreground">
-						© 2025 Apex Inc. All rights reserved.
-					</div>
-					<div className="flex gap-6 text-sm text-muted-foreground">
-						<a
-							href="#"
-							className="hover:text-white transition-colors"
-						>
-							Privacy
-						</a>
-						<a
-							href="#"
-							className="hover:text-white transition-colors"
-						>
-							Terms
-						</a>
-						<a
-							href="#"
-							className="hover:text-white transition-colors"
-						>
-							Twitter
-						</a>
-					</div>
-				</div>
-			</footer>
+			<Footer />
 		</div>
 	);
 };

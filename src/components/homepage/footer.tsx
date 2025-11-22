@@ -4,51 +4,33 @@ import React from "react";
 
 export const Footer = () => {
 	return (
-		<footer className="border-t border-border bg-muted/30 py-12">
-			<div className="mx-auto w-full max-w-7xl">
-				<div className="flex flex-col md:flex-row items-center justify-between gap-8">
-					<div className="flex flex-col items-center md:items-start gap-4">
-						<div className="flex items-center gap-2">
-							<div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-								<Logo className="w-3 h-3 text-primary-foreground" />
-							</div>
-							<span className="font-bold">
-								Builders&apos; Stack
-							</span>
-						</div>
-						<p className="text-sm text-muted-foreground text-center md:text-left">
-							Your single pane of glass for SaaS success.
-						</p>
-					</div>
-
-					<div className="flex items-center gap-6">
-						<Link
-							href="/about"
-							className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-						>
-							About
-						</Link>
-						<Link
-							href="/privacy"
-							className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-						>
-							Privacy
-						</Link>
-						<Link
-							href="/terms"
-							className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-						>
-							Terms
-						</Link>
-					</div>
+		<footer className="py-12 px-6 border-t border-white/10 bg-black">
+			<div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+				<div className="flex items-center gap-2 font-display font-bold text-lg text-white">
+					<Logo className="w-3 h-3 text-primary-foreground" />; Apex
 				</div>
-
-				<div className="flex items-center justify-between pt-8 mt-8 border-t border-border text-sm text-muted-foreground">
-					<p>
-						© {new Date().getFullYear()} Builders&apos; Stack. All
-						rights reserved.
-					</p>
-					<p>v1.0.0</p>
+				<div className="text-sm text-muted-foreground">
+					© 2025 Apex Inc. All rights reserved.
+				</div>
+				<div className="flex gap-6 text-sm text-muted-foreground">
+					<Link
+						href="#"
+						className="hover:text-white transition-colors"
+					>
+						Privacy
+					</Link>
+					<Link
+						href="#"
+						className="hover:text-white transition-colors"
+					>
+						Terms
+					</Link>
+					<Link
+						href="#"
+						className="hover:text-white transition-colors"
+					>
+						Twitter
+					</Link>
 				</div>
 			</div>
 		</footer>

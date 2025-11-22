@@ -23,10 +23,11 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { usePathname } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 
 export function Sidebar() {
 	const location = usePathname();
+	const { productId } = useParams<{ productId: string }>();
 	const [isCollapsed, setIsCollapsed] = useState(false);
 	const [activeProduct, setActiveProduct] = useState({
 		name: "Apex",
@@ -34,9 +35,21 @@ export function Sidebar() {
 	});
 
 	const navItems = [
-		{ icon: LayoutDashboard, label: "Today", href: "/dashboard" },
-		{ icon: History, label: "History", href: "/history" },
-		{ icon: Settings, label: "Settings", href: "/settings" },
+		{
+			icon: LayoutDashboard,
+			label: "Today",
+			href: `/products/${productId}`,
+		},
+		{
+			icon: History,
+			label: "History",
+			href: `/products/${productId}/history`,
+		},
+		{
+			icon: Settings,
+			label: "Settings",
+			href: `/products/${productId}/settings`,
+		},
 	];
 
 	const products = [

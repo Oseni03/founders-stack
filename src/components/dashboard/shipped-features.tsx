@@ -1,3 +1,5 @@
+"use client";
+
 import { useProductStore } from "@/zustand/providers/product-store-provider";
 import { motion } from "framer-motion";
 import { CheckCircle2, GitPullRequest } from "lucide-react";

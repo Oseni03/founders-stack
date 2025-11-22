@@ -8,7 +8,6 @@ import {
 	Github,
 	MessageCircle,
 } from "lucide-react";
-import orbImage from "@assets/generated_images/glowing_ai_orb_for_chat_interface.png";
 import { Button } from "./ui/button";
 import Image from "next/image";
 import { useProductStore } from "@/zustand/providers/product-store-provider";
@@ -80,7 +79,7 @@ export function AIChatOrb() {
 				<div className="relative w-16 h-16">
 					<div className="absolute inset-0 rounded-full bg-primary/50 blur-xl animate-pulse" />
 					<Image
-						src={orbImage}
+						src={"/glowing_ai_orb_for_chat_interface.png"}
 						alt="AI Chat"
 						className="w-full h-full rounded-full object-cover shadow-2xl border-2 border-white/20 relative z-10"
 					/>
@@ -105,7 +104,9 @@ export function AIChatOrb() {
 								<div className="flex items-center gap-3">
 									<div className="w-10 h-10 rounded-full overflow-hidden border border-white/20 shadow-lg shadow-primary/20">
 										<Image
-											src={orbImage}
+											src={
+												"/glowing_ai_orb_for_chat_interface.png"
+											}
 											alt="AI"
 											className="w-full h-full object-cover"
 										/>
@@ -138,7 +139,9 @@ export function AIChatOrb() {
 										<div className="text-center space-y-4 max-w-md">
 											<div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto">
 												<Image
-													src={orbImage}
+													src={
+														"/glowing_ai_orb_for_chat_interface.png"
+													}
 													alt="AI"
 													className="w-12 h-12 rounded-full"
 												/>
@@ -191,7 +194,9 @@ export function AIChatOrb() {
 													{msg.role ===
 														"assistant" && (
 														<Image
-															src={orbImage}
+															src={
+																"/glowing_ai_orb_for_chat_interface.png"
+															}
 															alt="AI"
 															className="w-full h-full object-cover"
 														/>
@@ -260,7 +265,9 @@ export function AIChatOrb() {
 											<div className="flex gap-6">
 												<div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 mt-1 border border-white/20">
 													<Image
-														src={orbImage}
+														src={
+															"/glowing_ai_orb_for_chat_interface.png"
+														}
 														alt="AI"
 														className="w-full h-full object-cover"
 													/>
