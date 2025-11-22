@@ -12,7 +12,7 @@ export async function getIntegrationTokens(
 	provider: string
 ) {
 	const integration = await prisma.integration.findFirst({
-		where: { organizationId, toolName: provider },
+		where: { organizationId, platform: provider },
 	});
 
 	if (!integration?.accessToken) {
@@ -27,18 +27,18 @@ export async function getIntegrationTokens(
 
 export async function deleteIntegration(
 	organizationId: string,
-	toolName: string
+	platform: string
 ) {
 	await prisma.integration.deleteMany({
-		where: { organizationId, toolName },
+		where: { organizationId, platform },
 	});
 }
 
-export async function getIntegration(organizationId: string, toolName: string) {
+export async function getIntegration(organizationId: string, platform: string) {
 	const integration = await prisma.integration.findFirst({
 		where: {
 			organizationId,
-			toolName,
+			platform,
 			status: "CONNECTED",
 		},
 	});
@@ -98,9 +98,9 @@ export async function createAPIIntegration(
 	// Then create/update the integration with the account reference
 	const integration = await prisma.integration.upsert({
 		where: {
-			organizationId_toolName: {
+			organizationId_platform: {
 				organizationId,
-				toolName: data.toolName,
+				platform: data.toolName,
 			},
 		},
 		update: {
@@ -109,6 +109,7 @@ export async function createAPIIntegration(
 		},
 		create: {
 			...data,
+			platform: data.toolName,
 			type: IntegrationType.api_key,
 			organizationId,
 		},

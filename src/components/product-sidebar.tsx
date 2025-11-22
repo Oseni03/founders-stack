@@ -1,20 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-	ArrowLeft,
-	BarChart3,
-	CreditCard,
-	FileText,
-	GitFork,
-	Headphones,
-	Home,
-	LayoutDashboard,
-	Mail,
-	MessageSquare,
-	MessagesSquare,
-	Settings,
-} from "lucide-react";
+import { ArrowLeft, History, LayoutDashboard, Settings } from "lucide-react";
 import { NavUser } from "@/components/nav-user";
 import { TeamSwitcher } from "@/components/team-switcher";
 import {
@@ -38,7 +25,7 @@ const getNavs = (productId: string) => {
 	return {
 		navMain: [
 			{
-				title: "OVERVIEW",
+				title: "MAIN",
 				url: "#",
 				items: [
 					{
@@ -48,154 +35,16 @@ const getNavs = (productId: string) => {
 						url: `/products`,
 					},
 					{
-						id: "dashboard",
-						label: "Dashboard",
-						icon: Home,
+						id: "today",
+						label: "Today",
+						icon: LayoutDashboard,
 						url: `/products/${productId}`,
 					},
-				],
-			},
-			{
-				title: "DEVELOPMENT",
-				url: "#",
-				items: [
 					{
-						id: "version-control",
-						label: "Version Control",
-						icon: GitFork,
-						url: `/products/${productId}/version-control`,
-					},
-				],
-			},
-			{
-				title: "PAYMENT & BILLING",
-				url: "#",
-				items: [
-					{
-						id: "payment-processing",
-						label: "Payment & Subscription",
-						icon: CreditCard,
-						url: `/products/${productId}/financials`,
-					},
-					// {
-					// 	id: "subscription-management",
-					// 	label: "Subscription Management",
-					// 	icon: RefreshCw,
-					// 	url: `/products/${productId}/payments/subscriptions`,
-					// },
-				],
-			},
-			{
-				title: "ANALYTICS & METRICS",
-				url: "#",
-				items: [
-					{
-						id: "product-analytics",
-						label: "Product Analytics",
-						icon: BarChart3,
-						url: `/products/${productId}/analytics`,
-					},
-				],
-			},
-			{
-				title: "MARKETING & GROWTH",
-				url: "#",
-				items: [
-					// {
-					// 	id: "seo-content",
-					// 	label: "SEO & Content",
-					// 	icon: Search,
-					// 	url: `/products/${productId}/marketing/seo",
-					// },
-					{
-						id: "email-marketing",
-						label: "Email Marketing",
-						icon: Mail,
-						url: `/products/${productId}/email-marketing`,
-					},
-					// {
-					// 	id: "social-media-management",
-					// 	label: "Social Media Management",
-					// 	icon: Share2,
-					// 	url: `/products/${productId}/marketing/social",
-					// },
-					{
-						id: "customer-feedback",
-						label: "Customer Feedback",
-						icon: MessageSquare,
-						url: `/products/${productId}/feedback`,
-					},
-				],
-			},
-			{
-				title: "CRM & CUSTOMER SUCCESS",
-				url: "#",
-				items: [
-					{
-						id: "customer-support",
-						label: "Customer Support",
-						icon: Headphones,
-						url: `/products/${productId}/support`,
-					},
-					// {
-					// 	id: "crm-platforms",
-					// 	label: "CRM Platforms",
-					// 	icon: Users,
-					// 	url: `/products/${productId}/platforms`,
-					// },
-					// {
-					// 	id: "live-chat",
-					// 	label: "Live Chat",
-					// 	icon: MessageCircle,
-					// 	url: `/products/${productId}/crm/chat`,
-					// },
-					// {
-					// 	id: "scheduling",
-					// 	label: "Scheduling",
-					// 	icon: Calendar,
-					// 	url: `/products/${productId}/crm/scheduling`,
-					// },
-				],
-			},
-			{
-				title: "PROJECT MANAGEMENT & COLLABORATION",
-				url: "#",
-				items: [
-					{
-						id: "project-management",
-						label: "Project Management",
-						icon: LayoutDashboard,
-						url: `/products/${productId}/project-management`,
-					},
-					{
-						id: "team-communication",
-						label: "Team Communication",
-						icon: MessagesSquare,
-						url: `/products/${productId}/communication`,
-					},
-					// {
-					// 	id: "documentation",
-					// 	label: "Documentation",
-					// 	icon: BookOpen,
-					// 	url: `/products/${productId}/pm/docs`,
-					// },
-					// {
-					// 	id: "goal-tracking",
-					// 	label: "Goal Tracking",
-					// 	icon: Target,
-					// 	url: `/products/${productId}/pm/goals`,
-					// },
-				],
-			},
-			{
-				title: "APPLICATION",
-				url: "#",
-				items: [
-					{
-						id: "integrations",
-						label: "Integrations",
-						icon: FileText,
-						url: `/products/${productId}/integrations`,
+						id: "history",
+						icon: History,
+						label: "History",
+						url: `/products/${productId}/history`,
 					},
 				],
 			},

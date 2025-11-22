@@ -12,6 +12,7 @@ export interface IntegrationsState {
 	error: string | null;
 	fetchIntegrations: () => Promise<void>;
 	connect: (
+		organizationId: string,
 		toolName: string,
 		credentials?: {
 			apiKey?: string;
@@ -53,6 +54,7 @@ export const createIntegrationsStore = () => {
 					}
 				},
 				connect: async (
+					organizationId: string,
 					toolName: string,
 					credentials?: {
 						apiKey?: string;
@@ -66,7 +68,7 @@ export const createIntegrationsStore = () => {
 						if (credentials) {
 							// API key flow
 							const resp = await fetch(
-								`/api/integrations/${toolName}/connect`,
+								`/api/integrations/${toolName}/connect?organizationId=${organizationId}`,
 								{
 									method: "POST",
 									headers: {
@@ -103,7 +105,7 @@ export const createIntegrationsStore = () => {
 						} else {
 							// OAuth2 flow for other integrations
 							const resp = await fetch(
-								`/api/integrations/${toolName}/connect`
+								`/api/integrations/${toolName}/connect?organizationId=${organizationId}`
 							);
 							if (resp.ok) {
 								const data = await resp.json();
@@ -145,7 +147,7 @@ export const createIntegrationsStore = () => {
 						if (response.ok) {
 							set((state) => {
 								state.integrations = state.integrations.filter(
-									(item) => item.toolName !== toolName
+									(item) => item.platform !== toolName
 								);
 								state.loading = false;
 							});

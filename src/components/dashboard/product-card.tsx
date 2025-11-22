@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import {
 	Card,
@@ -9,7 +11,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Organization } from "@/types";
-import { formatCurrency } from "@/lib/utils";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -41,8 +42,8 @@ import {
 import { UpdateOrganizationForm } from "../forms/update-organization-form";
 import Link from "next/link";
 
-export function ProductCard({ org }: { org: Organization }) {
-	const removeOrganization = useOrganizationStore(
+export function ProductCard({ product }: { product: Organization }) {
+	const removeProduct = useOrganizationStore(
 		(state) => state.removeOrganization
 	);
 	const [isDeleteLoading, setIsDeleteLoading] = React.useState(false);
@@ -53,9 +54,9 @@ export function ProductCard({ org }: { org: Organization }) {
 		try {
 			toast.loading("Deleting product...");
 			setIsDeleteLoading(true);
-			const { success, error } = await deleteOrganization(org.id);
+			const { success, error } = await deleteOrganization(product.id);
 			if (success) {
-				removeOrganization(org.id);
+				removeProduct(product.id);
 				toast.dismiss();
 				toast.success("Product deleted successfully");
 				setIsDeleteOpen(false);
@@ -89,9 +90,9 @@ export function ProductCard({ org }: { org: Organization }) {
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end">
 						<DropdownMenuItem asChild>
-							<Link href={`/products/${org.id}`}>
+							<Link href={`/products/${product.id}`}>
 								<Eye className="mr-2 h-4 w-4" />
-								View
+								View Dashboard
 							</Link>
 						</DropdownMenuItem>
 						<DropdownMenuItem onSelect={() => setIsEditOpen(true)}>
@@ -114,21 +115,21 @@ export function ProductCard({ org }: { org: Organization }) {
 						<Avatar className="h-12 w-12 rounded-lg">
 							<AvatarImage
 								src={
-									org.logo ||
-									`https://api.dicebear.com/7.x/shapes/svg?seed=${org.name}`
+									product.logo ||
+									`https://api.dicebear.com/7.x/shapes/svg?seed=${product.name}`
 								}
 							/>
 							<AvatarFallback className="rounded-lg bg-primary/10 text-primary font-bold">
-								{org.name.substring(0, 2).toUpperCase()}
+								{product.name.substring(0, 2).toUpperCase()}
 							</AvatarFallback>
 						</Avatar>
 					</div>
 					<div className="flex-1 min-w-0">
 						<CardTitle className="text-base sm:text-lg mb-1 truncate">
-							{org.name}
+							{product.name}
 						</CardTitle>
 						<CardDescription className="text-xs line-clamp-2">
-							{org.description || "No description available"}
+							{product.description || "No description available"}
 						</CardDescription>
 					</div>
 				</div>
@@ -136,15 +137,17 @@ export function ProductCard({ org }: { org: Organization }) {
 			<CardContent className="space-y-3">
 				<div>
 					<p className="text-xs text-muted-foreground mb-1">
-						Revenue (30 days)
+						Active Tasks
 					</p>
 					<p className="text-xl sm:text-2xl font-bold">
-						{formatCurrency(org.revenue30Days)}
+						{product.activeTasks || 0}
 					</p>
 				</div>
 				<div className="flex items-center justify-between text-sm">
-					<span className="text-muted-foreground">Customers</span>
-					<Badge variant="secondary">{org.totalCustomers}</Badge>
+					<span className="text-muted-foreground">
+						Connected Tools
+					</span>
+					<Badge variant="secondary">{product.toolCount || 0}</Badge>
 				</div>
 			</CardContent>
 			<Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
@@ -155,7 +158,7 @@ export function ProductCard({ org }: { org: Organization }) {
 							Update the details of your product.
 						</DialogDescription>
 					</DialogHeader>
-					<UpdateOrganizationForm organization={org} />
+					<UpdateOrganizationForm organization={product} />
 				</DialogContent>
 			</Dialog>
 			<AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
@@ -163,8 +166,7 @@ export function ProductCard({ org }: { org: Organization }) {
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete Product</AlertDialogTitle>
 						<AlertDialogDescription>
-							{`Are you sure you want to delete ${org.name}? This
-							action cannot be undone.`}
+							{`Are you sure you want to delete ${product.name}? This action cannot be undone.`}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

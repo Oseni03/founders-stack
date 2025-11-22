@@ -60,11 +60,9 @@ export function CreateOrganizationForm() {
 
 			addOrganization({
 				...data,
-				revenue30Days: 0,
-				mrr: 0,
-				totalRevenue: 0,
-				totalCustomers: 0,
-				activeSubscriptions: 0,
+				toolCount: 0,
+				activeTasks: 0,
+				subscription: null, // or whatever the default should be
 			} as Organization);
 			toast.dismiss();
 			toast.success("Product added successfully");

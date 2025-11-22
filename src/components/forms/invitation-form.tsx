@@ -2,9 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-
 import { z } from "zod";
-
 import { Button } from "@/components/ui/button";
 import {
 	Form,
@@ -29,10 +27,11 @@ import { DialogFooter } from "../ui/dialog";
 import { authClient } from "@/lib/auth-client";
 import { useOrganizationStore } from "@/zustand/providers/organization-store-provider";
 import { Invitation } from "better-auth/plugins";
+import { roleToAuth } from "@/lib/utils";
 
 const formSchema = z.object({
 	email: z.email(),
-	role: z.enum(["admin", "member"]),
+	role: z.enum(["OWNER", "ADMIN", "MEMBER", "VIEWER", "GUEST"]),
 });
 
 export function InvitationForm({ onSuccess }: { onSuccess: () => void }) {
@@ -44,7 +43,7 @@ export function InvitationForm({ onSuccess }: { onSuccess: () => void }) {
 		resolver: zodResolver(formSchema),
 		defaultValues: {
 			email: "",
-			role: "member",
+			role: "MEMBER",
 		},
 	});
 
@@ -57,7 +56,7 @@ export function InvitationForm({ onSuccess }: { onSuccess: () => void }) {
 
 			const { error, data } = await authClient.organization.inviteMember({
 				email: values.email,
-				role: values.role,
+				role: roleToAuth(values.role), // Convert to lowercase
 				organizationId: organization.id,
 				resend: true,
 			});
@@ -111,21 +110,26 @@ export function InvitationForm({ onSuccess }: { onSuccess: () => void }) {
 					name="role"
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Slug</FormLabel>
+							<FormLabel>Role</FormLabel>
 							<Select
 								onValueChange={field.onChange}
 								defaultValue={field.value}
 							>
 								<FormControl>
 									<SelectTrigger>
-										<SelectValue placeholder="Select a verified email to display" />
+										<SelectValue placeholder="Select a role" />
 									</SelectTrigger>
 								</FormControl>
 								<SelectContent>
+									<SelectItem value="owner">Owner</SelectItem>
+									<SelectItem value="admin">Admin</SelectItem>
 									<SelectItem value="member">
 										Member
 									</SelectItem>
-									<SelectItem value="admin">Admin</SelectItem>
+									<SelectItem value="viewer">
+										Viewer
+									</SelectItem>
+									<SelectItem value="guest">Guest</SelectItem>
 								</SelectContent>
 							</Select>
 							<FormMessage />

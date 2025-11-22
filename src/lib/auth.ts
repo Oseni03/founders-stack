@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { customSession, organization, magicLink } from "better-auth/plugins";
-import { admin, member } from "./auth/permissions";
+import { owner, admin, member, viewer, guest } from "./auth/permissions";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma";
 import { getActiveOrganization } from "@/server/organizations";
@@ -15,13 +15,12 @@ import MagicLinkEmail from "@/components/emails/magic-link-email";
 
 const polarClient = new Polar({
 	accessToken: process.env.POLAR_ACCESS_TOKEN!,
-	// Use 'sandbox' for development, 'production' for live
 	server: "production",
 });
 
 export const auth = betterAuth({
 	trustedOrigins: ["http://localhost:3000"],
-	appName: "Builders' Stack",
+	appName: "Product's Stack",
 	baseURL: process.env.NEXT_PUBLIC_APP_URL,
 	session: {
 		cookieCache: {
@@ -40,12 +39,11 @@ export const auth = betterAuth({
 		},
 	},
 	database: prismaAdapter(prisma, {
-		provider: "postgresql", // or "mysql", "postgresql", ...etc
+		provider: "postgresql",
 	}),
 	onAPIError: {
 		throw: true,
 		onError: (error) => {
-			// Custom error handling
 			console.error("Auth error:", error);
 		},
 		errorURL: "/auth/error",
@@ -77,7 +75,7 @@ export const auth = betterAuth({
 	},
 	plugins: [
 		organization({
-			creatorRole: "admin",
+			creatorRole: "owner", // Changed from "admin" to "owner"
 			schema: {
 				organization: {
 					additionalFields: {
@@ -107,8 +105,11 @@ export const auth = betterAuth({
 				}
 			},
 			roles: {
+				owner,
 				admin,
 				member,
+				viewer,
+				guest,
 			},
 		}),
 		nextCookies(),

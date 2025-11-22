@@ -1,133 +1,195 @@
 "use client";
 
-import { useEffect } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { ProjectHealthCard } from "@/components/dashboard/project-health-card";
-import { FinancialStatusCard } from "@/components/dashboard/financial-status-card";
-import { AnalyticsCard } from "@/components/dashboard/analytics-card";
-import { FeedbackCard } from "@/components/dashboard/feedback-card";
-import { CodeCICard } from "@/components/dashboard/code-ci-card";
-import { CommunicationCard } from "@/components/dashboard/communication-card";
-import { Search, Calendar } from "lucide-react";
-import { useDashboardStore } from "@/zustand/providers/dashboard-store-provider";
-import { DashboardContentLoading } from "@/components/dashboard/dashboard-loading";
-import { useParams } from "next/navigation";
+import { GlassCard } from "@/components/dashboard/glass-card";
+import { CustomerPains } from "@/components/dashboard/customer-pains";
+import { SprintHealth } from "@/components/dashboard/sprint-health";
+import { ShippedFeatures } from "@/components/dashboard/shipped-features";
+import { BacklogList } from "@/components/dashboard/backlog-list";
+import { Zap, RefreshCw, FileText, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { useProductStore } from "@/zustand/providers/product-store-provider";
 
-export default function DashboardContent() {
-	const { productId } = useParams();
-	const data = useDashboardStore((s) => s.data);
-	const loading = useDashboardStore((s) => s.loading);
-	const error = useDashboardStore((s) => s.error);
-	const range = useDashboardStore((s) => s.range);
-	const searchQuery = useDashboardStore((s) => s.searchQuery);
-	const setRange = useDashboardStore((s) => s.setRange);
-	const setSearchQuery = useDashboardStore((s) => s.setSearchQuery);
-	const fetchData = useDashboardStore((s) => s.fetchData);
+export default function Dashboard() {
+	const { refreshDashboard, isRefreshing, generateDiagnosis, lastSyncTime } =
+		useProductStore((state) => state);
+	const [showDiagnosisModal, setShowDiagnosisModal] = useState(false);
+	const [diagnosis, setDiagnosis] = useState("");
+	const [isGenerating, setIsGenerating] = useState(false);
 
-	useEffect(() => {
-		fetchData(productId as string);
-	}, [range, searchQuery, fetchData, productId]);
+	const handleDiagnosis = async () => {
+		setIsGenerating(true);
+		setShowDiagnosisModal(true);
+		const result = await generateDiagnosis();
+		setDiagnosis(result);
+		setIsGenerating(false);
+	};
 
-	if (loading) {
-		return <DashboardContentLoading />;
-	}
-
-	if (error || !data) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<div className="text-center">
-					<p className="mb-4 text-lg font-semibold text-destructive">
-						{error || "No metrics available"}
-					</p>
-					<Button onClick={() => fetchData(productId as string)}>
-						Retry
-					</Button>
-				</div>
-			</div>
-		);
-	}
+	const formatLastSync = () => {
+		const seconds = Math.floor((Date.now() - lastSyncTime) / 1000);
+		if (seconds < 60) return "Just now";
+		if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+		return `${Math.floor(seconds / 3600)}h ago`;
+	};
 
 	return (
-		<main className="min-h-screen bg-background">
-			<div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-				<div className="mb-8">
-					<h1 className="text-3xl font-bold text-foreground">
-						Dashboard
+		<>
+			<header className="flex items-center justify-between mb-8">
+				<div>
+					<h1 className="text-3xl font-display font-bold text-white mb-2">
+						Today in Product
 					</h1>
-					<p className="mt-2 text-muted-foreground">
-						Your unified command center for all metrics
+					<p className="text-muted-foreground">
+						{new Date().toLocaleDateString("en-US", {
+							month: "long",
+							day: "numeric",
+							year: "numeric",
+						})}{" "}
+						• Sprint 42
 					</p>
 				</div>
-
-				<div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-					<div className="relative flex-1 sm:max-w-xs">
-						<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-						<Input
-							placeholder="Search metrics..."
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-							className="pl-10"
+				<div className="flex items-center gap-4">
+					<button
+						onClick={refreshDashboard}
+						disabled={isRefreshing}
+						className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-2"
+					>
+						<RefreshCw
+							size={12}
+							className={isRefreshing ? "animate-spin" : ""}
 						/>
+						Last synced {formatLastSync()}
+					</button>
+					<div className="flex items-center gap-2">
+						<span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+						<span className="text-xs text-green-400 font-mono">
+							LIVE UPDATES
+						</span>
+					</div>
+				</div>
+			</header>
+
+			<div className="space-y-6">
+				<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+					<div className="space-y-6 lg:col-span-1">
+						<GlassCard
+							title="Top 5 Customer Pains"
+							className="h-full min-h-[500px]"
+							action={
+								<RefreshCw
+									size={16}
+									className={`text-muted-foreground hover:text-white cursor-pointer transition-colors ${isRefreshing ? "animate-spin" : ""}`}
+									onClick={refreshDashboard}
+								/>
+							}
+						>
+							<CustomerPains />
+						</GlassCard>
 					</div>
 
-					<div className="flex flex-wrap gap-2 sm:gap-3">
-						{["7d", "30d", "90d"].map((r) => (
-							<Button
-								key={r}
-								variant={range === r ? "default" : "outline"}
-								onClick={() =>
-									setRange(r as "7d" | "30d" | "90d")
-								}
-								size="sm"
-								className="flex-1 gap-2 sm:flex-none"
+					<div className="space-y-6 lg:col-span-1 flex flex-col">
+						<GlassCard
+							title="Sprint Velocity Health"
+							delay={0.1}
+							className="flex-1"
+						>
+							<SprintHealth />
+						</GlassCard>
+
+						<div className="grid grid-cols-2 gap-4 mt-auto">
+							<button
+								onClick={handleDiagnosis}
+								className="p-4 rounded-2xl bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all text-left group"
 							>
-								<Calendar className="hidden h-4 w-4 sm:inline" />
-								<span className="sm:hidden">{r}</span>
-								<span className="hidden sm:inline">
-									{r === "7d"
-										? "Last 7 days"
-										: r === "30d"
-											? "Last 30 days"
-											: "Last 90 days"}
-								</span>
-							</Button>
-						))}
+								<div className="bg-primary/20 w-10 h-10 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+									<Zap className="text-primary" size={20} />
+								</div>
+								<h4 className="font-bold text-white text-sm">
+									Why are we slow?
+								</h4>
+								<p className="text-xs text-muted-foreground mt-1">
+									One-click diagnosis
+								</p>
+							</button>
+							<button className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-left group">
+								<div className="bg-white/10 w-10 h-10 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+									<FileText
+										className="text-white"
+										size={20}
+									/>
+								</div>
+								<h4 className="font-bold text-white text-sm">
+									Draft Update
+								</h4>
+								<p className="text-xs text-muted-foreground mt-1">
+									Generate changelog
+								</p>
+							</button>
+						</div>
+					</div>
+
+					<div className="space-y-6 lg:col-span-1">
+						<GlassCard
+							title="Proposed Backlog"
+							delay={0.3}
+							className="h-full border-primary/20 bg-gradient-to-b from-primary/5 to-transparent"
+							action={
+								<div className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">
+									AI Generated
+								</div>
+							}
+						>
+							<BacklogList />
+						</GlassCard>
 					</div>
 				</div>
 
-				<div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-					<ProjectHealthCard
-						productId={productId as string}
-						data={data.project}
-					/>
-					<FinancialStatusCard
-						productId={productId as string}
-						data={data.finance}
-					/>
-					<AnalyticsCard
-						productId={productId as string}
-						data={data.analytics}
-					/>
-					<FeedbackCard
-						productId={productId as string}
-						data={data.feedback}
-					/>
-					<CodeCICard
-						productId={productId as string}
-						data={data.code}
-					/>
-					<CommunicationCard
-						productId={productId as string}
-						data={data.communication}
-					/>
-				</div>
-
-				<div className="mt-12 border-t border-border pt-8 text-center text-sm text-muted-foreground">
-					<p>Last updated: {new Date().toLocaleString()}</p>
-					<p className="mt-2">Data syncs every 15 minutes</p>
+				<div className="w-full">
+					<GlassCard
+						title="Shipped Last 7 Days"
+						delay={0.2}
+						className="w-full"
+					>
+						<ShippedFeatures />
+					</GlassCard>
 				</div>
 			</div>
-		</main>
+
+			{/* Diagnosis Modal */}
+			{showDiagnosisModal && (
+				<div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+					<div className="bg-black/90 border border-white/10 rounded-2xl max-w-2xl w-full p-6 shadow-2xl">
+						<div className="flex items-center justify-between mb-4">
+							<h3 className="text-xl font-display font-bold text-white">
+								Sprint Velocity Diagnosis
+							</h3>
+							<button
+								onClick={() => setShowDiagnosisModal(false)}
+								className="text-muted-foreground hover:text-white"
+							>
+								✕
+							</button>
+						</div>
+
+						{isGenerating ? (
+							<div className="flex items-center justify-center py-12">
+								<Loader2
+									className="animate-spin text-primary"
+									size={32}
+								/>
+								<span className="ml-3 text-muted-foreground">
+									Analyzing sprint data...
+								</span>
+							</div>
+						) : (
+							<div className="prose prose-invert max-w-none">
+								<pre className="whitespace-pre-wrap text-sm text-gray-300 leading-relaxed">
+									{diagnosis}
+								</pre>
+							</div>
+						)}
+					</div>
+				</div>
+			)}
+		</>
 	);
 }

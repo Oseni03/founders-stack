@@ -1,318 +1,212 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
+import { getSession } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 
-export async function createMessage({
-	externalId,
-	text,
-	user,
-	channelId,
-	sourceTool,
-	organizationId,
-	timestamp,
-	attributes,
-}: {
+export async function getMessages(organizationId: string) {
+	const session = await getSession();
+	if (!session?.user.id) throw new Error("Unauthorized");
+
+	return prisma.message.findMany({
+		where: { organizationId },
+		orderBy: { timestamp: "desc" },
+		include: { comments: true, linkedItems: true },
+	});
+}
+
+// ============================================================================
+// MESSAGE OPERATIONS
+// ============================================================================
+
+interface CreateMessageData {
 	externalId: string;
-	text: string;
-	user: string;
+	content: string;
+	authorId?: string;
+	authorName: string;
+	authorAvatar?: string;
+	projectId: string;
 	channelId: string;
-	sourceTool: string;
+	channelName: string;
+	channelType: string;
+	platform: string;
 	organizationId: string;
-	timestamp: string;
-	attributes: Record<string, any>;
-}) {
+	timestamp: string | Date;
+	mentions?: string[];
+	reactions?: any;
+	threadId?: string;
+	parentMessageId?: string;
+	hasAttachments?: boolean;
+	attachments?: any;
+	isPinned?: boolean;
+	isImportant?: boolean;
+	url?: string;
+	metadata?: any;
+}
+
+export async function createMessage(data: CreateMessageData) {
 	try {
 		const message = await prisma.message.create({
 			data: {
-				externalId,
-				text: text,
-				user,
-				channelId,
-				sourceTool,
-				organizationId,
-				timestamp: new Date(parseFloat(timestamp) * 1000),
-				attributes,
+				externalId: data.externalId,
+				content: data.content,
+				authorId: data.authorId,
+				authorName: data.authorName,
+				authorAvatar: data.authorAvatar,
+				projectId: data.projectId,
+				channelId: data.channelId,
+				channelName: data.channelName,
+				channelType: data.channelType,
+				platform: data.platform,
+				organizationId: data.organizationId,
+				timestamp: new Date(data.timestamp),
+				mentions: data.mentions || [],
+				reactions: data.reactions || undefined,
+				threadId: data.threadId,
+				parentMessageId: data.parentMessageId,
+				hasAttachments: data.hasAttachments || false,
+				attachments: data.attachments || undefined,
+				isPinned: data.isPinned || false,
+				isImportant: data.isImportant || false,
+				url: data.url,
+				metadata: data.metadata || undefined,
+				syncedAt: new Date(),
 			},
 		});
-		return message;
+
+		return { success: true, data: message };
 	} catch (error) {
-		console.error("Failed to create message:", error);
-		throw new Error("Failed to create message due to an internal error");
+		console.error("Error creating message:", error);
+		throw error;
 	}
 }
 
-export async function updateMessage({
-	externalId,
-	sourceTool,
-	text,
-	attributes,
-}: {
+interface UpdateMessageData {
 	externalId: string;
-	sourceTool: string;
-	text: string;
-	attributes: Record<string, any>;
-}) {
+	platform: string;
+	organizationId: string;
+	content?: string;
+	isPinned?: boolean;
+	isImportant?: boolean;
+	reactions?: any;
+	metadata?: any;
+}
+
+export async function updateMessage(data: UpdateMessageData) {
 	try {
 		const message = await prisma.message.update({
 			where: {
-				externalId_sourceTool: {
-					externalId,
-					sourceTool,
+				externalId_platform_organizationId: {
+					externalId: data.externalId,
+					platform: data.platform,
+					organizationId: data.organizationId,
 				},
 			},
 			data: {
-				text,
-				updatedAt: new Date(),
-				attributes,
+				...(data.content !== undefined && { content: data.content }),
+				...(data.isPinned !== undefined && { isPinned: data.isPinned }),
+				...(data.isImportant !== undefined && {
+					isImportant: data.isImportant,
+				}),
+				...(data.reactions !== undefined && {
+					reactions: data.reactions,
+				}),
+				...(data.metadata !== undefined && { metadata: data.metadata }),
+				syncedAt: new Date(),
 			},
 		});
-		return message;
+
+		return { success: true, data: message };
 	} catch (error) {
-		console.error("Failed to update message:", error);
-		throw new Error("Failed to update message due to an internal error");
+		console.error("Error updating message:", error);
+		throw error;
 	}
 }
 
-export async function deleteMessage(externalId: string, sourceTool: string) {
+export async function deleteMessage(
+	externalId: string,
+	platform: string,
+	organizationId: string
+) {
 	try {
-		return await prisma.message.delete({
+		await prisma.message.delete({
 			where: {
-				externalId_sourceTool: {
+				externalId_platform_organizationId: {
 					externalId,
-					sourceTool,
+					platform,
+					organizationId,
 				},
 			},
 		});
+
+		return { success: true };
 	} catch (error) {
-		console.error("Failed to delete message:", error);
-		throw new Error("Failed to delete message due to an internal error");
+		console.error("Error deleting message:", error);
+		throw error;
 	}
 }
 
-export async function updateProject({
-	externalId,
-	sourceTool,
-	data,
-}: {
+// ============================================================================
+// PROJECT (CHANNEL) OPERATIONS
+// ============================================================================
+
+interface UpdateProjectData {
 	externalId: string;
-	sourceTool: string;
-	data: Record<string, any>;
-}) {
+	platform: string;
+	organizationId: string;
+	name?: string;
+	description?: string;
+	avatarUrl?: string;
+	url?: string;
+	status?: string;
+	metadata?: any;
+}
+
+export async function updateProject(data: UpdateProjectData) {
 	try {
 		const project = await prisma.project.update({
 			where: {
-				externalId_sourceTool: {
-					externalId,
-					sourceTool,
+				externalId_platform: {
+					externalId: data.externalId,
+					platform: data.platform,
 				},
 			},
-			data,
-		});
-		return project;
-	} catch (error) {
-		console.error("Failed to update project:", error);
-		throw new Error("Failed to update project due to an internal error");
-	}
-}
-
-export async function createChannel(data: any) {
-	const { organizationId, name, description, externalId } = data;
-
-	const channel = await prisma.project.create({
-		data: {
-			organizationId,
-			name,
-			description: description || null,
-			externalId: externalId || null,
-			sourceTool: "slack",
-			status: "active",
-			attributes: {
-				is_private: false,
-				num_members: 0,
-			},
-		},
-	});
-
-	return channel;
-}
-
-export async function deleteChannel(channelId: string) {
-	// Soft delete by updating status
-	await prisma.project.delete({
-		where: { id: channelId },
-	});
-}
-
-export async function syncMessages(data: any) {
-	const { organizationId, channelId, messages } = data;
-
-	// Upsert messages (insert or update based on externalId + sourceTool)
-	const upsertPromises = messages.map((msg: any) =>
-		prisma.message.upsert({
-			where: {
-				externalId_sourceTool: {
-					externalId: msg.externalId,
-					sourceTool: "slack",
-				},
-			},
-			update: {
-				text: msg.text,
-				user: msg.user,
-				timestamp: new Date(msg.timestamp),
-				attributes: msg.attributes || {},
+			data: {
+				...(data.name !== undefined && { name: data.name }),
+				...(data.description !== undefined && {
+					description: data.description,
+				}),
+				...(data.avatarUrl !== undefined && {
+					avatarUrl: data.avatarUrl,
+				}),
+				...(data.url !== undefined && { url: data.url }),
+				...(data.status !== undefined && { status: data.status }),
+				...(data.metadata !== undefined && { metadata: data.metadata }),
 				updatedAt: new Date(),
 			},
-			create: {
-				externalId: msg.externalId,
-				text: msg.text,
-				user: msg.user || null,
-				channelId,
-				sourceTool: "slack",
-				organizationId,
-				timestamp: new Date(msg.timestamp),
-				attributes: msg.attributes || {},
+		});
+
+		return { success: true, data: project };
+	} catch (error) {
+		console.error("Error updating project:", error);
+		throw error;
+	}
+}
+
+export async function deleteProject(externalId: string, platform: string) {
+	try {
+		await prisma.project.delete({
+			where: {
+				externalId_platform: {
+					externalId,
+					platform,
+				},
 			},
-		})
-	);
-
-	return await Promise.all(upsertPromises);
-}
-
-export async function calculateSentiment(messages: any[]): Promise<number> {
-	if (messages.length === 0) return 0.5;
-
-	// Simplified sentiment analysis
-	// In production, use a proper NLP library or API
-	const positiveWords = [
-		"great",
-		"awesome",
-		"excellent",
-		"good",
-		"thanks",
-		"perfect",
-	];
-	const negativeWords = [
-		"issue",
-		"problem",
-		"bug",
-		"error",
-		"failed",
-		"wrong",
-	];
-
-	let score = 0;
-	messages.forEach((msg) => {
-		const text = msg.text.toLowerCase();
-		positiveWords.forEach((word) => {
-			if (text.includes(word)) score += 1;
 		});
-		negativeWords.forEach((word) => {
-			if (text.includes(word)) score -= 1;
-		});
-	});
 
-	// Normalize to 0-1 range
-	const normalized = (score + messages.length) / (messages.length * 2);
-	return Math.max(0, Math.min(1, normalized));
-}
-
-export async function generateInsight(
-	messageVolume: number,
-	unreadMentions: number,
-	sentiment: number,
-	channelCount: number
-): Promise<string> {
-	const insights = [];
-
-	if (messageVolume > 1000) {
-		insights.push("High communication volume detected");
-	} else if (messageVolume < 100) {
-		insights.push("Communication activity is lower than usual");
+		return { success: true };
+	} catch (error) {
+		console.error("Error deleting project:", error);
+		throw error;
 	}
-
-	if (unreadMentions > 10) {
-		insights.push(`${unreadMentions} unread mentions require attention`);
-	}
-
-	if (sentiment >= 0.7) {
-		insights.push("Overall team sentiment is positive");
-	} else if (sentiment < 0.4) {
-		insights.push(
-			"Team sentiment shows some concerns - consider checking in"
-		);
-	}
-
-	if (channelCount > 10) {
-		insights.push("Consider consolidating channels for better focus");
-	}
-
-	return insights.length > 0
-		? insights.join(". ") + "."
-		: "Communication patterns are within normal ranges.";
-}
-
-export async function calculateMessageVolumeTrend(
-	organizationId: string,
-	days: number
-) {
-	const now = new Date();
-	const startDate = new Date(now);
-	startDate.setDate(now.getDate() - days);
-	startDate.setHours(0, 0, 0, 0);
-
-	// Get all messages for the period
-	const messages = await prisma.message.findMany({
-		where: {
-			organizationId,
-			timestamp: {
-				gte: startDate,
-			},
-		},
-		select: {
-			timestamp: true,
-			attributes: true,
-		},
-	});
-
-	// Group by day
-	const trendMap = new Map<string, { messages: number; mentions: number }>();
-
-	for (let i = days - 1; i >= 0; i--) {
-		const date = new Date(now);
-		date.setDate(now.getDate() - i);
-		const dateKey = date.toISOString().split("T")[0];
-		trendMap.set(dateKey, { messages: 0, mentions: 0 });
-	}
-
-	// Count messages and mentions per day
-	messages.forEach((msg) => {
-		const dateKey = msg.timestamp.toISOString().split("T")[0];
-		const dayData = trendMap.get(dateKey);
-
-		if (dayData) {
-			dayData.messages++;
-			const attrs = msg.attributes as any;
-			if (attrs?.has_mention) {
-				dayData.mentions++;
-			}
-		}
-	});
-
-	// Convert to array format
-	const trendData = [];
-	for (let i = days - 1; i >= 0; i--) {
-		const date = new Date(now);
-		date.setDate(now.getDate() - i);
-		const dateKey = date.toISOString().split("T")[0];
-		const dayName = date.toLocaleDateString("en-US", { weekday: "short" });
-		const dayData = trendMap.get(dateKey) || { messages: 0, mentions: 0 };
-
-		trendData.push({
-			name: dayName,
-			...dayData,
-		});
-	}
-
-	return trendData;
 }

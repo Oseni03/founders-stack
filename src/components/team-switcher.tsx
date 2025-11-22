@@ -58,7 +58,7 @@ export function TeamSwitcher() {
 
 			const isAdmin = !!data?.members?.find(
 				(member) =>
-					member.userId == session?.user?.id && member.role == "admin"
+					member.userId == session?.user?.id && member.role == "ADMIN"
 			);
 
 			if (!error && data) {

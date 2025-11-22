@@ -3,10 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getIntegration } from "@/server/integrations";
 import { withAuth } from "@/lib/middleware";
 import { GitHubConnector } from "@/lib/connectors/github";
-import { AsanaConnector } from "@/lib/connectors/asana";
 import { SlackConnector } from "@/lib/connectors/slack";
-import { JiraConnector } from "@/lib/connectors/jira";
-import { CannyConnector } from "@/lib/connectors/canny";
 import { PaginatedResponse, Resources } from "@/types/connector";
 import { z } from "zod";
 
@@ -46,18 +43,6 @@ const TOOL_CONFIG = {
 			return await connector.fetchRepositories(params);
 		},
 	},
-	asana: {
-		authField: "apiKey" as const,
-		fetchResources: async (
-			integration: Integration,
-			params: QueryParams
-		) => {
-			const connector = new AsanaConnector(integration.apiKey!);
-			const workspaceGid = (integration.metadata as Record<string, any>)
-				.workspaceGid;
-			return await connector.fetchProjects(workspaceGid, params);
-		},
-	},
 	slack: {
 		authField: "accessToken" as const,
 		fetchResources: async (
@@ -66,30 +51,6 @@ const TOOL_CONFIG = {
 		) => {
 			const connector = new SlackConnector(integration.accessToken!);
 			return await connector.fetchChannels(params);
-		},
-	},
-	jira: {
-		authField: "accessToken" as const,
-		fetchResources: async (
-			integration: Integration,
-			params: QueryParams
-		) => {
-			const attributes = integration.attributes as Record<string, any>;
-			const connector = new JiraConnector(
-				integration.accessToken!,
-				attributes.cloudId
-			);
-			return await connector.getProjects(params);
-		},
-	},
-	canny: {
-		authField: "apiKey" as const,
-		fetchResources: async (
-			integration: Integration,
-			params: QueryParams
-		) => {
-			const connector = new CannyConnector(integration.apiKey!);
-			return await connector.getBoards(params);
 		},
 	},
 } as const;

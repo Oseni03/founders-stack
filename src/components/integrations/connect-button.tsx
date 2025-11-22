@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Button } from "../ui/button";
 import { Plug } from "lucide-react";
 import { APIKeyConnectForm } from "../forms/api-key-connect-form";
+import { useParams } from "next/navigation";
 
 export const ConnectButton = ({
 	buttonText,
@@ -13,15 +14,16 @@ export const ConnectButton = ({
 	buttonText: string;
 	loading: boolean;
 	integration: Integration;
-	onConnect: (toolName: string) => void;
+	onConnect: (organizationId: string, toolName: string) => void;
 }) => {
+	const { productId } = useParams<{ productId: string }>();
 	const [isAPIKeyFormOpen, setAPIKeyFormOpen] = useState(false);
 
 	const handleClick = () => {
 		if (integration.authType === "api_key") {
 			setAPIKeyFormOpen(true); // Open form for API key input
 		} else {
-			onConnect(integration.id); // OAuth2 flow for others
+			onConnect(productId, integration.id); // OAuth2 flow for others
 		}
 	};
 	return (
