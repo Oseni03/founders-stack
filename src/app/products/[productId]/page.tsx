@@ -8,6 +8,7 @@ import { BacklogList } from "@/components/dashboard/backlog-list";
 import { Zap, RefreshCw, FileText, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useProductStore } from "@/zustand/providers/product-store-provider";
+import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
 	const { refreshDashboard, isRefreshing, generateDiagnosis, lastSyncTime } =
@@ -32,7 +33,7 @@ export default function Dashboard() {
 	};
 
 	return (
-		<>
+		<div className="w-full max-w-full overflow-x-hidden">
 			<header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
 				<div>
 					<h1 className="text-2xl sm:text-3xl font-display font-bold text-white mb-2">
@@ -48,9 +49,11 @@ export default function Dashboard() {
 					</p>
 				</div>
 				<div className="flex items-center gap-3 flex-wrap">
-					<button
+					<Button
 						onClick={refreshDashboard}
 						disabled={isRefreshing}
+						variant="ghost"
+						size="sm"
 						className="text-xs text-muted-foreground hover:text-white transition-colors flex items-center gap-2"
 					>
 						<RefreshCw
@@ -58,7 +61,7 @@ export default function Dashboard() {
 							className={isRefreshing ? "animate-spin" : ""}
 						/>
 						Last synced {formatLastSync()}
-					</button>
+					</Button>
 					<div className="flex items-center gap-2">
 						<span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
 						<span className="text-xs text-green-400 font-mono">
@@ -95,9 +98,10 @@ export default function Dashboard() {
 						</GlassCard>
 
 						<div className="grid grid-cols-2 gap-4">
-							<button
+							<Button
 								onClick={handleDiagnosis}
-								className="p-4 rounded-2xl bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all text-left group"
+								variant="outline"
+								className="h-auto p-4 rounded-2xl bg-primary/10 border-primary/20 hover:bg-primary/20 transition-all text-left group flex flex-col items-start"
 							>
 								<div className="bg-primary/20 w-10 h-10 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
 									<Zap className="text-primary" size={20} />
@@ -108,8 +112,11 @@ export default function Dashboard() {
 								<p className="text-xs text-muted-foreground mt-1">
 									One-click diagnosis
 								</p>
-							</button>
-							<button className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-left group">
+							</Button>
+							<Button
+								variant="outline"
+								className="h-auto p-4 rounded-2xl bg-white/5 border-white/10 hover:bg-white/10 transition-all text-left group flex flex-col items-start"
+							>
 								<div className="bg-white/10 w-10 h-10 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
 									<FileText
 										className="text-white"
@@ -122,7 +129,7 @@ export default function Dashboard() {
 								<p className="text-xs text-muted-foreground mt-1">
 									Generate changelog
 								</p>
-							</button>
+							</Button>
 						</div>
 					</div>
 
@@ -143,50 +150,56 @@ export default function Dashboard() {
 					</div>
 				</div>
 
-				{/* Shipped Features – Full width, horizontal scroll on mobile */}
-				<div className="w-full -mx-4 px-4 sm:mx-0 sm:px-0">
+				{/* Shipped Features – Full width, contained within grid */}
+				<div className="w-full">
 					<GlassCard title="Shipped Last 7 Days" delay={0.2}>
 						<ShippedFeatures />
 					</GlassCard>
 				</div>
 			</div>
 
-			{/* Diagnosis Modal – Improved mobile padding */}
+			{/* Diagnosis Modal – Fixed positioning */}
 			{showDiagnosisModal && (
 				<div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-					<div className="bg-black/90 border border-white/10 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6 shadow-2xl">
-						<div className="flex items-center justify-between mb-6 sticky top-0 bg-black/90 -mx-6 -mt-6 px-6 pt-6 pb-4 border-b border-white/5">
+					<div className="bg-[#0A0A0B] border border-white/10 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl flex flex-col">
+						<div className="flex items-center justify-between p-6 border-b border-white/10 shrink-0">
 							<h3 className="text-xl font-display font-bold text-white">
 								Sprint Velocity Diagnosis
 							</h3>
-							<button
+							<Button
 								onClick={() => setShowDiagnosisModal(false)}
-								className="text-muted-foreground hover:text-white text-2xl leading-none"
+								variant="ghost"
+								size="icon"
+								className="text-muted-foreground hover:text-white"
 							>
-								&times;
-							</button>
+								<span className="text-2xl leading-none">
+									&times;
+								</span>
+							</Button>
 						</div>
 
-						{isGenerating ? (
-							<div className="flex flex-col items-center justify-center py-16">
-								<Loader2
-									className="animate-spin text-primary"
-									size={40}
-								/>
-								<span className="mt-4 text-muted-foreground">
-									Analyzing sprint data...
-								</span>
-							</div>
-						) : (
-							<div className="prose prose-invert max-w-none text-sm leading-relaxed text-gray-300">
-								<pre className="whitespace-pre-wrap font-sans">
-									{diagnosis}
-								</pre>
-							</div>
-						)}
+						<div className="overflow-y-auto p-6 flex-1">
+							{isGenerating ? (
+								<div className="flex flex-col items-center justify-center py-16">
+									<Loader2
+										className="animate-spin text-primary"
+										size={40}
+									/>
+									<span className="mt-4 text-muted-foreground">
+										Analyzing sprint data...
+									</span>
+								</div>
+							) : (
+								<div className="prose prose-invert max-w-none text-sm leading-relaxed text-gray-300">
+									<pre className="whitespace-pre-wrap font-sans">
+										{diagnosis}
+									</pre>
+								</div>
+							)}
+						</div>
 					</div>
 				</div>
 			)}
-		</>
+		</div>
 	);
 }
