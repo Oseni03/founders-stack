@@ -33,12 +33,12 @@ export default function Dashboard() {
 
 	return (
 		<>
-			<header className="flex items-center justify-between mb-8">
+			<header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
 				<div>
-					<h1 className="text-3xl font-display font-bold text-white mb-2">
+					<h1 className="text-2xl sm:text-3xl font-display font-bold text-white mb-2">
 						Today in Product
 					</h1>
-					<p className="text-muted-foreground">
+					<p className="text-muted-foreground text-sm">
 						{new Date().toLocaleDateString("en-US", {
 							month: "long",
 							day: "numeric",
@@ -47,7 +47,7 @@ export default function Dashboard() {
 						• Sprint 42
 					</p>
 				</div>
-				<div className="flex items-center gap-4">
+				<div className="flex items-center gap-3 flex-wrap">
 					<button
 						onClick={refreshDashboard}
 						disabled={isRefreshing}
@@ -68,9 +68,11 @@ export default function Dashboard() {
 				</div>
 			</header>
 
-			<div className="space-y-6">
-				<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-					<div className="space-y-6 lg:col-span-1">
+			<div className="space-y-8">
+				{/* Responsive 3-column layout */}
+				<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+					{/* Customer Pains – Full width on mobile, 1 col on all */}
+					<div className="md:col-span-1 xl:row-span-2">
 						<GlassCard
 							title="Top 5 Customer Pains"
 							className="h-full min-h-[500px]"
@@ -86,16 +88,13 @@ export default function Dashboard() {
 						</GlassCard>
 					</div>
 
-					<div className="space-y-6 lg:col-span-1 flex flex-col">
-						<GlassCard
-							title="Sprint Velocity Health"
-							delay={0.1}
-							className="flex-1"
-						>
+					{/* Middle Column: Sprint Health + Action Buttons */}
+					<div className="space-y-6 md:col-span-1 xl:col-span-1">
+						<GlassCard title="Sprint Velocity Health" delay={0.1}>
 							<SprintHealth />
 						</GlassCard>
 
-						<div className="grid grid-cols-2 gap-4 mt-auto">
+						<div className="grid grid-cols-2 gap-4">
 							<button
 								onClick={handleDiagnosis}
 								className="p-4 rounded-2xl bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all text-left group"
@@ -127,7 +126,8 @@ export default function Dashboard() {
 						</div>
 					</div>
 
-					<div className="space-y-6 lg:col-span-1">
+					{/* Backlog – Takes full height on large screens */}
+					<div className="md:col-span-2 xl:col-span-1 xl:row-span-2">
 						<GlassCard
 							title="Proposed Backlog"
 							delay={0.3}
@@ -143,46 +143,43 @@ export default function Dashboard() {
 					</div>
 				</div>
 
-				<div className="w-full">
-					<GlassCard
-						title="Shipped Last 7 Days"
-						delay={0.2}
-						className="w-full"
-					>
+				{/* Shipped Features – Full width, horizontal scroll on mobile */}
+				<div className="w-full -mx-4 px-4 sm:mx-0 sm:px-0">
+					<GlassCard title="Shipped Last 7 Days" delay={0.2}>
 						<ShippedFeatures />
 					</GlassCard>
 				</div>
 			</div>
 
-			{/* Diagnosis Modal */}
+			{/* Diagnosis Modal – Improved mobile padding */}
 			{showDiagnosisModal && (
-				<div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-					<div className="bg-black/90 border border-white/10 rounded-2xl max-w-2xl w-full p-6 shadow-2xl">
-						<div className="flex items-center justify-between mb-4">
+				<div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+					<div className="bg-black/90 border border-white/10 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6 shadow-2xl">
+						<div className="flex items-center justify-between mb-6 sticky top-0 bg-black/90 -mx-6 -mt-6 px-6 pt-6 pb-4 border-b border-white/5">
 							<h3 className="text-xl font-display font-bold text-white">
 								Sprint Velocity Diagnosis
 							</h3>
 							<button
 								onClick={() => setShowDiagnosisModal(false)}
-								className="text-muted-foreground hover:text-white"
+								className="text-muted-foreground hover:text-white text-2xl leading-none"
 							>
-								✕
+								&times;
 							</button>
 						</div>
 
 						{isGenerating ? (
-							<div className="flex items-center justify-center py-12">
+							<div className="flex flex-col items-center justify-center py-16">
 								<Loader2
 									className="animate-spin text-primary"
-									size={32}
+									size={40}
 								/>
-								<span className="ml-3 text-muted-foreground">
+								<span className="mt-4 text-muted-foreground">
 									Analyzing sprint data...
 								</span>
 							</div>
 						) : (
-							<div className="prose prose-invert max-w-none">
-								<pre className="whitespace-pre-wrap text-sm text-gray-300 leading-relaxed">
+							<div className="prose prose-invert max-w-none text-sm leading-relaxed text-gray-300">
+								<pre className="whitespace-pre-wrap font-sans">
 									{diagnosis}
 								</pre>
 							</div>

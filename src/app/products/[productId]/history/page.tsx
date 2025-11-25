@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { GlassCard } from "@/components/dashboard/glass-card";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -22,19 +22,13 @@ export default function HistoryPage() {
 		new Date()
 	);
 
+	// Memoize snapshot dates to avoid recalculation on every render
+	const snapshotDates = useMemo(() => {
+		return Object.keys(snapshots).map((key) => new Date(key + "T00:00:00"));
+	}, [snapshots]);
+
 	const dateKey = selectedDate?.toISOString().split("T")[0] || "";
 	const snapshot = snapshots[dateKey];
-
-	// Get all dates that have snapshots
-	const snapshotDates = Object.keys(snapshots).map(
-		(key) => new Date(key + "T00:00:00")
-	);
-
-	// Custom matcher for days with snapshots
-	const hasSnapshot = (date: Date) => {
-		const dateKey = date.toISOString().split("T")[0];
-		return !!snapshots[dateKey];
-	};
 
 	return (
 		<>
@@ -57,50 +51,13 @@ export default function HistoryPage() {
 							mode="single"
 							selected={selectedDate}
 							onSelect={setSelectedDate}
-							className="rounded-md"
+							className="rounded-md border"
 							modifiers={{
-								hasSnapshot: snapshotDates,
+								hasSnapshot: snapshotDates, // This works if snapshotDates is an array of Date objects
 							}}
 							modifiersClassNames={{
 								hasSnapshot:
 									"relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:rounded-full after:bg-primary",
-							}}
-							classNames={{
-								months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-								month: "space-y-4",
-								caption:
-									"flex justify-center pt-1 relative items-center",
-								caption_label: "text-sm font-medium text-white",
-								nav: "space-x-1 flex items-center",
-								nav_button: cn(
-									"h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
-									"text-white hover:bg-white/10 rounded-md transition-colors"
-								),
-								nav_button_previous: "absolute left-1",
-								nav_button_next: "absolute right-1",
-								table: "w-full border-collapse space-y-1",
-								head_row: "flex",
-								head_cell:
-									"text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-								row: "flex w-full mt-2",
-								cell: cn(
-									"relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-accent",
-									"first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md"
-								),
-								day: cn(
-									"h-9 w-9 p-0 font-normal aria-selected:opacity-100",
-									"text-white hover:bg-white/10 rounded-md transition-colors"
-								),
-								day_selected:
-									"bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-								day_today:
-									"bg-accent text-accent-foreground font-bold",
-								day_outside: "text-muted-foreground opacity-50",
-								day_disabled:
-									"text-muted-foreground opacity-50",
-								day_range_middle:
-									"aria-selected:bg-accent aria-selected:text-accent-foreground",
-								day_hidden: "invisible",
 							}}
 						/>
 					</GlassCard>
