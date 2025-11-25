@@ -9,6 +9,14 @@ import { Zap, RefreshCw, FileText, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useProductStore } from "@/zustand/providers/product-store-provider";
 import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function Dashboard() {
 	const { refreshDashboard, isRefreshing, generateDiagnosis, lastSyncTime } =
@@ -33,7 +41,7 @@ export default function Dashboard() {
 	};
 
 	return (
-		<div className="w-full max-w-full overflow-x-hidden">
+		<div>
 			<header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
 				<div>
 					<h1 className="text-2xl sm:text-3xl font-display font-bold text-white mb-2">
@@ -151,55 +159,49 @@ export default function Dashboard() {
 				</div>
 
 				{/* Shipped Features – Full width, contained within grid */}
-				<div className="w-full">
+				<div>
 					<GlassCard title="Shipped Last 7 Days" delay={0.2}>
 						<ShippedFeatures />
 					</GlassCard>
 				</div>
 			</div>
 
-			{/* Diagnosis Modal – Fixed positioning */}
-			{showDiagnosisModal && (
-				<div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-					<div className="bg-[#0A0A0B] border border-white/10 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl flex flex-col">
-						<div className="flex items-center justify-between p-6 border-b border-white/10 shrink-0">
-							<h3 className="text-xl font-display font-bold text-white">
-								Sprint Velocity Diagnosis
-							</h3>
-							<Button
-								onClick={() => setShowDiagnosisModal(false)}
-								variant="ghost"
-								size="icon"
-								className="text-muted-foreground hover:text-white"
-							>
-								<span className="text-2xl leading-none">
-									&times;
-								</span>
-							</Button>
-						</div>
+			{/* Diagnosis Dialog using Shadcn */}
+			<Dialog
+				open={showDiagnosisModal}
+				onOpenChange={setShowDiagnosisModal}
+			>
+				<DialogContent className="max-w-2xl max-h-[80vh] p-0">
+					<DialogHeader className="p-6 pb-4">
+						<DialogTitle className="text-xl font-display font-bold">
+							Sprint Velocity Diagnosis
+						</DialogTitle>
+						<DialogDescription className="text-muted-foreground">
+							AI-powered analysis of your sprint performance
+						</DialogDescription>
+					</DialogHeader>
 
-						<div className="overflow-y-auto p-6 flex-1">
-							{isGenerating ? (
-								<div className="flex flex-col items-center justify-center py-16">
-									<Loader2
-										className="animate-spin text-primary"
-										size={40}
-									/>
-									<span className="mt-4 text-muted-foreground">
-										Analyzing sprint data...
-									</span>
-								</div>
-							) : (
-								<div className="prose prose-invert max-w-none text-sm leading-relaxed text-gray-300">
-									<pre className="whitespace-pre-wrap font-sans">
-										{diagnosis}
-									</pre>
-								</div>
-							)}
-						</div>
-					</div>
-				</div>
-			)}
+					<ScrollArea className="max-h-[calc(80vh-120px)] px-6 pb-6">
+						{isGenerating ? (
+							<div className="flex flex-col items-center justify-center py-16">
+								<Loader2
+									className="animate-spin text-primary"
+									size={40}
+								/>
+								<span className="mt-4 text-muted-foreground">
+									Analyzing sprint data...
+								</span>
+							</div>
+						) : (
+							<div className="prose prose-invert max-w-none text-sm leading-relaxed">
+								<pre className="whitespace-pre-wrap font-sans text-gray-300 bg-transparent border-0 p-0">
+									{diagnosis}
+								</pre>
+							</div>
+						)}
+					</ScrollArea>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

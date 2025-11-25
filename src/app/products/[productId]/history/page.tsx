@@ -63,15 +63,16 @@ export default function HistoryPage() {
 								months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
 								month: "space-y-4",
 								caption:
-									"flex justify-center pt-1 relative items-center",
+									"flex justify-between pt-1 relative items-center", // Changed from justify-center
 								caption_label: "text-sm font-medium text-white",
 								nav: "space-x-1 flex items-center",
 								nav_button: cn(
 									"h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
 									"text-white hover:bg-white/10 rounded-md transition-colors"
 								),
-								nav_button_previous: "absolute left-1",
-								nav_button_next: "absolute right-1",
+								// Remove these two lines:
+								// nav_button_previous: "absolute left-1",
+								// nav_button_next: "absolute right-1",
 								table: "w-full border-collapse space-y-1",
 								head_row: "flex",
 								head_cell:
